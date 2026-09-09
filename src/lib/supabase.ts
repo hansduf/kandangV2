@@ -297,6 +297,21 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
       created_at: new Date().toISOString()
     };
     flocks.unshift(newFlock);
+    localStorage.setItem('kandang_flocks', JSON.stringify(flocks));
+    return newFlock;
+  }
+
+  const { data, error } = await supabase.rpc('create_flock', {
+    p_name: flock.name,
+    p_coop_name: flock.coop_name,
+    p_strain: flock.strain || 'Isa Brown',
+    p_chick_in_date: flock.chick_in_date,
+    p_initial_population: flock.initial_population
+  });
+  if (error) throw error;
+  return data;
+}
+
 // DYNAMIC CATEGORIES & PRESETS HELPER FUNCTIONS (Persisted in DB / localStorage)
 const DEFAULT_HEALTH_CATEGORIES = ['Vaksin', 'Obat', 'Vitamin', 'Desinfektan'];
 

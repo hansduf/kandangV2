@@ -64,18 +64,18 @@ export default function HealthPage() {
   const categoryBadgeColor = (cat: string) => {
     switch (cat) {
       case 'Vaksin':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
       case 'Obat':
-        return 'bg-rose-100 text-rose-800 border-rose-200';
+        return 'bg-rose-500/20 text-rose-300 border-rose-500/40';
       case 'Vitamin':
-        return 'bg-amber-100 text-amber-800 border-amber-200';
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/40';
       default:
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-500/20 text-blue-300 border-blue-500/40';
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-32">
       <Navbar
         flocks={flocks}
         activeFlockId={activeFlockId}
@@ -84,13 +84,13 @@ export default function HealthPage() {
       />
 
       <main className="max-w-md mx-auto px-4 py-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shadow-lg">
             <Syringe className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900">Obat, Vaksin & Vitamin</h2>
-            <p className="text-xs font-medium text-slate-500">Pencatatan & timeline kesehatan ayam</p>
+            <h2 className="text-base font-black text-white">Obat, Vaksin & Vitamin</h2>
+            <p className="text-xs font-semibold text-slate-400">Pencatatan & timeline kesehatan ayam</p>
           </div>
         </div>
 
@@ -99,37 +99,37 @@ export default function HealthPage() {
         )}
 
         {/* Timeline Records */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider">
             Timeline Penanganan ({healthList.length})
           </h3>
 
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {healthList.map((h) => (
-              <div key={h.id || h.record_date + h.item_name} className="stat-card p-3.5 space-y-1.5">
+              <div key={h.id || h.record_date + h.item_name} className="glass-card p-4 space-y-2 border border-slate-700/80 shadow-xl">
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${categoryBadgeColor(
+                    className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${categoryBadgeColor(
                       h.category
                     )}`}
                   >
                     {h.category}
                   </span>
-                  <div className="flex items-center gap-1 text-slate-400 text-xs font-medium">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{h.record_date}</span>
                   </div>
                 </div>
 
-                <h4 className="text-sm font-bold text-slate-900">{h.item_name}</h4>
+                <h4 className="text-sm font-black text-white">{h.item_name}</h4>
 
-                <div className="flex items-center gap-3 text-xs text-slate-600 font-medium">
-                  {h.dosage && <span>Dosis: <strong>{h.dosage}</strong></span>}
-                  {h.method && <span>Metode: <strong>{h.method}</strong></span>}
+                <div className="flex items-center gap-3 text-xs text-slate-300 font-semibold">
+                  {h.dosage && <span>Dosis: <strong className="text-emerald-400 font-bold">{h.dosage}</strong></span>}
+                  {h.method && <span>Metode: <strong className="text-amber-400 font-bold">{h.method}</strong></span>}
                 </div>
 
                 {h.notes && (
-                  <p className="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-start gap-1">
+                  <p className="text-xs text-slate-300 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 flex items-start gap-1.5 mt-1">
                     <FileText className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
                     <span>{h.notes}</span>
                   </p>
@@ -138,7 +138,7 @@ export default function HealthPage() {
             ))}
 
             {healthList.length === 0 && (
-              <div className="text-center py-8 text-slate-400 text-xs">
+              <div className="text-center py-8 text-slate-400 text-xs font-semibold glass-card p-4 border border-slate-800">
                 Belum ada catatan kesehatan untuk angkatan ini.
               </div>
             )}
@@ -156,3 +156,4 @@ export default function HealthPage() {
     </div>
   );
 }
+

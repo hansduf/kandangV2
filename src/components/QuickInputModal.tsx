@@ -119,25 +119,25 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-100 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl border-t-2 border-slate-200 p-3.5 space-y-3 animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl p-4 space-y-4 animate-in slide-in-from-bottom duration-300">
         
         {/* Header & Close Button */}
-        <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
-            <h3 className="text-sm font-black text-slate-900 uppercase">PENCATATAN HARIAN KANDANG</h3>
-            <p className="text-[11px] font-semibold text-slate-500">Isi data produksi, obat, atau kematian</p>
+            <h3 className="text-sm font-black text-white uppercase tracking-tight">PENCATATAN HARIAN KANDANG</h3>
+            <p className="text-[11px] font-semibold text-slate-400">Isi data produksi, obat, atau kematian</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors border border-slate-700"
           >
             <X className="w-4 h-4 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* 3 OPERATIONAL TABS ONLY (NO TAMBAH KANDANG TAB HERE) */}
-        <div className="grid grid-cols-3 gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-xs">
+        {/* 3 OPERATIONAL TABS */}
+        <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 shadow-inner">
           {[
             { id: 'daily', label: 'Produksi', icon: Egg },
             { id: 'health', label: 'Obat / Vaksin', icon: Syringe },
@@ -150,10 +150,10 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-2 flex items-center justify-center gap-1.5 rounded-lg text-xs font-black transition-all ${
+                className={`py-2 flex items-center justify-center gap-1.5 rounded-xl text-xs font-black transition-all ${
                   isSelected
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -165,12 +165,12 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
         {/* Toast Feedback */}
         {toastMessage && (
-          <div className="bg-emerald-700 text-white rounded-xl p-3 text-center text-xs font-black shadow-md animate-bounce">
+          <div className="bg-emerald-500 text-slate-950 rounded-2xl p-3 text-center text-xs font-black shadow-lg shadow-emerald-500/30 animate-bounce">
             {toastMessage}
           </div>
         )}
 
-        {/* TAB 1: PRODUKSI TELUR & PAKAN (COMPACT SLEEK GRID) */}
+        {/* TAB 1: PRODUKSI TELUR & PAKAN */}
         {activeTab === 'daily' && (
           <SleekProductionInput
             flocks={flocks}
@@ -183,13 +183,13 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
         {/* TAB 2: OBAT & VAKSIN */}
         {activeTab === 'health' && (
-          <form onSubmit={handleSaveHealthSubmit} className="space-y-3">
-            <div className="grid grid-cols-2 gap-1.5">
+          <form onSubmit={handleSaveHealthSubmit} className="space-y-3.5">
+            <div className="grid grid-cols-2 gap-2">
               {[
-                { cat: 'Vaksin', icon: Syringe, color: 'bg-emerald-600' },
-                { cat: 'Obat', icon: Pill, color: 'bg-rose-600' },
-                { cat: 'Vitamin', icon: Sparkles, color: 'bg-amber-600' },
-                { cat: 'Desinfektan', icon: ShieldAlert, color: 'bg-blue-600' },
+                { cat: 'Vaksin', icon: Syringe, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+                { cat: 'Obat', icon: Pill, color: 'bg-rose-500/20 text-rose-300 border-rose-500/40' },
+                { cat: 'Vitamin', icon: Sparkles, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+                { cat: 'Desinfektan', icon: ShieldAlert, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
               ].map((item) => {
                 const Icon = item.icon;
                 const isSelected = healthCategory === item.cat;
@@ -201,10 +201,10 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                       setHealthCategory(item.cat as any);
                       setHealthItemName('');
                     }}
-                    className={`py-2 px-2 rounded-xl flex items-center gap-2 font-black text-xs transition-all border-2 ${
+                    className={`py-2.5 px-3 rounded-2xl flex items-center gap-2 font-black text-xs transition-all border ${
                       isSelected
-                        ? `${item.color} text-white border-transparent shadow-xs`
-                        : 'bg-white text-slate-700 border-slate-200'
+                        ? `${item.color} shadow-lg shadow-emerald-500/10 scale-102`
+                        : 'bg-slate-800/80 text-slate-400 border-slate-700/80'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -214,34 +214,36 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
               })}
             </div>
 
-            <div className="stat-card p-3 border border-slate-200 space-y-2">
-              <label className="block text-xs font-black text-slate-800 uppercase">Nama {healthCategory}</label>
-              <input
-                type="text"
-                value={healthItemName}
-                onChange={(e) => setHealthItemName(e.target.value)}
-                placeholder={`Contoh: Vaksin ND-IB / Egg Stimulant...`}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-emerald-500"
-                required
-              />
+            <div className="glass-card p-3.5 border border-slate-700/80 space-y-3">
+              <div>
+                <label className="block text-xs font-black text-slate-300 uppercase mb-1">Nama {healthCategory}</label>
+                <input
+                  type="text"
+                  value={healthItemName}
+                  onChange={(e) => setHealthItemName(e.target.value)}
+                  placeholder={`Contoh: Vaksin ND-IB / Egg Stimulant...`}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Dosis</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Dosis</label>
                   <input
                     type="text"
                     value={healthDosage}
                     onChange={(e) => setHealthDosage(e.target.value)}
                     placeholder="100g / 200L Air"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold outline-none"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-white outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Metode</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Metode</label>
                   <select
                     value={healthMethod}
                     onChange={(e) => setHealthMethod(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold outline-none"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs font-bold text-white outline-none"
                   >
                     <option value="Air Minum">Air Minum</option>
                     <option value="Injeksi">Suntik</option>
@@ -256,9 +258,9 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-3 rounded-2xl shadow-lg flex items-center justify-center gap-2 text-sm transition-all"
+              className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 text-sm transition-all"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-4 h-4 stroke-[3]" />
               <span>{isSubmitting ? 'MENYIMPAN...' : `SIMPAN ${healthCategory.toUpperCase()}`}</span>
             </button>
           </form>
@@ -266,7 +268,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
         {/* TAB 3: KEMATIAN & AFKIR */}
         {activeTab === 'mortality' && (
-          <form onSubmit={handleSaveMortalitySubmit} className="space-y-3">
+          <form onSubmit={handleSaveMortalitySubmit} className="space-y-3.5">
             <GiantStepperInput
               label="Ayam Mati (Ekor)"
               sublabel="Jumlah ekor ayam mati"
@@ -292,9 +294,9 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-black py-3 rounded-2xl shadow-lg flex items-center justify-center gap-2 text-sm transition-all"
+              className="w-full bg-rose-500 hover:bg-rose-400 active:scale-98 text-slate-950 font-black py-3.5 rounded-2xl shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 text-sm transition-all"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-4 h-4 stroke-[3]" />
               <span>{isSubmitting ? 'MENYIMPAN...' : 'SIMPAN KEMATIAN'}</span>
             </button>
           </form>
@@ -303,3 +305,4 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
     </div>
   );
 };
+

@@ -30,8 +30,11 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet" />
       </head>
-      <body className="bg-slate-50 text-slate-900 antialiased min-h-screen pb-20">
+      <body className="bg-slate-900 text-slate-100 antialiased min-h-screen font-sans selection:bg-emerald-500 selection:text-white">
         {children}
       </body>
     </html>

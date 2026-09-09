@@ -64,14 +64,14 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
   return (
     <form onSubmit={handleSubmit} className="space-y-3.5">
       {/* Visual Category Selection Grid */}
-      <div className="stat-card p-3 border-2 border-slate-200">
-        <label className="block text-xs font-black text-slate-800 uppercase mb-2">PILIH JENIS TREATMENT</label>
+      <div className="glass-card p-3.5 border border-slate-700/80 space-y-2">
+        <label className="block text-xs font-black text-slate-300 uppercase mb-2">PILIH JENIS TREATMENT</label>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { cat: 'Vaksin', icon: Syringe, color: 'bg-emerald-600' },
-            { cat: 'Obat', icon: Pill, color: 'bg-rose-600' },
-            { cat: 'Vitamin', icon: Sparkles, color: 'bg-amber-600' },
-            { cat: 'Desinfektan', icon: ShieldAlert, color: 'bg-blue-600' },
+            { cat: 'Vaksin', icon: Syringe, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+            { cat: 'Obat', icon: Pill, color: 'bg-rose-500/20 text-rose-300 border-rose-500/40' },
+            { cat: 'Vitamin', icon: Sparkles, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+            { cat: 'Desinfektan', icon: ShieldAlert, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
           ].map((item) => {
             const Icon = item.icon;
             const isSelected = category === item.cat;
@@ -84,10 +84,10 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
                   setCategory(item.cat as any);
                   setItemName('');
                 }}
-                className={`py-3 px-3 rounded-2xl flex items-center gap-2 font-black text-xs transition-all active:scale-95 border-2 ${
+                className={`py-3 px-3 rounded-2xl flex items-center gap-2 font-black text-xs transition-all border ${
                   isSelected
-                    ? `${item.color} text-white border-transparent shadow-md`
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    ? `${item.color} shadow-lg shadow-emerald-500/10 scale-102`
+                    : 'bg-slate-800/80 text-slate-400 border-slate-700/80'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -99,21 +99,21 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
       </div>
 
       {/* Main Form Fields */}
-      <div className="stat-card p-3.5 border-2 border-slate-200 space-y-3">
+      <div className="glass-card p-4 border border-slate-700/80 space-y-3.5">
         <div>
-          <label className="block text-xs font-black text-slate-800 uppercase mb-1">Tanggal Treatment</label>
+          <label className="block text-xs font-black text-slate-300 uppercase mb-1">Tanggal Treatment</label>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-emerald-500"
             required
           />
         </div>
 
         {/* Preset Name Pills */}
         <div>
-          <label className="block text-xs font-black text-slate-800 uppercase mb-1.5">Nama {category}</label>
+          <label className="block text-xs font-black text-slate-300 uppercase mb-1.5">Nama {category}</label>
           
           <div className="flex flex-wrap gap-1.5 mb-2">
             {categoryPresets.map((preset) => (
@@ -121,10 +121,10 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
                 key={preset}
                 type="button"
                 onClick={() => setItemName(preset)}
-                className={`text-[11px] font-bold px-2.5 py-1 rounded-xl transition-all ${
+                className={`text-[11px] font-bold px-2.5 py-1 rounded-xl transition-all border ${
                   itemName === preset
-                    ? 'bg-slate-900 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black shadow-md'
+                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
                 }`}
               >
                 {preset}
@@ -137,29 +137,29 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
             value={itemName}
             onChange={(e) => setItemName(e.target.value)}
             placeholder={`Atau ketik nama ${category} lain...`}
-            className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-white outline-none focus:border-emerald-500"
             required
           />
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="block text-xs font-extrabold text-slate-700 mb-1 uppercase">Dosis</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Dosis</label>
             <input
               type="text"
               value={dosage}
               onChange={(e) => setDosage(e.target.value)}
               placeholder="e.g. 100g / 200L Air"
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold text-slate-700 mb-1 uppercase">Cara Pakai</label>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cara Pakai</label>
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-white outline-none"
             >
               <option value="Air Minum">Air Minum</option>
               <option value="Injeksi">Suntik (Injeksi)</option>
@@ -171,20 +171,20 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
         </div>
 
         <div>
-          <label className="block text-xs font-extrabold text-slate-700 mb-1 uppercase">Catatan / Gejala (Opsional)</label>
+          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Catatan / Gejala (Opsional)</label>
           <textarea
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Contoh: Ayam ngorok 5 ekor..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs font-semibold text-white outline-none focus:border-emerald-500"
           />
         </div>
       </div>
 
       {/* Success Notification */}
       {successMessage && (
-        <div className="bg-emerald-700 text-white rounded-2xl p-4 text-center text-sm font-black shadow-lg animate-bounce">
+        <div className="bg-emerald-500 text-slate-950 rounded-2xl p-4 text-center text-xs font-black shadow-lg shadow-emerald-500/30 animate-bounce">
           {successMessage}
         </div>
       )}
@@ -193,11 +193,12 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-black py-4 rounded-3xl shadow-xl flex items-center justify-center gap-2 text-base transition-all active:scale-95"
+        className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black py-4 rounded-3xl shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 text-sm transition-all"
       >
-        <Save className="w-6 h-6" />
+        <Save className="w-5 h-5 stroke-[3]" />
         <span>{isSubmitting ? 'MENYIMPAN...' : `SIMPAN DATA ${category.toUpperCase()}`}</span>
       </button>
     </form>
   );
 };
+

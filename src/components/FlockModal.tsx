@@ -43,51 +43,54 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-      <div className="bg-white rounded-3xl p-5 w-full max-w-sm shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95">
-        <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-5 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shadow-md">
               <Layers className="w-4 h-4" />
             </div>
-            <h3 className="text-base font-bold text-slate-900">Tambah Angkatan Baru</h3>
+            <div>
+              <h3 className="text-base font-black text-white">Tambah Angkatan Baru</h3>
+              <p className="text-[11px] font-semibold text-slate-400">Pendaftaran kandang baru</p>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800 border border-slate-700">
+            <X className="w-4 h-4 stroke-[2.5]" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Nama Angkatan / Periode</label>
+            <label className="block text-xs font-black text-slate-300 uppercase mb-1">Nama Angkatan / Periode</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Angkatan 13 - Batch Sept"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-emerald-500"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 mb-1">Nama Kandang</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Nama Kandang</label>
               <input
                 type="text"
                 value={coopName}
                 onChange={(e) => setCoopName(e.target.value)}
                 placeholder="Kandang A"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none"
                 required
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 mb-1">Jenis Strain Ayam</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Jenis Strain Ayam</label>
               <select
                 value={strain}
                 onChange={(e) => setStrain(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none"
               >
                 <option value="Isa Brown">Isa Brown</option>
                 <option value="Lohmann Brown">Lohmann Brown</option>
@@ -100,23 +103,23 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 mb-1">Tgl Chick-In</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tgl Chick-In</label>
               <input
                 type="date"
                 value={chickInDate}
                 onChange={(e) => setChickInDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none"
                 required
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 mb-1">Populasi Awal (Ekor)</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Populasi Awal (Ekor)</label>
               <input
                 type="number"
                 value={initialPop}
                 onChange={(e) => setInitialPop(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="1000"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-emerald-400 outline-none"
                 required
               />
             </div>
@@ -125,13 +128,14 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl shadow-md flex items-center justify-center gap-2 text-sm"
+            className="w-full mt-2 bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 text-xs transition-all"
           >
-            <Plus className="w-4 h-4" />
-            <span>{isSubmitting ? 'Menyimpan...' : 'Simpan Angkatan Baru'}</span>
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>{isSubmitting ? 'MENYIMPAN...' : 'SIMPAN ANGKATAN BARU'}</span>
           </button>
         </form>
       </div>
     </div>
   );
 };
+

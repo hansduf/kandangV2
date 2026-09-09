@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { DailyRecord } from '@/types/database';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -33,25 +33,30 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
     }));
 
   const metricConfig = {
-    hd: { label: 'Hen-Day (%)', dataKey: 'hd', color: '#059669', unit: '%' },
-    kg: { label: 'Telur Utuh (Kg)', dataKey: 'egg_kg', color: '#d97706', unit: 'kg' },
-    feed: { label: 'FCR Pakan', dataKey: 'fcr', color: '#2563eb', unit: '' },
-    mortality: { label: 'Mortalitas (Ekor)', dataKey: 'mortality', color: '#e11d48', unit: 'ekor' },
+    hd: { label: 'Hen-Day (%)', dataKey: 'hd', color: '#10b981', gradientId: 'emeraldGrad', unit: '%' },
+    kg: { label: 'Telur Utuh (Kg)', dataKey: 'egg_kg', color: '#f59e0b', gradientId: 'amberGrad', unit: 'kg' },
+    feed: { label: 'FCR Pakan', dataKey: 'fcr', color: '#3b82f6', gradientId: 'blueGrad', unit: '' },
+    mortality: { label: 'Mortalitas (Ekor)', dataKey: 'mortality', color: '#f43f5e', gradientId: 'roseGrad', unit: 'ekor' },
   }[metric];
 
   return (
-    <div className="stat-card p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Grafik Performa 14 Hari</h3>
+    <div className="glass-card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-xs font-black text-slate-200 uppercase tracking-wider">Tren Performa 14 Hari</h3>
+          <p className="text-[11px] font-semibold text-slate-400">Visualisasi metrik harian</p>
+        </div>
         
         {/* Metric Selector Pills */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+        <div className="flex gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-700/80">
           {(['hd', 'kg', 'feed', 'mortality'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMetric(m)}
-              className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${
-                metric === m ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              className={`px-2.5 py-1 text-[10px] font-black rounded-xl transition-all ${
+                metric === m
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               {m === 'hd' ? 'HD %' : m === 'kg' ? 'Kg Telur' : m === 'feed' ? 'FCR' : 'Mati'}
@@ -60,34 +65,57 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
         </div>
       </div>
 
-      <div className="h-48 w-full mt-2">
+      <div className="h-52 w-full pt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} />
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="emeraldGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+              </linearGradient>
+              <linearGradient id="amberGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
+              </linearGradient>
+              <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+              </linearGradient>
+              <linearGradient id="roseGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+              </linearGradient>
+            </defs>
+
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.06)" vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }} />
+            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#ffffff',
-                borderRadius: '12px',
-                borderColor: '#e2e8f0',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                backgroundColor: '#0f172a',
+                borderRadius: '16px',
+                borderColor: 'rgba(255, 255, 255, 0.15)',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
                 fontSize: '12px',
-                fontWeight: 600,
+                color: '#f8fafc',
+                fontWeight: 700,
               }}
             />
-            <Line
+            <Area
               type="monotone"
               dataKey={metricConfig.dataKey}
               name={metricConfig.label}
               stroke={metricConfig.color}
               strokeWidth={3}
-              dot={{ r: 4, fill: metricConfig.color }}
-              activeDot={{ r: 6 }}
+              fillOpacity={1}
+              fill={`url(#${metricConfig.gradientId})`}
+              dot={{ r: 4, fill: metricConfig.color, strokeWidth: 2, stroke: '#0f172a' }}
+              activeDot={{ r: 7, fill: metricConfig.color, stroke: '#ffffff', strokeWidth: 2 }}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
 };
+

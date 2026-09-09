@@ -181,20 +181,20 @@ export default function DashboardHomePage() {
             colorTheme="amber"
           />
           <StatCard
+            title="Telur Retak Hari Ini"
+            value={today?.egg_bad_pcs || 0}
+            unit="btr"
+            subtitle={`~${today?.egg_bad_kg || 0} kg retak`}
+            icon={Egg}
+            colorTheme="blue"
+          />
+          <StatCard
             title="Kematian Hari Ini"
             value={today?.mortality_pcs || 0}
             unit="ekor"
             subtitle={`Kumulatif: ${summary?.totals.total_mortality || 0} ekor`}
             icon={Skull}
             colorTheme="rose"
-          />
-          <StatCard
-            title="FCR Pakan"
-            value={today?.fcr || 0}
-            unit=""
-            subtitle={`${today?.feed_kg || 0} kg pakan`}
-            icon={Wheat}
-            colorTheme="blue"
           />
         </div>
 
@@ -231,7 +231,7 @@ export default function DashboardHomePage() {
                 <div>
                   <span className="text-xs font-black text-slate-900">{rec.record_date}</span>
                   <span className="block text-[11px] font-semibold text-slate-500">
-                    {rec.egg_good_pcs} btr ({rec.egg_good_kg} kg) • {rec.feed_kg} kg pakan
+                    {rec.egg_good_pcs} btr ({rec.egg_good_kg} kg) • {rec.egg_bad_pcs} retak
                   </span>
                 </div>
                 <div className="text-right">

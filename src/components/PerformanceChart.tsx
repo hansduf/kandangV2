@@ -33,11 +33,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
     }));
 
   const metricConfig = {
-    hd: { label: 'Hen-Day (%)', dataKey: 'hd', color: '#10b981', gradientId: 'emeraldGrad', unit: '%' },
-    kg: { label: 'Telur Utuh (Kg)', dataKey: 'egg_kg', color: '#f59e0b', gradientId: 'amberGrad', unit: 'kg' },
-    feed: { label: 'FCR Pakan', dataKey: 'fcr', color: '#3b82f6', gradientId: 'blueGrad', unit: '' },
-    mortality: { label: 'Mortalitas (Ekor)', dataKey: 'mortality', color: '#f43f5e', gradientId: 'roseGrad', unit: 'ekor' },
-  }[metric];
+    hd: { label: 'Hen-Day (%)', dataKey: 'hd', color: '#00684a', gradientId: 'emeraldGrad', unit: '%' },
+    kg: { label: 'Telur Utuh (Kg)', dataKey: 'egg_kg', color: '#d97706', gradientId: 'amberGrad', unit: 'kg' },
+    mortality: { label: 'Mortalitas (Ekor)', dataKey: 'mortality', color: '#e11d48', gradientId: 'roseGrad', unit: 'ekor' },
+  }[metric === 'feed' ? 'hd' : metric];
 
   return (
     <div className="bg-white border border-slate-200/80 rounded-3xl p-4 space-y-3 shadow-md">
@@ -49,17 +48,17 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
         
         {/* Metric Selector Pills */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
-          {(['hd', 'kg', 'feed', 'mortality'] as const).map((m) => (
+          {(['hd', 'kg', 'mortality'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMetric(m)}
               className={`px-2.5 py-1 text-[10px] font-black rounded-xl transition-all ${
                 metric === m
-                  ? 'bg-[#00684a] text-white shadow-sm'
+                  ? 'bg-[#00684a] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              {m === 'hd' ? 'HD %' : m === 'kg' ? 'Kg Telur' : m === 'feed' ? 'FCR' : 'Mati'}
+              {m === 'hd' ? 'HD %' : m === 'kg' ? 'Kg Telur' : 'Mati'}
             </button>
           ))}
         </div>

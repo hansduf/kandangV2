@@ -4,16 +4,13 @@ import React, { useState } from 'react';
 import { DailyRecord, Flock } from '@/types/database';
 import {
   Egg,
-  Wheat,
   AlertTriangle,
   Plus,
   Minus,
   Save,
-  CheckCircle2,
   TrendingUp,
   Scale,
   Home,
-  Layers,
 } from 'lucide-react';
 
 interface SleekProductionInputProps {
@@ -41,7 +38,6 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   const [eggGoodKg, setEggGoodKg] = useState<number | ''>(108.5);
 
   const [eggBadPcs, setEggBadPcs] = useState<number | ''>(10);
-  const [feedKg, setFeedKg] = useState<number | ''>(230);
   const [notes, setNotes] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,10 +46,9 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   // Live Calculators
   const goodPcsNum = Number(eggGoodPcs) || 0;
   const goodKgNum = Number(eggGoodKg) || 0;
-  const feedKgNum = Number(feedKg) || 0;
 
   const liveHd = currentPopulation > 0 ? ((goodPcsNum / currentPopulation) * 100).toFixed(1) : '0.0';
-  const liveFcr = goodKgNum > 0 ? (feedKgNum / goodKgNum).toFixed(2) : '0.00';
+  const liveAvgWeight = goodPcsNum > 0 ? ((goodKgNum * 1000) / goodPcsNum).toFixed(1) : '0.0';
 
   const adjustPcs = (amount: number) => {
     const current = Number(eggGoodPcs) || 0;
@@ -65,10 +60,6 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   const adjustBadPcs = (amount: number) => {
     const current = Number(eggBadPcs) || 0;
     setEggBadPcs(Math.max(0, current + amount));
-  };
-
-  const selectSakPakan = (sakCount: number) => {
-    setFeedKg(sakCount * 50);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,17 +79,17 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         egg_bad_kg: Number(((Number(eggBadPcs) || 0) * 0.06).toFixed(2)),
         mortality_pcs: 0,
         culling_pcs: 0,
-        feed_kg: Number(feedKg) || 0,
+        feed_kg: 0,
         notes: notes.trim(),
       });
 
-      setSuccessToast('✅ CATATAN HARIAN BERHASIL DISIMPAN!');
+      setSuccessToast('✅ CATATAN PRODUKSI BERHASIL DISIMPAN!');
       setTimeout(() => {
         setSuccessToast('');
         if (onSuccessClose) onSuccessClose();
       }, 1200);
     } catch (err) {
-      alert('Gagal menyimpan catatan harian.');
+      alert('Gagal menyimpan catatan produksi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -144,7 +135,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         </div>
       )}
 
-      {/* COMPACT 2-COLUMN GRID LAYOUT */}
+      {/* 2-COLUMN EGG PRODUCTION INPUT */}
       <div className="grid grid-cols-2 gap-3">
         {/* LEFT COLUMN: TELUR UTUH (BUTIR & KG) */}
         <div className="bg-white p-3.5 border border-slate-200 rounded-3xl shadow-md flex flex-col justify-between space-y-3">
@@ -206,79 +197,53 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: TELUR RETAK & PAKAN */}
-        <div className="flex flex-col gap-3">
-          {/* Box Telur Retak */}
-          <div className="bg-white p-3 border border-slate-200 rounded-3xl shadow-md space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-slate-800 uppercase">TELUR RETAK</span>
-              <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">Cacat</span>
-            </div>
-            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl p-2 shadow-inner">
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => adjustBadPcs(-1)}
-                  className="w-7 h-7 rounded-xl bg-white border border-slate-300 text-slate-700 font-black flex items-center justify-center active:scale-95 shadow-xs"
-                >
-                  <Minus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => adjustBadPcs(+1)}
-                  className="w-7 h-7 rounded-xl bg-amber-500 text-white font-black flex items-center justify-center active:scale-95 shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                </button>
+        {/* RIGHT COLUMN: TELUR RETAK / CACAT */}
+        <div className="bg-white p-3.5 border border-slate-200 rounded-3xl shadow-md flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
               </div>
+              <span className="text-xs font-black text-slate-800 uppercase">TELUR RETAK</span>
+            </div>
+            <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">Cacat</span>
+          </div>
+
+          {/* Stepper Retak */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center space-y-1.5 shadow-inner">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">JUMLAH RETAK (BTR)</span>
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => adjustBadPcs(-1)}
+                className="w-8 h-8 rounded-xl bg-white border border-slate-300 text-slate-700 font-black text-base flex items-center justify-center active:scale-95 transition-all hover:bg-slate-100 shadow-xs"
+              >
+                <Minus className="w-4 h-4 stroke-[3]" />
+              </button>
               <input
                 type="number"
                 min="0"
                 value={eggBadPcs}
                 onChange={(e) => setEggBadPcs(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-12 text-center text-sm font-black text-amber-700 bg-white border border-amber-200 rounded-xl py-1 outline-none"
+                className="w-16 text-center text-xl font-black text-amber-700 bg-transparent outline-none"
+                required
               />
+              <button
+                type="button"
+                onClick={() => adjustBadPcs(+1)}
+                className="w-8 h-8 rounded-xl bg-amber-500 text-white font-black text-base flex items-center justify-center active:scale-95 transition-all shadow-xs hover:bg-amber-600"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+              </button>
             </div>
           </div>
 
-          {/* Box Pakan Terpakai */}
-          <div className="bg-white p-3 border border-slate-200 rounded-3xl shadow-md space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-slate-800 uppercase">PAKAN (KG/SAK)</span>
-              <span className="text-[9px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md">Pakan</span>
-            </div>
-
-            {/* Quick Sak Pills */}
-            <div className="grid grid-cols-2 gap-1.5">
-              {[4, 5].map((sak) => (
-                <button
-                  key={sak}
-                  type="button"
-                  onClick={() => selectSakPakan(sak)}
-                  className={`py-1 text-[10px] font-black rounded-xl border transition-all active:scale-95 ${
-                    feedKgNum === sak * 50
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                  }`}
-                >
-                  {sak} Sak ({sak * 50}kg)
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                value={feedKg}
-                onChange={(e) => setFeedKg(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="230"
-                className="w-full text-right text-sm font-black text-blue-700 bg-slate-50 border border-blue-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-blue-500"
-                required
-              />
-              <span className="text-xs font-black text-slate-500">kg</span>
-            </div>
+          {/* Est. Weight Note */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center space-y-1 shadow-inner">
+            <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">ESTIMASI BERAT RETAK</span>
+            <span className="text-sm font-black text-amber-700">
+              ~{((Number(eggBadPcs) || 0) * 0.06).toFixed(2)} kg
+            </span>
           </div>
         </div>
       </div>
@@ -292,8 +257,8 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
           </div>
           <div className="h-6 w-[1px] bg-slate-800" />
           <div>
-            <span className="block text-[9px] font-black uppercase tracking-wider text-blue-400">FCR Pakan</span>
-            <span className="text-base font-black text-white">{liveFcr}</span>
+            <span className="block text-[9px] font-black uppercase tracking-wider text-amber-400">Rata2 Berat</span>
+            <span className="text-base font-black text-white">{liveAvgWeight}g</span>
           </div>
         </div>
 

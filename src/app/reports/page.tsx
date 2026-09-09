@@ -145,10 +145,10 @@ export default function ReportsPage() {
             <span className="block text-[10px] font-semibold text-slate-500 mt-1">Target: &gt;85%</span>
           </div>
 
-          <div className="bg-white border border-blue-200 p-3.5 rounded-3xl shadow-md">
-            <span className="block text-[10px] font-black uppercase tracking-wider text-blue-600 mb-0.5">FCR Pakan Harian</span>
-            <span className="text-2xl font-black text-slate-900">{today?.fcr || 0}</span>
-            <span className="block text-[10px] font-semibold text-slate-500 mt-1">Standar: 2.0 - 2.2</span>
+          <div className="bg-white border border-amber-200 p-3.5 rounded-3xl shadow-md">
+            <span className="block text-[10px] font-black uppercase tracking-wider text-amber-600 mb-0.5">Telur Retak Hari Ini</span>
+            <span className="text-2xl font-black text-slate-900">{today?.egg_bad_pcs || 0} btr</span>
+            <span className="block text-[10px] font-semibold text-slate-500 mt-1">~{today?.egg_bad_kg || 0} kg total</span>
           </div>
         </div>
 
@@ -173,11 +173,11 @@ export default function ReportsPage() {
               </div>
 
               <div className="flex items-center gap-2.5">
-                <Wheat className="w-5 h-5 text-blue-600 shrink-0" />
+                <Egg className="w-5 h-5 text-amber-700 shrink-0" />
                 <div>
-                  <span className="block text-[10px] text-slate-500 font-black uppercase tracking-wider">Total Pakan Terpakai</span>
-                  <span className="text-sm font-black text-slate-900">{totals.total_feed_kg} kg</span>
-                  <span className="block text-[10px] text-blue-600 font-bold">~{(totals.total_feed_kg / 50).toFixed(0)} Sak</span>
+                  <span className="block text-[10px] text-slate-500 font-black uppercase tracking-wider">Total Telur Retak</span>
+                  <span className="text-sm font-black text-slate-900">{totals.total_egg_bad_pcs} btr</span>
+                  <span className="block text-[10px] text-amber-700 font-bold">({totals.total_egg_bad_kg} kg)</span>
                 </div>
               </div>
 
@@ -186,7 +186,6 @@ export default function ReportsPage() {
                 <div>
                   <span className="block text-[10px] text-slate-500 font-black uppercase tracking-wider">Rata2 Hen-Day %</span>
                   <span className="text-sm font-black text-slate-900">{totals.overall_hd_percent}% HD</span>
-                  <span className="block text-[10px] text-[#00684a] font-bold">FCR: {totals.overall_fcr}</span>
                 </div>
               </div>
 
@@ -214,10 +213,9 @@ export default function ReportsPage() {
               <thead>
                 <tr className="border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase">
                   <th className="py-2.5 px-1">Tgl</th>
-                  <th className="py-2.5 px-1">Telur (Btr/Kg)</th>
+                  <th className="py-2.5 px-1">Telur Utuh (Btr/Kg)</th>
+                  <th className="py-2.5 px-1 text-center">Retak</th>
                   <th className="py-2.5 px-1 text-center">HD %</th>
-                  <th className="py-2.5 px-1 text-center">Pakan</th>
-                  <th className="py-2.5 px-1 text-center">FCR</th>
                   <th className="py-2.5 px-1 text-right">Mati</th>
                 </tr>
               </thead>
@@ -226,12 +224,11 @@ export default function ReportsPage() {
                   <tr key={r.record_date} className="hover:bg-slate-50">
                     <td className="py-2.5 px-1 font-black text-slate-900">{r.record_date.slice(5)}</td>
                     <td className="py-2.5 px-1">
-                      <div className="font-extrabold text-amber-700">{r.egg_good_pcs} btr</div>
+                      <div className="font-extrabold text-[#00684a]">{r.egg_good_pcs} btr</div>
                       <div className="text-[10px] text-slate-500 font-bold">{r.egg_good_kg} kg</div>
                     </td>
+                    <td className="py-2.5 px-1 text-center font-bold text-amber-700">{r.egg_bad_pcs} btr</td>
                     <td className="py-2.5 px-1 text-center font-black text-[#00684a]">{r.hd_percent}%</td>
-                    <td className="py-2.5 px-1 text-center font-bold text-blue-700">{r.feed_kg} kg</td>
-                    <td className="py-2.5 px-1 text-center font-bold text-slate-700">{r.fcr}</td>
                     <td className="py-2.5 px-1 text-right font-black text-rose-600">{r.mortality_pcs}</td>
                   </tr>
                 ))}

@@ -33,7 +33,9 @@ yarn-error.log*
 # env files & credentials
 .env*
 supabase.conf
+apimcp.conf
 *.conf
+.mcp.json
 
 # vercel
 .vercel

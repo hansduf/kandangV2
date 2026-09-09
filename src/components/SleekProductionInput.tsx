@@ -108,20 +108,20 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
     <form onSubmit={handleSubmit} className="space-y-3.5">
       {/* BANNER INFORMASI KANDANG & ANGKATAN AKTIF */}
       {activeFlock && (
-        <div className="bg-gradient-to-r from-emerald-900/80 via-teal-900/60 to-slate-900 rounded-2xl p-3.5 border border-emerald-500/30 text-white shadow-xl flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#00684a] via-[#046a38] to-emerald-900 rounded-2xl p-3.5 text-white shadow-lg flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-md">
-              <Home className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-white shadow-xs">
+              <Home className="w-4.5 h-4.5" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-100 bg-white/20 px-2 py-0.5 rounded-md border border-white/20">
                   {activeFlock.coop_name}
                 </span>
-                <span className="text-[10px] font-bold text-slate-400">• {activeFlock.strain}</span>
+                <span className="text-[10px] font-bold text-emerald-100">• {activeFlock.strain}</span>
               </div>
               <h4 className="text-xs font-black leading-tight text-white">{activeFlock.name}</h4>
-              <p className="text-[11px] font-medium text-slate-300 mt-0.5">
+              <p className="text-[11px] font-medium text-emerald-50 mt-0.5">
                 Populasi: <strong className="text-white font-black">{currentPopulation} ekor</strong> (Umur {activeFlock.age_weeks} Mgg)
               </p>
             </div>
@@ -132,10 +132,10 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
             <select
               value={activeFlockId}
               onChange={(e) => onSelectFlock(e.target.value)}
-              className="bg-slate-800 text-white text-[11px] font-black rounded-xl px-2.5 py-1.5 outline-none cursor-pointer border border-slate-700 shadow-inner"
+              className="bg-white/90 text-slate-900 text-[11px] font-black rounded-xl px-2.5 py-1.5 outline-none cursor-pointer border border-white/40 shadow-xs"
             >
               {flocks.map((f) => (
-                <option key={f.id} value={f.id} className="bg-slate-900 text-white font-bold">
+                <option key={f.id} value={f.id} className="bg-white text-slate-900 font-bold">
                   {f.coop_name} - {f.name}
                 </option>
               ))}
@@ -147,25 +147,25 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
       {/* COMPACT 2-COLUMN GRID LAYOUT */}
       <div className="grid grid-cols-2 gap-3">
         {/* LEFT COLUMN: TELUR UTUH (BUTIR & KG) */}
-        <div className="glass-card p-3.5 border border-slate-700/80 shadow-xl flex flex-col justify-between space-y-3">
+        <div className="bg-white p-3.5 border border-slate-200 rounded-3xl shadow-md flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-                <Egg className="w-3.5 h-3.5 fill-emerald-300" />
+              <div className="w-7 h-7 rounded-xl bg-emerald-50 text-[#00684a] flex items-center justify-center border border-emerald-200">
+                <Egg className="w-3.5 h-3.5 fill-[#00684a]" />
               </div>
-              <span className="text-xs font-black text-white uppercase">TELUR UTUH</span>
+              <span className="text-xs font-black text-slate-800 uppercase">TELUR UTUH</span>
             </div>
-            <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 rounded-md">Bagus</span>
+            <span className="text-[9px] font-black text-[#00684a] bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">Bagus</span>
           </div>
 
           {/* Stepper Butir */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-2.5 text-center space-y-1.5 shadow-inner">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">JUMLAH BUTIR</span>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center space-y-1.5 shadow-inner">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">JUMLAH BUTIR</span>
             <div className="flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => adjustPcs(-10)}
-                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-black text-base flex items-center justify-center active:scale-95 transition-all hover:bg-slate-700"
+                className="w-8 h-8 rounded-xl bg-white border border-slate-300 text-slate-700 font-black text-base flex items-center justify-center active:scale-95 transition-all hover:bg-slate-100 shadow-xs"
               >
                 <Minus className="w-4 h-4 stroke-[3]" />
               </button>
@@ -174,13 +174,13 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 min="0"
                 value={eggGoodPcs}
                 onChange={(e) => setEggGoodPcs(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-16 text-center text-xl font-black text-emerald-400 bg-transparent outline-none"
+                className="w-16 text-center text-xl font-black text-[#00684a] bg-transparent outline-none"
                 required
               />
               <button
                 type="button"
                 onClick={() => adjustPcs(+10)}
-                className="w-8 h-8 rounded-xl bg-emerald-500 text-slate-950 font-black text-base flex items-center justify-center active:scale-95 transition-all shadow-md shadow-emerald-500/20"
+                className="w-8 h-8 rounded-xl bg-[#00684a] text-white font-black text-base flex items-center justify-center active:scale-95 transition-all shadow-xs hover:bg-emerald-800"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
               </button>
@@ -188,8 +188,8 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
           </div>
 
           {/* Total Kg Timbangan */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-2.5 space-y-1 shadow-inner">
-            <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">BERAT TIMBANGAN (KG)</span>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-1 shadow-inner">
+            <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">BERAT TIMBANGAN (KG)</span>
             <div className="flex items-center gap-1">
               <input
                 type="number"
@@ -198,10 +198,10 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 value={eggGoodKg}
                 onChange={(e) => setEggGoodKg(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="108.5"
-                className="w-full text-right text-base font-black text-amber-400 bg-slate-900 border border-amber-500/30 rounded-xl px-2.5 py-1 outline-none focus:border-amber-400"
+                className="w-full text-right text-base font-black text-amber-700 bg-white border border-amber-200 rounded-xl px-2.5 py-1 outline-none focus:border-amber-500"
                 required
               />
-              <span className="text-xs font-black text-slate-400">kg</span>
+              <span className="text-xs font-black text-slate-500">kg</span>
             </div>
           </div>
         </div>
@@ -209,24 +209,24 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         {/* RIGHT COLUMN: TELUR RETAK & PAKAN */}
         <div className="flex flex-col gap-3">
           {/* Box Telur Retak */}
-          <div className="glass-card p-3 border border-slate-700/80 shadow-xl space-y-2">
+          <div className="bg-white p-3 border border-slate-200 rounded-3xl shadow-md space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-white uppercase">TELUR RETAK</span>
-              <span className="text-[9px] font-black text-amber-400 bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 rounded-md">Cacat</span>
+              <span className="text-[11px] font-black text-slate-800 uppercase">TELUR RETAK</span>
+              <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">Cacat</span>
             </div>
-            <div className="flex items-center justify-between bg-slate-950/80 border border-slate-800 rounded-2xl p-2 shadow-inner">
+            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl p-2 shadow-inner">
               <div className="flex gap-1.5">
                 <button
                   type="button"
                   onClick={() => adjustBadPcs(-1)}
-                  className="w-7 h-7 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 font-black flex items-center justify-center active:scale-95"
+                  className="w-7 h-7 rounded-xl bg-white border border-slate-300 text-slate-700 font-black flex items-center justify-center active:scale-95 shadow-xs"
                 >
                   <Minus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
                 <button
                   type="button"
                   onClick={() => adjustBadPcs(+1)}
-                  className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 font-black flex items-center justify-center active:scale-95 shadow-md"
+                  className="w-7 h-7 rounded-xl bg-amber-500 text-white font-black flex items-center justify-center active:scale-95 shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
@@ -236,16 +236,16 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 min="0"
                 value={eggBadPcs}
                 onChange={(e) => setEggBadPcs(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-12 text-center text-sm font-black text-amber-300 bg-slate-900 border border-amber-500/30 rounded-xl py-1 outline-none"
+                className="w-12 text-center text-sm font-black text-amber-700 bg-white border border-amber-200 rounded-xl py-1 outline-none"
               />
             </div>
           </div>
 
           {/* Box Pakan Terpakai */}
-          <div className="glass-card p-3 border border-slate-700/80 shadow-xl space-y-2">
+          <div className="bg-white p-3 border border-slate-200 rounded-3xl shadow-md space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black text-white uppercase">PAKAN (KG/SAK)</span>
-              <span className="text-[9px] font-black text-blue-400 bg-blue-500/20 border border-blue-500/30 px-1.5 py-0.5 rounded-md">Pakan</span>
+              <span className="text-[11px] font-black text-slate-800 uppercase">PAKAN (KG/SAK)</span>
+              <span className="text-[9px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md">Pakan</span>
             </div>
 
             {/* Quick Sak Pills */}
@@ -257,8 +257,8 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                   onClick={() => selectSakPakan(sak)}
                   className={`py-1 text-[10px] font-black rounded-xl border transition-all active:scale-95 ${
                     feedKgNum === sak * 50
-                      ? 'bg-blue-500 text-slate-950 border-blue-400 shadow-md shadow-blue-500/20'
-                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                   }`}
                 >
                   {sak} Sak ({sak * 50}kg)
@@ -274,17 +274,17 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 value={feedKg}
                 onChange={(e) => setFeedKg(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="230"
-                className="w-full text-right text-sm font-black text-blue-300 bg-slate-900 border border-blue-500/30 rounded-xl px-2.5 py-1.5 outline-none"
+                className="w-full text-right text-sm font-black text-blue-700 bg-slate-50 border border-blue-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-blue-500"
                 required
               />
-              <span className="text-xs font-black text-slate-400">kg</span>
+              <span className="text-xs font-black text-slate-500">kg</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* FOOTER BAR: LIVE GAUGE + SAVE BUTTON */}
-      <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 text-white flex items-center justify-between shadow-2xl">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 text-white flex items-center justify-between shadow-xl">
         <div className="flex items-center gap-3">
           <div>
             <span className="block text-[9px] font-black uppercase tracking-wider text-emerald-400">Est. Hen-Day</span>
@@ -301,7 +301,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/25 flex items-center gap-2 text-xs transition-all"
+          className="bg-[#00684a] hover:bg-emerald-700 active:scale-95 text-white font-black px-5 py-2.5 rounded-xl shadow-md flex items-center gap-2 text-xs transition-all"
         >
           <Save className="w-4 h-4 stroke-[3]" />
           <span>{isSubmitting ? 'MENYIMPAN...' : 'SIMPAN'}</span>
@@ -310,7 +310,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
 
       {/* Toast Feedback */}
       {successToast && (
-        <div className="bg-emerald-500 text-slate-950 rounded-2xl p-3 text-center text-xs font-black shadow-lg shadow-emerald-500/30 animate-bounce">
+        <div className="bg-[#00684a] text-white rounded-2xl p-3 text-center text-xs font-black shadow-lg animate-bounce">
           {successToast}
         </div>
       )}

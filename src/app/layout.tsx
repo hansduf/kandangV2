@@ -34,7 +34,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet" />
       </head>
-      <body className="bg-slate-900 text-slate-100 antialiased min-h-screen font-sans selection:bg-emerald-500 selection:text-white">
+      <body className="bg-slate-50 text-slate-900 antialiased min-h-screen font-sans selection:bg-emerald-600 selection:text-white">
         {children}
       </body>
     </html>

@@ -40,23 +40,23 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
   }[metric];
 
   return (
-    <div className="glass-card p-4 space-y-3">
+    <div className="bg-white border border-slate-200/80 rounded-3xl p-4 space-y-3 shadow-md">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xs font-black text-slate-200 uppercase tracking-wider">Tren Performa 14 Hari</h3>
-          <p className="text-[11px] font-semibold text-slate-400">Visualisasi metrik harian</p>
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Tren Performa 14 Hari</h3>
+          <p className="text-[11px] font-semibold text-slate-500">Visualisasi metrik harian</p>
         </div>
         
         {/* Metric Selector Pills */}
-        <div className="flex gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-700/80">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
           {(['hd', 'kg', 'feed', 'mortality'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMetric(m)}
               className={`px-2.5 py-1 text-[10px] font-black rounded-xl transition-all ${
                 metric === m
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-[#00684a] text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               {m === 'hd' ? 'HD %' : m === 'kg' ? 'Kg Telur' : m === 'feed' ? 'FCR' : 'Mati'}
@@ -70,34 +70,34 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="emeraldGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                <stop offset="5%" stopColor="#00684a" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#00684a" stopOpacity={0.0} />
               </linearGradient>
               <linearGradient id="amberGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
+                <stop offset="5%" stopColor="#d97706" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#d97706" stopOpacity={0.0} />
               </linearGradient>
               <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
               </linearGradient>
               <linearGradient id="roseGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+                <stop offset="5%" stopColor="#e11d48" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#e11d48" stopOpacity={0.0} />
               </linearGradient>
             </defs>
 
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.06)" vertical={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={{ stroke: 'rgba(255, 255, 255, 0.1)' }} />
-            <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} />
+            <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={false} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#0f172a',
+                backgroundColor: '#ffffff',
                 borderRadius: '16px',
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+                borderColor: '#cbd5e1',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
                 fontSize: '12px',
-                color: '#f8fafc',
+                color: '#0f172a',
                 fontWeight: 700,
               }}
             />
@@ -105,12 +105,12 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
               type="monotone"
               dataKey={metricConfig.dataKey}
               name={metricConfig.label}
-              stroke={metricConfig.color}
+              stroke={metricConfig.color === '#10b981' ? '#00684a' : metricConfig.color}
               strokeWidth={3}
               fillOpacity={1}
               fill={`url(#${metricConfig.gradientId})`}
-              dot={{ r: 4, fill: metricConfig.color, strokeWidth: 2, stroke: '#0f172a' }}
-              activeDot={{ r: 7, fill: metricConfig.color, stroke: '#ffffff', strokeWidth: 2 }}
+              dot={{ r: 4, fill: metricConfig.color === '#10b981' ? '#00684a' : metricConfig.color, strokeWidth: 2, stroke: '#ffffff' }}
+              activeDot={{ r: 7, fill: metricConfig.color === '#10b981' ? '#00684a' : metricConfig.color, stroke: '#ffffff', strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

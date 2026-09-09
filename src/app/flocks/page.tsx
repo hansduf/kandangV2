@@ -4,15 +4,17 @@ import React, { useEffect, useState } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { BottomNav } from '@/components/BottomNav';
 import { FlockModal } from '@/components/FlockModal';
-import { fetchFlocks, createFlock } from '@/lib/supabase';
-import { Flock } from '@/types/database';
-import { Layers, Plus, Calendar, Home, Users, CheckCircle } from 'lucide-react';
+import { QuickInputModal } from '@/components/QuickInputModal';
+import { fetchFlocks, createFlock, saveDailyRecord, saveHealthRecord } from '@/lib/supabase';
+import { Flock, DailyRecord, HealthRecord } from '@/types/database';
+import { Layers, Plus } from 'lucide-react';
 
 export default function FlocksPage() {
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [activeFlockId, setActiveFlockId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isQuickInputOpen, setIsQuickInputOpen] = useState(false);
 
   useEffect(() => {
     loadFlocks();
@@ -39,8 +41,18 @@ export default function FlocksPage() {
     return newFlock;
   };
 
+  const handleSaveDaily = async (record: DailyRecord) => {
+    await saveDailyRecord(record);
+    await loadFlocks();
+  };
+
+  const handleSaveHealth = async (record: HealthRecord) => {
+    await saveHealthRecord(record);
+    await loadFlocks();
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-32">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
       <Navbar
         flocks={flocks}
         activeFlockId={activeFlockId}
@@ -51,18 +63,18 @@ export default function FlocksPage() {
       <main className="max-w-md mx-auto px-4 py-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#00684a] border border-emerald-200 flex items-center justify-center shadow-xs">
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-black text-white">Daftar Angkatan Ayam</h2>
-              <p className="text-xs font-semibold text-slate-400">Kelola multi-angkatan & kandang</p>
+              <h2 className="text-base font-black text-slate-900">Daftar Angkatan Ayam</h2>
+              <p className="text-xs font-semibold text-slate-500">Kelola multi-angkatan & kandang</p>
             </div>
           </div>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all"
+            className="bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-md transition-all"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Tambah</span>
@@ -73,25 +85,25 @@ export default function FlocksPage() {
           {flocks.map((f) => (
             <div
               key={f.id}
-              className={`glass-card p-4 space-y-3.5 border transition-all duration-300 ${
+              className={`bg-white p-4 rounded-3xl space-y-3.5 border transition-all duration-300 ${
                 f.id === activeFlockId
-                  ? 'border-emerald-500/60 shadow-xl shadow-emerald-500/10 scale-[1.01]'
-                  : 'border-slate-800'
+                  ? 'border-[#00684a] shadow-md ring-2 ring-[#00684a]/10 scale-[1.01]'
+                  : 'border-slate-200'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                  <span className="bg-emerald-50 text-[#00684a] border border-emerald-200 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
                     {f.coop_name}
                   </span>
-                  <span className="text-xs font-bold text-slate-400">{f.strain}</span>
+                  <span className="text-xs font-bold text-slate-500">{f.strain}</span>
                 </div>
                 <button
                   onClick={() => setActiveFlockId(f.id)}
                   className={`text-xs font-black px-3 py-1.5 rounded-xl transition-all ${
                     f.id === activeFlockId
-                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                      ? 'bg-[#00684a] text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   {f.id === activeFlockId ? '✓ Aktif' : 'Pilih Kandang'}
@@ -99,20 +111,20 @@ export default function FlocksPage() {
               </div>
 
               <div>
-                <h3 className="text-base font-black text-white">{f.name}</h3>
-                <p className="text-xs text-slate-400 font-semibold mt-0.5">
+                <h3 className="text-base font-black text-slate-900">{f.name}</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
                   Chick-in: {f.chick_in_date} (Umur {f.age_weeks} Minggu)
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-xs">
+              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs">
                 <div>
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Populasi Awal</span>
-                  <span className="font-black text-slate-200">{f.initial_population} ekor</span>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase">Populasi Awal</span>
+                  <span className="font-black text-slate-900">{f.initial_population} ekor</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase">Populasi Saat Ini</span>
-                  <span className="font-black text-emerald-400">{f.current_population} ekor</span>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase">Populasi Saat Ini</span>
+                  <span className="font-black text-[#00684a]">{f.current_population} ekor</span>
                 </div>
               </div>
             </div>
@@ -120,7 +132,17 @@ export default function FlocksPage() {
         </div>
       </main>
 
-      <BottomNav />
+      <BottomNav onOpenQuickInput={() => setIsQuickInputOpen(true)} />
+
+      <QuickInputModal
+        isOpen={isQuickInputOpen}
+        onClose={() => setIsQuickInputOpen(false)}
+        flocks={flocks}
+        activeFlockId={activeFlockId}
+        onSelectFlock={setActiveFlockId}
+        onSaveDaily={handleSaveDaily}
+        onSaveHealth={handleSaveHealth}
+      />
 
       <FlockModal
         isOpen={isModalOpen}

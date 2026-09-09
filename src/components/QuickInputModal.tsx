@@ -119,25 +119,25 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl p-4 space-y-4 animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl p-4 space-y-4 animate-in slide-in-from-bottom duration-300">
         
         {/* Header & Close Button */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-tight">PENCATATAN HARIAN KANDANG</h3>
-            <p className="text-[11px] font-semibold text-slate-400">Isi data produksi, obat, atau kematian</p>
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">PENCATATAN HARIAN KANDANG</h3>
+            <p className="text-[11px] font-semibold text-slate-500">Isi data produksi, obat, atau kematian</p>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors border border-slate-700"
+            className="w-9 h-9 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors border border-slate-200"
           >
             <X className="w-4 h-4 stroke-[2.5]" />
           </button>
         </div>
 
         {/* 3 OPERATIONAL TABS */}
-        <div className="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-2xl border border-slate-800 shadow-inner">
+        <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
           {[
             { id: 'daily', label: 'Produksi', icon: Egg },
             { id: 'health', label: 'Obat / Vaksin', icon: Syringe },
@@ -152,8 +152,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`py-2 flex items-center justify-center gap-1.5 rounded-xl text-xs font-black transition-all ${
                   isSelected
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    ? 'bg-[#00684a] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -165,7 +165,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
         {/* Toast Feedback */}
         {toastMessage && (
-          <div className="bg-emerald-500 text-slate-950 rounded-2xl p-3 text-center text-xs font-black shadow-lg shadow-emerald-500/30 animate-bounce">
+          <div className="bg-[#00684a] text-white rounded-2xl p-3 text-center text-xs font-black shadow-lg animate-bounce">
             {toastMessage}
           </div>
         )}
@@ -186,10 +186,10 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
           <form onSubmit={handleSaveHealthSubmit} className="space-y-3.5">
             <div className="grid grid-cols-2 gap-2">
               {[
-                { cat: 'Vaksin', icon: Syringe, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
-                { cat: 'Obat', icon: Pill, color: 'bg-rose-500/20 text-rose-300 border-rose-500/40' },
-                { cat: 'Vitamin', icon: Sparkles, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
-                { cat: 'Desinfektan', icon: ShieldAlert, color: 'bg-blue-500/20 text-blue-300 border-blue-500/40' },
+                { cat: 'Vaksin', icon: Syringe },
+                { cat: 'Obat', icon: Pill },
+                { cat: 'Vitamin', icon: Sparkles },
+                { cat: 'Desinfektan', icon: ShieldAlert },
               ].map((item) => {
                 const Icon = item.icon;
                 const isSelected = healthCategory === item.cat;
@@ -203,8 +203,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                     }}
                     className={`py-2.5 px-3 rounded-2xl flex items-center gap-2 font-black text-xs transition-all border ${
                       isSelected
-                        ? `${item.color} shadow-lg shadow-emerald-500/10 scale-102`
-                        : 'bg-slate-800/80 text-slate-400 border-slate-700/80'
+                        ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -214,36 +214,36 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
               })}
             </div>
 
-            <div className="glass-card p-3.5 border border-slate-700/80 space-y-3">
+            <div className="bg-slate-50 p-3.5 border border-slate-200 rounded-2xl space-y-3">
               <div>
-                <label className="block text-xs font-black text-slate-300 uppercase mb-1">Nama {healthCategory}</label>
+                <label className="block text-xs font-black text-slate-800 uppercase mb-1">Nama {healthCategory}</label>
                 <input
                   type="text"
                   value={healthItemName}
                   onChange={(e) => setHealthItemName(e.target.value)}
                   placeholder={`Contoh: Vaksin ND-IB / Egg Stimulant...`}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-emerald-500"
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Dosis</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis</label>
                   <input
                     type="text"
                     value={healthDosage}
                     onChange={(e) => setHealthDosage(e.target.value)}
                     placeholder="100g / 200L Air"
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-xs font-bold text-white outline-none"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Metode</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metode</label>
                   <select
                     value={healthMethod}
                     onChange={(e) => setHealthMethod(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs font-bold text-white outline-none"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none"
                   >
                     <option value="Air Minum">Air Minum</option>
                     <option value="Injeksi">Suntik</option>
@@ -258,7 +258,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 active:scale-98 text-slate-950 font-black py-3.5 rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 text-sm transition-all"
+              className="w-full bg-[#00684a] hover:bg-emerald-800 active:scale-98 text-white font-black py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2 text-sm transition-all"
             >
               <Save className="w-4 h-4 stroke-[3]" />
               <span>{isSubmitting ? 'MENYIMPAN...' : `SIMPAN ${healthCategory.toUpperCase()}`}</span>
@@ -294,7 +294,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-rose-500 hover:bg-rose-400 active:scale-98 text-slate-950 font-black py-3.5 rounded-2xl shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2 text-sm transition-all"
+              className="w-full bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-black py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2 text-sm transition-all"
             >
               <Save className="w-4 h-4 stroke-[3]" />
               <span>{isSubmitting ? 'MENYIMPAN...' : 'SIMPAN KEMATIAN'}</span>

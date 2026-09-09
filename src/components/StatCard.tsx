@@ -22,45 +22,45 @@ export const StatCard: React.FC<StatCardProps> = ({
 }) => {
   const themeStyles = {
     emerald: {
-      borderClass: 'gradient-border-emerald',
-      iconBg: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-emerald-500/10',
-      valueColor: 'text-emerald-400',
-      glow: 'shadow-emerald-500/5',
+      borderClass: 'border-emerald-200 bg-white',
+      iconBg: 'bg-emerald-50 text-[#00684a] border border-emerald-200',
+      valueColor: 'text-[#00684a]',
+      glow: 'shadow-emerald-900/5',
     },
     amber: {
-      borderClass: 'gradient-border-amber',
-      iconBg: 'bg-amber-500/15 text-amber-400 border border-amber-500/30 shadow-amber-500/10',
-      valueColor: 'text-amber-400',
-      glow: 'shadow-amber-500/5',
+      borderClass: 'border-amber-200 bg-white',
+      iconBg: 'bg-amber-50 text-amber-600 border border-amber-200',
+      valueColor: 'text-amber-600',
+      glow: 'shadow-amber-900/5',
     },
     rose: {
-      borderClass: 'gradient-border-rose',
-      iconBg: 'bg-rose-500/15 text-rose-400 border border-rose-500/30 shadow-rose-500/10',
-      valueColor: 'text-rose-400',
-      glow: 'shadow-rose-500/5',
+      borderClass: 'border-rose-200 bg-white',
+      iconBg: 'bg-rose-50 text-rose-600 border border-rose-200',
+      valueColor: 'text-rose-600',
+      glow: 'shadow-rose-900/5',
     },
     blue: {
-      borderClass: 'gradient-border-blue',
-      iconBg: 'bg-blue-500/15 text-blue-400 border border-blue-500/30 shadow-blue-500/10',
-      valueColor: 'text-blue-400',
-      glow: 'shadow-blue-500/5',
+      borderClass: 'border-blue-200 bg-white',
+      iconBg: 'bg-blue-50 text-blue-600 border border-blue-200',
+      valueColor: 'text-blue-600',
+      glow: 'shadow-blue-900/5',
     },
   }[colorTheme];
 
   return (
-    <div className={`p-4 rounded-3xl ${themeStyles.borderClass} shadow-xl ${themeStyles.glow} flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5`}>
+    <div className={`p-4 rounded-3xl border ${themeStyles.borderClass} shadow-md ${themeStyles.glow} flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5`}>
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">{title}</span>
-        <div className={`w-9 h-9 rounded-2xl flex items-center justify-center ${themeStyles.iconBg} shadow-md`}>
-          <Icon className="w-4 h-4" />
+        <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">{title}</span>
+        <div className={`w-9 h-9 rounded-2xl flex items-center justify-center ${themeStyles.iconBg} shadow-xs`}>
+          <Icon className="w-4.5 h-4.5 stroke-[2.5]" />
         </div>
       </div>
       <div>
         <div className="flex items-baseline gap-1.5">
           <span className={`text-2xl font-black tracking-tight ${themeStyles.valueColor}`}>{value}</span>
-          {unit && <span className="text-xs font-extrabold text-slate-400">{unit}</span>}
+          {unit && <span className="text-xs font-extrabold text-slate-500">{unit}</span>}
         </div>
-        {subtitle && <p className="text-[11px] font-bold text-slate-400 mt-1 truncate">{subtitle}</p>}
+        {subtitle && <p className="text-[11px] font-bold text-slate-500 mt-1 truncate">{subtitle}</p>}
       </div>
     </div>
   );

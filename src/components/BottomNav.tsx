@@ -3,45 +3,78 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Edit3, Syringe, BarChart3, Home } from 'lucide-react';
+import { LayoutGrid, TrendingUp, Plus, Droplet, Layers } from 'lucide-react';
 
-export const BottomNav: React.FC = () => {
+interface BottomNavProps {
+  onOpenQuickInput?: () => void;
+}
+
+export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickInput }) => {
   const pathname = usePathname();
 
-  const navItems = [
-    { label: 'CATAT HARIAN', href: '/', icon: Edit3 },
-    { label: 'OBAT & VAKSIN', href: '/health', icon: Syringe },
-    { label: 'LAPORAN', href: '/reports', icon: BarChart3 },
-    { label: 'KANDANG', href: '/flocks', icon: Home },
-  ];
-
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-50 max-w-md mx-auto nav-bottom-blur rounded-3xl p-1.5 shadow-2xl border border-white/10 shadow-emerald-950/40">
-      <div className="flex items-center justify-around">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 shadow-[0_-4px_25px_rgba(0,0,0,0.05)] px-3 py-1.5">
+      <div className="max-w-md mx-auto flex items-end justify-between relative">
+        
+        {/* Item 1: Beranda */}
+        <Link
+          href="/"
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+            pathname === '/' ? 'text-[#00684a] font-black' : 'text-slate-500 font-bold hover:text-slate-800'
+          }`}
+        >
+          <LayoutGrid className={`w-6 h-6 mb-1 ${pathname === '/' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+          <span className="text-[11px] leading-tight font-black tracking-tight">Beranda</span>
+        </Link>
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center py-2 px-3 rounded-2xl transition-all duration-300 relative ${
-                isActive
-                  ? 'text-emerald-400 bg-emerald-500/15 font-black scale-105 shadow-lg shadow-emerald-500/20 border border-emerald-500/30'
-                  : 'text-slate-400 hover:text-slate-200 font-bold hover:bg-slate-800/50'
-              }`}
-            >
-              <Icon className={`w-5 h-5 mb-1 ${isActive ? 'stroke-[2.5px] text-emerald-400 animate-pulse-glow' : 'stroke-2'}`} />
-              <span className="text-[10px] tracking-wide font-black uppercase">{item.label}</span>
-              {isActive && (
-                <span className="absolute -bottom-0.5 w-4 h-1 rounded-full bg-emerald-400 shadow-md shadow-emerald-400" />
-              )}
-            </Link>
-          );
-        })}
+        {/* Item 2: Analitik */}
+        <Link
+          href="/reports"
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+            pathname === '/reports' ? 'text-[#00684a] font-black' : 'text-slate-500 font-bold hover:text-slate-800'
+          }`}
+        >
+          <TrendingUp className={`w-6 h-6 mb-1 ${pathname === '/reports' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+          <span className="text-[11px] leading-tight font-black tracking-tight">Analitik</span>
+        </Link>
+
+        {/* Item 3 (CENTER): Big Green Floating Circular "Catat (+)" Button */}
+        <div className="flex flex-col items-center justify-center flex-1 -mt-5 relative z-10">
+          <button
+            onClick={onOpenQuickInput}
+            className="w-14 h-14 rounded-full bg-[#00684a] hover:bg-[#00523a] active:scale-95 text-white flex items-center justify-center shadow-lg shadow-[#00684a]/30 transition-all border-4 border-white"
+            aria-label="Catat Data Harian"
+          >
+            <Plus className="w-8 h-8 stroke-[2.5]" />
+          </button>
+          <span className="text-[11px] leading-tight font-black tracking-tight text-slate-700 mt-1">Catat</span>
+        </div>
+
+        {/* Item 4: Produksi */}
+        <Link
+          href="/daily-entry"
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+            pathname === '/daily-entry' ? 'text-[#00684a] font-black' : 'text-slate-500 font-bold hover:text-slate-800'
+          }`}
+        >
+          <Droplet className={`w-6 h-6 mb-1 ${pathname === '/daily-entry' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+          <span className="text-[11px] leading-tight font-black tracking-tight">Produksi</span>
+        </Link>
+
+        {/* Item 5: Kandang */}
+        <Link
+          href="/flocks"
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+            pathname === '/flocks' ? 'text-[#00684a] font-black' : 'text-slate-500 font-bold hover:text-slate-800'
+          }`}
+        >
+          <Layers className={`w-6 h-6 mb-1 ${pathname === '/flocks' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+          <span className="text-[11px] leading-tight font-black tracking-tight">Kandang</span>
+        </Link>
+
       </div>
     </nav>
   );
 };
+
 

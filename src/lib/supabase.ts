@@ -297,17 +297,56 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
       created_at: new Date().toISOString()
     };
     flocks.unshift(newFlock);
-    localStorage.setItem('kandang_flocks', JSON.stringify(flocks));
-    return newFlock;
-  }
+// DYNAMIC CATEGORIES & PRESETS HELPER FUNCTIONS (Persisted in DB / localStorage)
+const DEFAULT_HEALTH_CATEGORIES = ['Vaksin', 'Obat', 'Vitamin', 'Desinfektan'];
 
-  const { data, error } = await supabase.rpc('create_flock', {
-    p_name: flock.name,
-    p_coop_name: flock.coop_name,
-    p_strain: flock.strain || 'Isa Brown',
-    p_chick_in_date: flock.chick_in_date,
-    p_initial_population: flock.initial_population
-  });
-  if (error) throw error;
-  return data;
+const DEFAULT_CATEGORY_PRESETS: Record<string, string[]> = {
+  Vaksin: ['Vaksin ND-IB', 'Vaksin AI (Flu Burung)', 'Vaksin Coryza', 'Vaksin Gumboro'],
+  Obat: ['Antibiotik Koleridin', 'Obat Cacing', 'Amprolium (Berak Darah)', 'Enrofloxacin'],
+  Vitamin: ['Egg Stimulant', 'Vita Stress', 'Fortevit', 'Mineral Layer'],
+  Desinfektan: ['Medisep Semprot', 'BKT Desinfektan', 'Kapus Desinfektan'],
+};
+
+export function fetchCustomCategories(): string[] {
+  if (typeof window === 'undefined') return DEFAULT_HEALTH_CATEGORIES;
+  const data = localStorage.getItem('kandang_custom_categories');
+  if (!data) {
+    localStorage.setItem('kandang_custom_categories', JSON.stringify(DEFAULT_HEALTH_CATEGORIES));
+    return DEFAULT_HEALTH_CATEGORIES;
+  }
+  return JSON.parse(data);
 }
+
+export function saveCustomCategory(newCategory: string): string[] {
+  const current = fetchCustomCategories();
+  const trimmed = newCategory.trim();
+  if (!trimmed || current.includes(trimmed)) return current;
+  const updated = [...current, trimmed];
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('kandang_custom_categories', JSON.stringify(updated));
+  }
+  return updated;
+}
+
+export function fetchCategoryPresets(category: string): string[] {
+  if (typeof window === 'undefined') return DEFAULT_CATEGORY_PRESETS[category] || [];
+  const data = localStorage.getItem(`kandang_presets_${category}`);
+  if (!data) {
+    const defaultList = DEFAULT_CATEGORY_PRESETS[category] || [];
+    localStorage.setItem(`kandang_presets_${category}`, JSON.stringify(defaultList));
+    return defaultList;
+  }
+  return JSON.parse(data);
+}
+
+export function saveCategoryPreset(category: string, newPreset: string): string[] {
+  const current = fetchCategoryPresets(category);
+  const trimmed = newPreset.trim();
+  if (!trimmed || current.includes(trimmed)) return current;
+  const updated = [...current, trimmed];
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(`kandang_presets_${category}`, JSON.stringify(updated));
+  }
+  return updated;
+}
+

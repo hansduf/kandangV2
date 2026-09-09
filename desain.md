@@ -14,16 +14,9 @@ Dokumen ini berisi spesifikasi lengkap mengenai **Design System (UI)** dan **Pri
 
 ## 🎨 2. UI System & Identitas Visual
 
-### 🟢 A. Palet Warna (Tailored Color Palette)
-Warna dipilih khusus berdasarkan psikologi industri peternakan modern:
-
-| Kategori | Warna Tailwind | Kode Hex | Penggunaan Utama |
-| :--- | :--- | :--- | :--- |
-| **Primary Brand** | `emerald-600` / `emerald-700` | `#059669` / `#047857` | Hero banner, header, status positif, tombol utama |
-| **Egg & Harvest** | `amber-500` / `amber-600` | `#f59e0b` / `#d97706` | Telur utuh, berat telur (gram), indikator panen |
-| **Mortality Alert** | `rose-600` / `rose-700` | `#e11d48` / `#be123c` | Kematian (*mortality*), ayam afkir (*culling*), peringatan |
-| **Feed & FCR** | `blue-600` / `blue-700` | `#2563eb` / `#1d4ed8` | Konsumsi pakan (kg), kalkulasi FCR |
-| **Neutral Surface** | `slate-50` hingga `slate-900` | `#f8fafc` / `#0f172a` | Background halaman, kartu, teks, border |
+### 🎨 A. Palet Warna (Color System Tokens)
+> ⏳ **Ditentukan oleh Stitch**: Palet warna, skema tema, dan kontras visual akan digenerate dan ditentukan langsung dari desain baru **Stitch**.
+> Antigravity akan menyerap dan menerapkan token warna tersebut begitu desain Stitch dimasukkan.
 
 ---
 

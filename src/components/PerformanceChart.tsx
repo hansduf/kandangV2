@@ -10,6 +10,8 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  BarChart,
+  Bar,
 } from 'recharts';
 
 interface PerformanceChartProps {
@@ -17,6 +19,10 @@ interface PerformanceChartProps {
   timeMode?: '7' | '14' | '30' | 'all' | 'custom';
   startDate?: string;
   endDate?: string;
+  weeklyMortality?: number;
+  monthlyMortality?: number;
+  totalMortality?: number;
+  mortalityRate?: number;
 }
 
 export const PerformanceChart: React.FC<PerformanceChartProps> = ({
@@ -24,8 +30,13 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   timeMode = '14',
   startDate,
   endDate,
+  weeklyMortality = 0,
+  monthlyMortality = 0,
+  totalMortality = 0,
+  mortalityRate = 0,
 }) => {
   const [metric, setMetric] = useState<'hdp' | 'hhp' | 'kg' | 'mortality'>('hdp');
+  const [mortView, setMortView] = useState<'chart' | '7d' | '30d' | 'total'>('chart');
 
   // Ensure records are sorted chronologically ascending (oldest to newest) for chart display
   const sortedRecords = [...records].sort((a, b) => a.record_date.localeCompare(b.record_date));
@@ -47,7 +58,6 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
   // Format data for chart
   const chartData = filteredRecords.map((r) => {
-    // Format date string for XAxis (e.g. 2026-09-11 -> 11/09)
     let displayDate = r.record_date;
     if (r.record_date.length >= 10) {
       const parts = r.record_date.split('-');
@@ -75,6 +85,13 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     mortality: { label: 'Mortalitas (Ekor)', dataKey: 'mortality', color: '#e11d48', gradientId: 'roseGrad', unit: 'ekor' },
   }[metric];
 
+  // Mortality summary data for sub-view
+  const mortSummary = [
+    { label: 'Minggu Ini (7H)', value: weeklyMortality, color: '#f59e0b' },
+    { label: 'Bulan Ini (30H)', value: monthlyMortality, color: '#f97316' },
+    { label: 'Total Kumulatif', value: totalMortality, color: '#e11d48' },
+  ];
+
   return (
     <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 space-y-3 shadow-sm">
       {/* Metric Selector Tabs */}
@@ -91,7 +108,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           {(['hdp', 'hhp', 'kg', 'mortality'] as const).map((m) => (
             <button
               key={m}
-              onClick={() => setMetric(m)}
+              onClick={() => { setMetric(m); if (m === 'mortality') setMortView('chart'); }}
               className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all ${
                 metric === m
                   ? 'bg-[#00684a] text-white shadow-xs scale-[1.02]'
@@ -104,8 +121,66 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         </div>
       </div>
 
+      {/* Mortality Sub-View Selector (only when mortality selected) */}
+      {metric === 'mortality' && (
+        <div className="flex gap-1 bg-rose-50 p-1 rounded-xl border border-rose-200">
+          {([
+            { key: 'chart' as const, label: 'Grafik Harian' },
+            { key: '7d' as const, label: '7 Hari' },
+            { key: '30d' as const, label: '30 Hari' },
+            { key: 'total' as const, label: 'Kumulatif' },
+          ]).map((item) => (
+            <button
+              key={item.key}
+              onClick={() => setMortView(item.key)}
+              className={`flex-1 px-2 py-1 text-[10px] font-black rounded-lg transition-all ${
+                mortView === item.key
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-rose-700 hover:bg-rose-100'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="h-56 w-full pt-1">
-        {chartData.length > 0 ? (
+        {/* Show summary cards for mortality sub-views */}
+        {metric === 'mortality' && mortView !== 'chart' ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3">
+            {mortView === '7d' && (
+              <div className="text-center space-y-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Kematian 7 Hari Terakhir</span>
+                <div className="text-4xl font-black text-rose-600">{weeklyMortality} <span className="text-lg text-slate-400">ekor</span></div>
+              </div>
+            )}
+            {mortView === '30d' && (
+              <div className="text-center space-y-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Kematian 30 Hari Terakhir</span>
+                <div className="text-4xl font-black text-rose-600">{monthlyMortality} <span className="text-lg text-slate-400">ekor</span></div>
+              </div>
+            )}
+            {mortView === 'total' && (
+              <div className="text-center space-y-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Kematian Kumulatif</span>
+                <div className="text-4xl font-black text-rose-600">{totalMortality} <span className="text-lg text-slate-400">ekor</span></div>
+                <span className="text-xs font-black text-rose-500 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
+                  Tingkat Mortalitas: {mortalityRate}%
+                </span>
+              </div>
+            )}
+            {/* Mini summary row below */}
+            <div className="grid grid-cols-3 gap-2 w-full mt-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-center">
+              {mortSummary.map((s) => (
+                <div key={s.label}>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">{s.label}</span>
+                  <span className="text-xs font-black" style={{ color: s.color }}>{s.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>

@@ -9,8 +9,6 @@ import {
   Minus,
   Save,
   RotateCcw,
-  Scale,
-  Calculator,
 } from 'lucide-react';
 
 interface SleekProductionInputProps {
@@ -36,11 +34,11 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   const [recordDate, setRecordDate] = useState(todayStr);
 
   const [eggGoodPcs, setEggGoodPcs] = useState<number | ''>('');
-  const [inputMode, setInputMode] = useState<'manual_kg' | 'ratio'>('manual_kg');
 
-  // Input states
+  // Unified kg & ratio input — last edited determines which drives calculation
   const [manualKg, setManualKg] = useState<number | ''>('');
   const [eggsPerKg, setEggsPerKg] = useState<number>(16);
+  const [lastEdited, setLastEdited] = useState<'kg' | 'ratio'>('ratio');
 
   const [eggBadPcs, setEggBadPcs] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
@@ -50,27 +48,23 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
 
   const goodPcsNum = Number(eggGoodPcs) || 0;
 
-  // Auto calculate Kg and Ratio based on active input mode
+  // Auto-sync: if user edits Kg -> ratio auto-calculates, and vice versa
   let finalKg = 0;
-  let finalRatio = 16;
+  let finalRatio = eggsPerKg > 0 ? eggsPerKg : 16;
   let avgWeightG = 0;
 
-  if (inputMode === 'manual_kg') {
+  if (lastEdited === 'kg') {
+    // User typed Kg manually → compute ratio from (pcs / kg)
     finalKg = Number(manualKg) || 0;
     if (goodPcsNum > 0 && finalKg > 0) {
       finalRatio = Number((goodPcsNum / finalKg).toFixed(2));
       avgWeightG = Number(((finalKg * 1000) / goodPcsNum).toFixed(1));
-    } else if (goodPcsNum > 0) {
-      finalKg = Number((goodPcsNum / 16).toFixed(2));
-      finalRatio = 16;
-      avgWeightG = Number(((finalKg * 1000) / goodPcsNum).toFixed(1));
     }
   } else {
-    // Ratio mode
-    const ratioNum = Number(eggsPerKg) > 0 ? Number(eggsPerKg) : 16;
-    finalRatio = ratioNum;
+    // User typed ratio → compute Kg from (pcs / ratio)
+    finalRatio = eggsPerKg > 0 ? eggsPerKg : 16;
     if (goodPcsNum > 0) {
-      finalKg = Number((goodPcsNum / ratioNum).toFixed(2));
+      finalKg = Number((goodPcsNum / finalRatio).toFixed(2));
       avgWeightG = Number(((finalKg * 1000) / goodPcsNum).toFixed(1));
     }
   }
@@ -207,75 +201,53 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
             )}
           </div>
 
-          {/* MODE TIMER & TOTAL KG / RATIO INPUT */}
+          {/* BERAT & KILOAN — UNIFIED (input salah satu, yang lain otomatis) */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-2 shadow-inner">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">BERAT & KILOAN</span>
-              <div className="flex gap-0.5 bg-slate-200/70 p-0.5 rounded-lg text-[9px] font-extrabold">
-                <button
-                  type="button"
-                  onClick={() => setInputMode('manual_kg')}
-                  className={`px-1.5 py-0.5 rounded-md transition-all flex items-center gap-1 ${
-                    inputMode === 'manual_kg' ? 'bg-[#00684a] text-white shadow-xs' : 'text-slate-600'
-                  }`}
-                >
-                  <Scale className="w-2.5 h-2.5" />
-                  <span>Manual Kg</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInputMode('ratio')}
-                  className={`px-1.5 py-0.5 rounded-md transition-all flex items-center gap-1 ${
-                    inputMode === 'ratio' ? 'bg-[#00684a] text-white shadow-xs' : 'text-slate-600'
-                  }`}
-                >
-                  <Calculator className="w-2.5 h-2.5" />
-                  <span>Rasio</span>
-                </button>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">BERAT & KILOAN</span>
+
+            {/* Row 1: Manual Kg Input */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-600">Total Kg (Timbangan):</span>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={manualKg}
+                onChange={(e) => {
+                  const v = e.target.value === '' ? '' : Number(e.target.value);
+                  setManualKg(v);
+                  setLastEdited('kg');
+                }}
+                placeholder="e.g. 100"
+                className="w-20 text-right text-xs font-black text-[#00684a] bg-white border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#00684a]"
+              />
+            </div>
+
+            {/* Row 2: Rasio btr/kg Input */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-600">Isi per 1 Kg:</span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  value={eggsPerKg}
+                  onChange={(e) => {
+                    const v = Number(e.target.value) || 16;
+                    setEggsPerKg(v);
+                    setLastEdited('ratio');
+                  }}
+                  className="w-14 text-center text-xs font-black text-slate-900 bg-white border border-slate-300 rounded-lg py-1 outline-none focus:border-[#00684a]"
+                />
+                <span className="text-[9px] font-bold text-slate-500">btr/kg</span>
               </div>
             </div>
 
-            {inputMode === 'manual_kg' ? (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-600">Total Timbangan (Kg):</span>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={manualKg}
-                    onChange={(e) => setManualKg(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="e.g. 100"
-                    className="w-20 text-right text-xs font-black text-[#00684a] bg-white border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#00684a]"
-                  />
-                </div>
-                {goodPcsNum > 0 && finalKg > 0 && (
-                  <div className="text-[10px] font-black text-emerald-800 bg-emerald-100/70 px-2 py-1 rounded-lg flex items-center justify-between border border-emerald-200 mt-1">
-                    <span>Rata-rata:</span>
-                    <span>{finalRatio} btr/kg ({avgWeightG}g/btr)</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-600">Isi per 1 Kg:</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="1"
-                      value={eggsPerKg}
-                      onChange={(e) => setEggsPerKg(Number(e.target.value) || 16)}
-                      className="w-14 text-center text-xs font-black text-slate-900 bg-white border border-slate-300 rounded-lg py-1 outline-none focus:border-[#00684a]"
-                    />
-                    <span className="text-[9px] font-bold text-slate-500">btr/kg</span>
-                  </div>
-                </div>
-                <div className="text-[10px] font-black text-[#00684a] bg-emerald-50 px-2 py-1 rounded-lg flex items-center justify-between border border-emerald-200 mt-1">
-                  <span>Estimasi Total:</span>
-                  <span>{finalKg} kg</span>
-                </div>
+            {/* Live Calculation Result */}
+            {goodPcsNum > 0 && finalKg > 0 && (
+              <div className="text-[10px] font-black text-emerald-800 bg-emerald-100/70 px-2 py-1 rounded-lg flex items-center justify-between border border-emerald-200 mt-1">
+                <span>Rata-rata:</span>
+                <span>{finalRatio.toFixed(1)} btr/kg ({avgWeightG}g/btr) • {finalKg} kg</span>
               </div>
             )}
           </div>

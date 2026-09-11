@@ -330,44 +330,17 @@ export default function DashboardHomePage() {
               />
             </div>
 
-            {/* UNIFIED PERFORMANCE & MORTALITY SECTION */}
-            <div className="space-y-3.5">
-              {/* RINGKASAN MORTALITAS KANDANG (MINGGUAN / BULANAN / KUMULATIF) */}
-              <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Skull className="w-4 h-4 text-rose-600" />
-                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Statistik Kematian Kandang</h3>
-                  </div>
-                  <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                    Tingkat Mati: {summary?.totals.mortality_rate_percent || 0}%
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200 text-center">
-                  <div>
-                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Minggu Ini (7H)</span>
-                    <span className="text-sm font-black text-slate-900">{summary?.totals.weekly_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
-                  </div>
-                  <div className="border-x border-slate-200">
-                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Bulan Ini (30H)</span>
-                    <span className="text-sm font-black text-slate-900">{summary?.totals.monthly_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
-                  </div>
-                  <div>
-                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Total Kumulatif</span>
-                    <span className="text-sm font-black text-rose-600">{summary?.totals.total_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
-                  </div>
-                </div>
-              </div>
-
-              {/* MAIN PERFORMANCE GRAPH WITH TIMEFRAME PROPS */}
-              <PerformanceChart
-                records={history}
-                timeMode={timeMode}
-                startDate={startDate}
-                endDate={endDate}
-              />
-            </div>
+            {/* PERFORMANCE CHART WITH MORTALITY BUILT-IN */}
+            <PerformanceChart
+              records={history}
+              timeMode={timeMode}
+              startDate={startDate}
+              endDate={endDate}
+              weeklyMortality={summary?.totals.weekly_mortality}
+              monthlyMortality={summary?.totals.monthly_mortality}
+              totalMortality={summary?.totals.total_mortality}
+              mortalityRate={summary?.totals.mortality_rate_percent}
+            />
 
             {/* Recent Daily Records Table */}
             <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl space-y-3 border border-slate-200/80 shadow-sm">

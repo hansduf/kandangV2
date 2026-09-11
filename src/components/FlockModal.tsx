@@ -173,7 +173,7 @@ export const FlockModal: React.FC<FlockModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid ${isEdit ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
             <div>
               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tgl Chick-In</label>
               <input
@@ -184,21 +184,23 @@ export const FlockModal: React.FC<FlockModalProps> = ({
                 required
               />
             </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center justify-between">
-                <span>Tgl Checkout</span>
-                <span className="text-[9px] text-rose-600 font-black">Afkir Final</span>
-              </label>
-              <input
-                type="date"
-                value={chickOutDate}
-                onChange={(e) => {
-                  setChickOutDate(e.target.value);
-                  if (e.target.value) setStatus('checked_out');
-                }}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-700 outline-none focus:border-rose-500"
-              />
-            </div>
+            {isEdit && (
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center justify-between">
+                  <span>Tgl Checkout</span>
+                  <span className="text-[9px] text-rose-600 font-black">Afkir Final</span>
+                </label>
+                <input
+                  type="date"
+                  value={chickOutDate}
+                  onChange={(e) => {
+                    setChickOutDate(e.target.value);
+                    if (e.target.value) setStatus('checked_out');
+                  }}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-700 outline-none focus:border-rose-500"
+                />
+              </div>
+            )}
           </div>
 
           {isEdit && (

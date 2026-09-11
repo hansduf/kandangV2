@@ -158,8 +158,13 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
     if (error) throw error;
     return data;
   } catch (err) {
-    console.warn('Using local fallback for dashboard summary:', err);
-    return fetchDashboardSummary(flockId);
+    console.error('Error fetching dashboard summary:', err);
+    // Return a safe default instead of recursing (which would infinite loop)
+    return {
+      flock: { id: flockId, name: '-', coop_name: '-', strain: '-', chick_in_date: '', initial_population: 0, current_population: 0, age_weeks: 1, status: 'active' as const },
+      today: { has_recorded: false, record_date: new Date().toISOString().split('T')[0], egg_good_pcs: 0, egg_good_kg: 0, egg_bad_pcs: 0, egg_bad_kg: 0, mortality_pcs: 0, culling_pcs: 0, feed_kg: 0, hd_percent: 0, hdp_percent: 0, hhp_percent: 0, fcr: 0, avg_egg_weight_g: 0, notes: '' },
+      totals: { weekly_mortality: 0, monthly_mortality: 0, total_mortality: 0, mortality_rate_percent: 0, total_culling: 0, total_egg_good_pcs: 0, total_egg_good_kg: 0, total_egg_bad_pcs: 0, total_egg_bad_kg: 0, total_feed_kg: 0, total_days_recorded: 0, overall_hd_percent: 0, overall_hdp_percent: 0, overall_hhp_percent: 0, overall_fcr: 0 }
+    };
   }
 }
 

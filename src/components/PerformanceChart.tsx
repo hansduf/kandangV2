@@ -39,20 +39,20 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
   }[metric === 'feed' ? 'hd' : metric];
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-3xl p-4 space-y-3 shadow-md">
+    <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 space-y-3 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Tren Performa 14 Hari</h3>
-          <p className="text-[11px] font-semibold text-slate-500">Visualisasi metrik harian</p>
+          <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Visualisasi metrik harian</p>
         </div>
         
         {/* Metric Selector Pills */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+        <div className="flex gap-1 bg-slate-100 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl border border-slate-200">
           {(['hd', 'kg', 'mortality'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMetric(m)}
-              className={`px-2.5 py-1 text-[10px] font-black rounded-xl transition-all ${
+              className={`px-2 py-1 sm:px-2.5 text-[10px] sm:text-[11px] font-black rounded-lg sm:rounded-xl transition-all ${
                 metric === m
                   ? 'bg-[#00684a] text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'

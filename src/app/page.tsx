@@ -123,36 +123,36 @@ export default function DashboardHomePage() {
         onOpenNewFlockModal={() => setIsFlockModalOpen(true)}
       />
 
-      <main className="max-w-md mx-auto px-3.5 py-4 space-y-4">
+      <main className="max-w-md mx-auto px-3 py-3.5 sm:px-4 sm:py-4 space-y-3.5 sm:space-y-4">
         {/* Active Flock Hero Banner */}
         {activeFlock && (
-          <div className="bg-gradient-to-r from-[#00684a] via-[#046a38] to-emerald-900 rounded-3xl p-4 text-white shadow-xl flex items-center justify-between relative overflow-hidden">
+          <div className="bg-gradient-to-r from-[#00684a] via-[#046a38] to-emerald-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 text-white shadow-lg flex items-center justify-between relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
             <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="bg-white/20 text-emerald-100 border border-white/30 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-white/20 text-emerald-100 border border-white/30 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                   {activeFlock.coop_name}
                 </span>
                 <span className="text-xs text-emerald-100 font-bold">• {activeFlock.strain}</span>
               </div>
-              <h2 className="text-xl font-black leading-tight tracking-tight text-white">{activeFlock.name}</h2>
-              <p className="text-xs text-emerald-50 font-semibold mt-1">
-                Populasi Aktif: <strong className="text-white font-black">{activeFlock.current_population} ekor</strong> (Umur {activeFlock.age_weeks} Minggu)
+              <h2 className="text-lg sm:text-xl font-black leading-tight tracking-tight text-white">{activeFlock.name}</h2>
+              <p className="text-xs text-emerald-50 font-semibold mt-0.5">
+                Populasi Aktif: <strong className="text-white font-black">{activeFlock.current_population} ekor</strong> (Umur {activeFlock.age_weeks} Mgg)
               </p>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 shadow-md">
-              <Activity className="w-6 h-6 text-white animate-pulse" />
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 shadow-xs">
+              <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-white animate-pulse" />
             </div>
           </div>
         )}
 
         {/* Section Header: Performa Hari Ini */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between px-0.5">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <BarChart3 className="w-4 h-4 text-[#00684a]" />
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Laporan Performa Hari Ini</h3>
           </div>
-          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1.5 border ${
+          <span className={`text-[10px] sm:text-[11px] font-extrabold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1 border ${
             today?.has_recorded
               ? 'bg-emerald-50 text-[#00684a] border-emerald-200 shadow-xs'
               : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -163,7 +163,7 @@ export default function DashboardHomePage() {
         </div>
 
         {/* Metric Grid Cards */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           <StatCard
             title="Hen-Day (HD)"
             value={today?.hd_percent || 0}
@@ -199,27 +199,27 @@ export default function DashboardHomePage() {
         </div>
 
         {/* Average Weight Pill */}
-        <div className="bg-white p-3.5 rounded-3xl flex items-center justify-between shadow-md border border-slate-200">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
+        <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl flex items-center justify-between shadow-sm border border-slate-200/80">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
               <Scale className="w-4 h-4" />
             </div>
             <div>
               <span className="block text-xs font-black text-slate-800">Rata-Rata Berat Telur</span>
-              <span className="text-[11px] font-semibold text-slate-500">Standar Telur: 60-65g / butir</span>
+              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Standar Telur: 60-65g / butir</span>
             </div>
           </div>
-          <span className="text-lg font-black text-amber-600">{today?.avg_egg_weight_g || 0} gram</span>
+          <span className="text-base sm:text-lg font-black text-amber-600 shrink-0">{today?.avg_egg_weight_g || 0} g</span>
         </div>
 
         {/* MAIN PERFORMANCE GRAPH */}
         <PerformanceChart records={history} />
 
         {/* Recent Daily Records Table */}
-        <div className="bg-white p-4 rounded-3xl space-y-3 border border-slate-200 shadow-md">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl space-y-3 border border-slate-200/80 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Riwayat Catatan 7 Hari Terakhir</h3>
-            <span className="text-[11px] font-black text-[#00684a] flex items-center">
+            <span className="text-[10px] sm:text-[11px] font-black text-[#00684a] flex items-center">
               <span>Terbaru</span>
               <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
             </span>
@@ -227,15 +227,15 @@ export default function DashboardHomePage() {
 
           <div className="divide-y divide-slate-100">
             {history.slice(0, 7).map((rec) => (
-              <div key={rec.record_date} className="py-3 flex items-center justify-between hover:bg-slate-50 rounded-xl px-1 transition-colors">
+              <div key={rec.record_date} className="py-2.5 flex items-center justify-between hover:bg-slate-50 rounded-xl px-1 transition-colors">
                 <div>
                   <span className="text-xs font-black text-slate-900">{rec.record_date}</span>
-                  <span className="block text-[11px] font-semibold text-slate-500">
+                  <span className="block text-[10px] sm:text-[11px] font-semibold text-slate-500">
                     {rec.egg_good_pcs} btr ({rec.egg_good_kg} kg) • {rec.egg_bad_pcs} retak
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-black text-[#00684a] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">{rec.hd_percent}% HD</span>
+                  <span className="text-[11px] sm:text-xs font-black text-[#00684a] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">{rec.hd_percent}% HD</span>
                   <span className="block text-[10px] font-bold text-rose-600 mt-0.5">
                     {rec.mortality_pcs > 0 ? `+${rec.mortality_pcs} mati` : '0 mati'}
                   </span>

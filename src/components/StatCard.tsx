@@ -48,19 +48,19 @@ export const StatCard: React.FC<StatCardProps> = ({
   }[colorTheme];
 
   return (
-    <div className={`p-4 rounded-3xl border ${themeStyles.borderClass} shadow-md ${themeStyles.glow} flex flex-col justify-between transition-all duration-300 hover:scale-[1.02] hover:-translate-y-0.5`}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">{title}</span>
-        <div className={`w-9 h-9 rounded-2xl flex items-center justify-center ${themeStyles.iconBg} shadow-xs`}>
-          <Icon className="w-4.5 h-4.5 stroke-[2.5]" />
+    <div className={`p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border ${themeStyles.borderClass} shadow-sm ${themeStyles.glow} flex flex-col justify-between transition-all duration-200 hover:scale-[1.01]`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-500 truncate mr-1">{title}</span>
+        <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl flex items-center justify-center ${themeStyles.iconBg} shadow-xs shrink-0`}>
+          <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5 stroke-[2.5]" />
         </div>
       </div>
       <div>
-        <div className="flex items-baseline gap-1.5">
-          <span className={`text-2xl font-black tracking-tight ${themeStyles.valueColor}`}>{value}</span>
+        <div className="flex items-baseline gap-1">
+          <span className={`text-xl sm:text-2xl font-black tracking-tight ${themeStyles.valueColor}`}>{value}</span>
           {unit && <span className="text-xs font-extrabold text-slate-500">{unit}</span>}
         </div>
-        {subtitle && <p className="text-[11px] font-bold text-slate-500 mt-1 truncate">{subtitle}</p>}
+        {subtitle && <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 mt-0.5 truncate">{subtitle}</p>}
       </div>
     </div>
   );

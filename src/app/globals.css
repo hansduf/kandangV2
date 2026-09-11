@@ -72,8 +72,14 @@ body {
 }
 
 /* Touch Input Utilities */
-input, select, textarea, button {
-  font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 /* Custom Scrollbar */
@@ -92,7 +98,7 @@ input, select, textarea, button {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #046a38;
+  background: #00684a;
 }
 
 

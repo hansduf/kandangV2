@@ -21,12 +21,12 @@ import {
   TrendingUp,
   Skull,
   Wheat,
-  Scale,
   Activity,
   ChevronRight,
   BarChart3,
   CheckCircle,
   AlertCircle,
+  Plus,
 } from 'lucide-react';
 
 export default function DashboardHomePage() {
@@ -124,6 +124,37 @@ export default function DashboardHomePage() {
       />
 
       <main className="max-w-md mx-auto px-3 py-3.5 sm:px-4 sm:py-4 space-y-3.5 sm:space-y-4">
+        {/* Horizontal Swipeable Coop Sub-Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar snap-x scroll-smooth">
+          {flocks.map((f) => {
+            const isActive = f.id === activeFlockId;
+            return (
+              <button
+                key={f.id}
+                onClick={() => setActiveFlockId(f.id)}
+                className={`snap-start shrink-0 px-3.5 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 border ${
+                  isActive
+                    ? 'bg-[#00684a] text-white border-[#00684a] shadow-md shadow-[#00684a]/20 scale-[1.02]'
+                    : 'bg-white text-slate-700 border-slate-200/80 hover:bg-slate-50'
+                }`}
+              >
+                <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-300 animate-pulse' : 'bg-slate-300'}`} />
+                <span>{f.coop_name}</span>
+                <span className={`text-[10px] font-bold ${isActive ? 'text-emerald-100' : 'text-slate-400'}`}>
+                  • {f.name}
+                </span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setIsFlockModalOpen(true)}
+            className="snap-start shrink-0 px-3 py-2 rounded-2xl text-xs font-black bg-emerald-50 text-[#00684a] border border-emerald-200 hover:bg-emerald-100 transition-all flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[3]" />
+            <span>Tambah</span>
+          </button>
+        </div>
+
         {/* Active Flock Hero Banner */}
         {activeFlock && (
           <div className="bg-gradient-to-r from-[#00684a] via-[#046a38] to-emerald-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 text-white shadow-lg flex items-center justify-between relative overflow-hidden">
@@ -196,20 +227,6 @@ export default function DashboardHomePage() {
             icon={Skull}
             colorTheme="rose"
           />
-        </div>
-
-        {/* Average Weight Pill */}
-        <div className="bg-white p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl flex items-center justify-between shadow-sm border border-slate-200/80">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
-              <Scale className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="block text-xs font-black text-slate-800">Rata-Rata Berat Telur</span>
-              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Standar Telur: 60-65g / butir</span>
-            </div>
-          </div>
-          <span className="text-base sm:text-lg font-black text-amber-600 shrink-0">{today?.avg_egg_weight_g || 0} g</span>
         </div>
 
         {/* MAIN PERFORMANCE GRAPH */}

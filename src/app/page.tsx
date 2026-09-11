@@ -28,6 +28,7 @@ import {
   AlertCircle,
   Plus,
   Home,
+  Calendar,
 } from 'lucide-react';
 
 export default function DashboardHomePage() {
@@ -36,6 +37,13 @@ export default function DashboardHomePage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [history, setHistory] = useState<DailyRecord[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Timeframe Filter State for Dashboard
+  const [timeMode, setTimeMode] = useState<'7' | '14' | '30' | 'all' | 'custom'>('14');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const past7Days = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(past7Days);
+  const [endDate, setEndDate] = useState(todayStr);
 
   // Modals State
   const [isInputModalOpen, setIsInputModalOpen] = useState(false);
@@ -48,9 +56,9 @@ export default function DashboardHomePage() {
 
   useEffect(() => {
     if (activeFlockId) {
-      loadDashboard(activeFlockId);
+      loadDashboard(activeFlockId, timeMode);
     }
-  }, [activeFlockId]);
+  }, [activeFlockId, timeMode]);
 
   const loadFlocks = async () => {
     try {
@@ -66,11 +74,12 @@ export default function DashboardHomePage() {
     }
   };
 
-  const loadDashboard = async (flockId: string) => {
+  const loadDashboard = async (flockId: string, mode: string) => {
     setLoading(true);
     try {
+      const limit = mode === '7' ? 7 : mode === '14' ? 14 : mode === '30' ? 30 : 365;
       const sumData = await fetchDashboardSummary(flockId);
-      const histData = await fetchDailyHistory(flockId, 30);
+      const histData = await fetchDailyHistory(flockId, limit);
       setSummary(sumData);
       setHistory(histData);
     } catch (err) {
@@ -83,14 +92,14 @@ export default function DashboardHomePage() {
   const handleSaveDaily = async (record: DailyRecord) => {
     await saveDailyRecord(record);
     if (activeFlockId) {
-      await loadDashboard(activeFlockId);
+      await loadDashboard(activeFlockId, timeMode);
     }
   };
 
   const handleSaveHealth = async (record: HealthRecord) => {
     await saveHealthRecord(record);
     if (activeFlockId) {
-      await loadDashboard(activeFlockId);
+      await loadDashboard(activeFlockId, timeMode);
     }
   };
 
@@ -217,8 +226,60 @@ export default function DashboardHomePage() {
 
         {flocks.length > 0 && (
           <>
+            {/* GLOBAL TIMEFRAME SELECTOR BAR */}
+            <div className="bg-white p-3 border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-sm space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <BarChart3 className="w-4 h-4 text-[#00684a]" />
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Periode Laporan</h3>
+                </div>
+
+                {/* Timeframe Selector Pills */}
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  {(['7', '14', '30', 'all', 'custom'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setTimeMode(mode)}
+                      className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all ${
+                        timeMode === mode
+                          ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      }`}
+                    >
+                      {mode === 'all' ? 'Semua' : mode === 'custom' ? 'Kustom' : `${mode} Hari`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date Range Picker if Custom Mode */}
+              {timeMode === 'custom' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-xs font-bold animate-in fade-in duration-200">
+                  <div className="flex items-center gap-1.5 text-slate-700">
+                    <Calendar className="w-3.5 h-3.5 text-[#00684a]" />
+                    <span>Rentang Tanggal:</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="bg-white border border-slate-300 text-slate-900 text-[11px] font-bold rounded-lg px-2 py-1 outline-none focus:border-[#00684a]"
+                    />
+                    <span className="text-slate-400 font-black">-</span>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="bg-white border border-slate-300 text-slate-900 text-[11px] font-bold rounded-lg px-2 py-1 outline-none focus:border-[#00684a]"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Section Header: Performa Hari Ini */}
-            <div className="flex items-center justify-between px-0.5">
+            <div className="flex items-center justify-between px-0.5 pt-1">
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <BarChart3 className="w-4 h-4 text-[#00684a]" />
                 <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Laporan Performa Hari Ini</h3>
@@ -269,36 +330,44 @@ export default function DashboardHomePage() {
               />
             </div>
 
-            {/* RINGKASAN MORTALITAS KANDANG (MINGGUAN / BULANAN / KUMULATIF) */}
-            <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Skull className="w-4 h-4 text-rose-600" />
-                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Statistik Kematian Kandang</h3>
+            {/* UNIFIED PERFORMANCE & MORTALITY SECTION */}
+            <div className="space-y-3.5">
+              {/* RINGKASAN MORTALITAS KANDANG (MINGGUAN / BULANAN / KUMULATIF) */}
+              <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Skull className="w-4 h-4 text-rose-600" />
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Statistik Kematian Kandang</h3>
+                  </div>
+                  <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                    Tingkat Mati: {summary?.totals.mortality_rate_percent || 0}%
+                  </span>
                 </div>
-                <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                  Tingkat Mati: {summary?.totals.mortality_rate_percent || 0}%
-                </span>
+
+                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200 text-center">
+                  <div>
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Minggu Ini (7H)</span>
+                    <span className="text-sm font-black text-slate-900">{summary?.totals.weekly_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
+                  </div>
+                  <div className="border-x border-slate-200">
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Bulan Ini (30H)</span>
+                    <span className="text-sm font-black text-slate-900">{summary?.totals.monthly_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-slate-500 uppercase">Total Kumulatif</span>
+                    <span className="text-sm font-black text-rose-600">{summary?.totals.total_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200 text-center">
-                <div>
-                  <span className="block text-[9px] font-bold text-slate-500 uppercase">Minggu Ini (7H)</span>
-                  <span className="text-sm font-black text-slate-900">{summary?.totals.weekly_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
-                </div>
-                <div className="border-x border-slate-200">
-                  <span className="block text-[9px] font-bold text-slate-500 uppercase">Bulan Ini (30H)</span>
-                  <span className="text-sm font-black text-slate-900">{summary?.totals.monthly_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
-                </div>
-                <div>
-                  <span className="block text-[9px] font-bold text-slate-500 uppercase">Total Kumulatif</span>
-                  <span className="text-sm font-black text-rose-600">{summary?.totals.total_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
-                </div>
-              </div>
+              {/* MAIN PERFORMANCE GRAPH WITH TIMEFRAME PROPS */}
+              <PerformanceChart
+                records={history}
+                timeMode={timeMode}
+                startDate={startDate}
+                endDate={endDate}
+              />
             </div>
-
-            {/* MAIN PERFORMANCE GRAPH */}
-            <PerformanceChart records={history} />
 
             {/* Recent Daily Records Table */}
             <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl space-y-3 border border-slate-200/80 shadow-sm">

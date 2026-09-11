@@ -253,11 +253,12 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                     onClick={() => {
                       setHealthCategory(item.cat as any);
                       setHealthItemName('');
+                      setHealthDosage('');
                     }}
                     className={`py-2.5 px-3 rounded-2xl flex items-center gap-2 font-black text-xs transition-all border ${
                       isSelected
                         ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -268,65 +269,192 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
             </div>
 
             <div className="bg-slate-50 p-3.5 border border-slate-200 rounded-2xl space-y-3">
+              {/* NAMA ITEM PER KATEGORI */}
               <div>
-                <label className="block text-xs font-black text-slate-800 uppercase mb-1">Nama {healthCategory}</label>
+                <label className="block text-xs font-black text-slate-800 uppercase mb-1">
+                  Nama {healthCategory}
+                </label>
                 <input
                   type="text"
                   value={healthItemName}
                   onChange={(e) => setHealthItemName(e.target.value)}
-                  placeholder={`Contoh: Vaksin ND-IB / Egg Stimulant...`}
+                  placeholder={
+                    healthCategory === 'Vaksin'
+                      ? 'e.g. Vaksin ND-IB / AI (Flu Burung)...'
+                      : healthCategory === 'Obat'
+                      ? 'e.g. Koleridin / Amprolium...'
+                      : healthCategory === 'Vitamin'
+                      ? 'e.g. Egg Stimulant / Vita Stress...'
+                      : 'e.g. Medisep / BKT Desinfektan...'
+                  }
                   className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis Pemakaian</label>
-                  <input
-                    type="text"
-                    value={healthDosage}
-                    onChange={(e) => setHealthDosage(e.target.value)}
-                    placeholder="e.g. 100g / 200L Air"
-                    className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jml Ayam (Ekor)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={vaccinatedBirdsCount}
-                    onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder={`e.g. ${currentPopulation || 2000}`}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-[#00684a] outline-none"
-                  />
-                </div>
-              </div>
+              {/* DYNAMIC FORM FIELDS BASED ON CATEGORY */}
+              {healthCategory === 'Vaksin' && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis / Kemasan</label>
+                      <input
+                        type="text"
+                        value={healthDosage}
+                        onChange={(e) => setHealthDosage(e.target.value)}
+                        placeholder="e.g. 1 dosis/ekor"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jumlah Ayam (Ekor)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={vaccinatedBirdsCount}
+                        onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder={`e.g. ${currentPopulation || 2000}`}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-[#00684a] outline-none focus:border-[#00684a]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metode Vaksinasi</label>
+                    <select
+                      value={healthMethod}
+                      onChange={(e) => setHealthMethod(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                    >
+                      <option value="Tetes Mata">Tetes Mata (Ocular)</option>
+                      <option value="Air Minum">Air Minum (Drinking Water)</option>
+                      <option value="Injeksi / Suntik">Injeksi / Suntik (Intramuskular)</option>
+                      <option value="Spray / Fogging">Spray / Semprot Halus</option>
+                      <option value="Tetes Mulut">Tetes Mulut (Oral)</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {healthCategory === 'Obat' && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis Pemakaian</label>
+                      <input
+                        type="text"
+                        value={healthDosage}
+                        onChange={(e) => setHealthDosage(e.target.value)}
+                        placeholder="e.g. 100g / 200L Air"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jml Ayam Diobati</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={vaccinatedBirdsCount}
+                        onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder={`e.g. ${currentPopulation || 2000}`}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-700 outline-none focus:border-[#00684a]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metode Pengobatan</label>
+                    <select
+                      value={healthMethod}
+                      onChange={(e) => setHealthMethod(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                    >
+                      <option value="Air Minum">Air Minum (Melalui Tanki Minum)</option>
+                      <option value="Campur Pakan">Campur Pakan (Feed Premix)</option>
+                      <option value="Injeksi / Suntik">Injeksi / Suntik Langsung</option>
+                      <option value="Tetes Mulut">Tetes Mulut (Individu)</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {healthCategory === 'Vitamin' && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis Vitamin</label>
+                      <input
+                        type="text"
+                        value={healthDosage}
+                        onChange={(e) => setHealthDosage(e.target.value)}
+                        placeholder="e.g. 500g / 1000L Air"
+                        className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Target Populasi</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={vaccinatedBirdsCount}
+                        onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
+                        placeholder={`e.g. ${currentPopulation || 2000}`}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-amber-700 outline-none focus:border-[#00684a]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metode Pemberian</label>
+                    <select
+                      value={healthMethod}
+                      onChange={(e) => setHealthMethod(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                    >
+                      <option value="Air Minum">Air Minum (Pengenceran Air)</option>
+                      <option value="Campur Pakan">Campur Pakan (Top Dressing)</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {healthCategory === 'Desinfektan' && (
+                <>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cakupan / Area Disinfeksi</label>
+                    <select
+                      value={healthMethod}
+                      onChange={(e) => setHealthMethod(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                    >
+                      <option value="Seluruh Kandang">Seluruh Kandang (Internal & Eksternal)</option>
+                      <option value="Area Tirai & Dinding">Area Tirai, Dinding & Litter</option>
+                      <option value="Tempat Minum & Pakan">Tempat Minum & Tempat Pakan</option>
+                      <option value="Halaman & Akses Masuk">Halaman Kandang & Akses Kendaraan</option>
+                      <option value="Celup Sepatu / Dip Tank">Dip Tank / Celup Sepatu</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis / Konsentrasi Semprot</label>
+                    <input
+                      type="text"
+                      value={healthDosage}
+                      onChange={(e) => setHealthDosage(e.target.value)}
+                      placeholder="e.g. 10 ml / Liter Air (Dosis Semprot)"
+                      className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tatacara / Metode Aplikasi</label>
-                <select
-                  value={healthMethod}
-                  onChange={(e) => setHealthMethod(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-                >
-                  <option value="Air Minum">Air Minum (Minuman Kandang)</option>
-                  <option value="Injeksi / Suntik">Injeksi / Suntik (Intramuskular)</option>
-                  <option value="Tetes Mata">Tetes Mata (Ocular)</option>
-                  <option value="Campur Pakan">Campur Pakan (Feed Premix)</option>
-                  <option value="Semprot / Fogging">Semprot / Fogging Disinfeksi</option>
-                  <option value="Tetes Mulut">Tetes Mulut (Oral Drop)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Catatan Tambahan & Gejala</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Catatan Tambahan & Pelaksanaan</label>
                 <textarea
                   rows={2}
                   value={healthNotes}
                   onChange={(e) => setHealthNotes(e.target.value)}
-                  placeholder="Catatan respon ayam, tim pelaksana, atau gejala klinis..."
+                  placeholder="Catatan tim pelaksana, cuaca, atau kondisi kandang..."
                   className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-semibold text-slate-900 outline-none focus:border-[#00684a]"
                 />
               </div>

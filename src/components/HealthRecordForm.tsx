@@ -256,46 +256,164 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis Pemakaian</label>
-            <input
-              type="text"
-              value={dosage}
-              onChange={(e) => setDosage(e.target.value)}
-              placeholder="e.g. 100g / 200L Air"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-            />
-          </div>
+        {/* DYNAMIC FORM FIELDS BASED ON CATEGORY */}
+        {category === 'Vaksin' && (
+          <>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis / Kemasan</label>
+                <input
+                  type="text"
+                  value={dosage}
+                  onChange={(e) => setDosage(e.target.value)}
+                  placeholder="e.g. 1 dosis/ekor"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                />
+              </div>
 
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jml Ayam (Ekor)</label>
-            <input
-              type="number"
-              min="0"
-              value={vaccinatedBirdsCount}
-              onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder="e.g. 2000"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-[#00684a] outline-none focus:border-[#00684a]"
-            />
-          </div>
-        </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jumlah Ayam (Ekor)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={vaccinatedBirdsCount}
+                  onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="e.g. 2000"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-[#00684a] outline-none focus:border-[#00684a]"
+                />
+              </div>
+            </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tatacara / Metode Aplikasi</label>
-          <select
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-          >
-            <option value="Air Minum">Air Minum (Minuman Kandang)</option>
-            <option value="Injeksi / Suntik">Injeksi / Suntik (Intramuskular)</option>
-            <option value="Tetes Mata">Tetes Mata (Ocular)</option>
-            <option value="Campur Pakan">Campur Pakan (Feed Premix)</option>
-            <option value="Semprot / Fogging">Semprot / Fogging Disinfeksi</option>
-            <option value="Tetes Mulut">Tetes Mulut (Oral Drop)</option>
-          </select>
-        </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metode Vaksinasi</label>
+              <select
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+              >
+                <option value="Tetes Mata">Tetes Mata (Ocular)</option>
+                <option value="Air Minum">Air Minum (Drinking Water)</option>
+                <option value="Injeksi / Suntik">Injeksi / Suntik (Intramuskular)</option>
+                <option value="Spray / Fogging">Spray / Semprot Halus</option>
+                <option value="Tetes Mulut">Tetes Mulut (Oral)</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {category === 'Obat' && (
+          <>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis Pemakaian</label>
+                <input
+                  type="text"
+                  value={dosage}
+                  onChange={(e) => setDosage(e.target.value)}
+                  placeholder="e.g. 100g / 200L Air"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jml Ayam Diobati</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={vaccinatedBirdsCount}
+                  onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="e.g. 2000"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-rose-700 outline-none focus:border-[#00684a]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metode Pengobatan</label>
+              <select
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+              >
+                <option value="Air Minum">Air Minum (Melalui Tanki Minum)</option>
+                <option value="Campur Pakan">Campur Pakan (Feed Premix)</option>
+                <option value="Injeksi / Suntik">Injeksi / Suntik Langsung</option>
+                <option value="Tetes Mulut">Tetes Mulut (Individu)</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {category === 'Vitamin' && (
+          <>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis Vitamin</label>
+                <input
+                  type="text"
+                  value={dosage}
+                  onChange={(e) => setDosage(e.target.value)}
+                  placeholder="e.g. 500g / 1000L Air"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Target Populasi</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={vaccinatedBirdsCount}
+                  onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="e.g. 2000"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-amber-700 outline-none focus:border-[#00684a]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metode Pemberian</label>
+              <select
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+              >
+                <option value="Air Minum">Air Minum (Pengenceran Air)</option>
+                <option value="Campur Pakan">Campur Pakan (Top Dressing)</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {category === 'Desinfektan' && (
+          <>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cakupan / Area Disinfeksi</label>
+              <select
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+              >
+                <option value="Seluruh Kandang">Seluruh Kandang (Internal & Eksternal)</option>
+                <option value="Area Tirai & Dinding">Area Tirai, Dinding & Litter</option>
+                <option value="Tempat Minum & Pakan">Tempat Minum & Tempat Pakan</option>
+                <option value="Halaman & Akses Masuk">Halaman Kandang & Akses Kendaraan</option>
+                <option value="Celup Sepatu / Dip Tank">Dip Tank / Celup Sepatu</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis / Konsentrasi Semprot</label>
+              <input
+                type="text"
+                value={dosage}
+                onChange={(e) => setDosage(e.target.value)}
+                placeholder="e.g. 10 ml / Liter Air (Dosis Semprot)"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+              />
+            </div>
+          </>
+        )}
 
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Catatan / Gejala (Opsional)</label>
@@ -303,7 +421,7 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Contoh: Ayam ngorok 5 ekor..."
+            placeholder="Contoh: Tim pelaksana semprot / catatan medis..."
             className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-semibold text-slate-900 outline-none focus:border-[#00684a]"
           />
         </div>

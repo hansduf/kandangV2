@@ -223,12 +223,13 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
       strain: flock.strain || '-',
       capacity: flock.capacity || flock.initial_population || 0,
       chick_in_date: flock.chick_in_date || new Date().toISOString().split('T')[0],
+      chick_out_date: flock.chick_out_date || null,
       initial_population: flock.initial_population || 0,
       current_population: flock.initial_population || 0,
       total_mortality: 0,
       total_culling: 0,
       age_weeks: 1,
-      status: 'active',
+      status: flock.status || 'active',
       created_at: new Date().toISOString()
     };
     flocks.unshift(newFlock);
@@ -242,7 +243,9 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
     p_strain: flock.strain || '-',
     p_capacity: flock.capacity || flock.initial_population || 0,
     p_chick_in_date: flock.chick_in_date,
-    p_initial_population: flock.initial_population
+    p_initial_population: flock.initial_population,
+    p_chick_out_date: flock.chick_out_date || null,
+    p_status: flock.status || 'active'
   });
   if (error) throw error;
   return data;
@@ -258,6 +261,8 @@ export async function updateFlock(id: string, flock: Partial<Flock>): Promise<Fl
       ...flock,
       capacity: flock.capacity !== undefined ? flock.capacity : flocks[index].capacity,
       initial_population: flock.initial_population !== undefined ? flock.initial_population : flocks[index].initial_population,
+      chick_out_date: flock.chick_out_date !== undefined ? flock.chick_out_date : flocks[index].chick_out_date,
+      status: flock.status !== undefined ? flock.status : flocks[index].status,
     };
     flocks[index] = updated;
     localStorage.setItem('kandang_flocks_v2', JSON.stringify(flocks));
@@ -272,6 +277,8 @@ export async function updateFlock(id: string, flock: Partial<Flock>): Promise<Fl
     p_capacity: flock.capacity || 0,
     p_chick_in_date: flock.chick_in_date,
     p_initial_population: flock.initial_population || 0,
+    p_chick_out_date: flock.chick_out_date || null,
+    p_status: flock.status || 'active'
   });
   if (error) throw error;
   return data;

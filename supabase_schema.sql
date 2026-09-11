@@ -14,8 +14,9 @@ CREATE TABLE IF NOT EXISTS public.flocks (
     strain TEXT DEFAULT '-',
     capacity INT NOT NULL DEFAULT 0,
     chick_in_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    chick_out_date DATE,
     initial_population INT NOT NULL DEFAULT 0,
-    status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'archived'
+    status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'archived' | 'checked_out'
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -82,7 +83,9 @@ CREATE OR REPLACE FUNCTION public.create_flock(
     p_strain TEXT,
     p_capacity INT,
     p_chick_in_date DATE,
-    p_initial_population INT
+    p_initial_population INT,
+    p_chick_out_date DATE DEFAULT NULL,
+    p_status TEXT DEFAULT 'active'
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -90,8 +93,8 @@ AS $$
 DECLARE
     v_flock public.flocks%ROWTYPE;
 BEGIN
-    INSERT INTO public.flocks (name, coop_name, strain, capacity, chick_in_date, initial_population, status)
-    VALUES (p_name, p_coop_name, COALESCE(p_strain, '-'), COALESCE(p_capacity, p_initial_population, 0), p_chick_in_date, p_initial_population, 'active')
+    INSERT INTO public.flocks (name, coop_name, strain, capacity, chick_in_date, chick_out_date, initial_population, status)
+    VALUES (p_name, p_coop_name, COALESCE(p_strain, '-'), COALESCE(p_capacity, p_initial_population, 0), p_chick_in_date, p_chick_out_date, p_initial_population, COALESCE(p_status, 'active'))
     RETURNING * INTO v_flock;
 
     RETURN to_jsonb(v_flock);
@@ -108,6 +111,7 @@ RETURNS TABLE (
     strain TEXT,
     capacity INT,
     chick_in_date DATE,
+    chick_out_date DATE,
     initial_population INT,
     current_population INT,
     total_mortality INT,
@@ -127,11 +131,12 @@ BEGIN
         f.strain,
         COALESCE(f.capacity, f.initial_population, 0)::INT AS capacity,
         f.chick_in_date,
+        f.chick_out_date,
         f.initial_population,
         (f.initial_population - COALESCE(SUM(d.mortality_pcs), 0)::INT - COALESCE(SUM(d.culling_pcs), 0)::INT) AS current_population,
         COALESCE(SUM(d.mortality_pcs), 0)::INT AS total_mortality,
         COALESCE(SUM(d.culling_pcs), 0)::INT AS total_culling,
-        GREATEST(1, FLOOR((CURRENT_DATE - f.chick_in_date) / 7.0))::INT AS age_weeks,
+        GREATEST(1, FLOOR((COALESCE(f.chick_out_date, CURRENT_DATE) - f.chick_in_date) / 7.0))::INT AS age_weeks,
         f.status,
         f.created_at
     FROM public.flocks f
@@ -434,7 +439,9 @@ CREATE OR REPLACE FUNCTION public.update_flock(
     p_strain TEXT,
     p_capacity INT,
     p_chick_in_date DATE,
-    p_initial_population INT
+    p_initial_population INT,
+    p_chick_out_date DATE DEFAULT NULL,
+    p_status TEXT DEFAULT 'active'
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -449,7 +456,9 @@ BEGIN
         strain = COALESCE(p_strain, strain),
         capacity = COALESCE(p_capacity, capacity),
         chick_in_date = COALESCE(p_chick_in_date, chick_in_date),
-        initial_population = COALESCE(p_initial_population, initial_population)
+        chick_out_date = p_chick_out_date,
+        initial_population = COALESCE(p_initial_population, initial_population),
+        status = COALESCE(p_status, status)
     WHERE id = p_id
     RETURNING * INTO v_flock;
 

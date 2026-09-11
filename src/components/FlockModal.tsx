@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Flock } from '@/types/database';
-import { X, Layers, Plus, Save } from 'lucide-react';
+import { X, Layers, Plus, Save, LogOut } from 'lucide-react';
 
 interface FlockModalProps {
   isOpen: boolean;
@@ -25,7 +25,9 @@ export const FlockModal: React.FC<FlockModalProps> = ({
   const [strain, setStrain] = useState('');
   const [capacity, setCapacity] = useState<number | ''>('');
   const [chickInDate, setChickInDate] = useState(today);
+  const [chickOutDate, setChickOutDate] = useState('');
   const [initialPop, setInitialPop] = useState<number | ''>('');
+  const [status, setStatus] = useState<'active' | 'archived' | 'checked_out'>('active');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -35,14 +37,18 @@ export const FlockModal: React.FC<FlockModalProps> = ({
       setStrain(flockToEdit.strain || '');
       setCapacity(flockToEdit.capacity || '');
       setChickInDate(flockToEdit.chick_in_date || today);
+      setChickOutDate(flockToEdit.chick_out_date || '');
       setInitialPop(flockToEdit.initial_population || '');
+      setStatus(flockToEdit.status || 'active');
     } else {
       setName('');
       setCoopName('');
       setStrain('');
       setCapacity('');
       setChickInDate(today);
+      setChickOutDate('');
       setInitialPop('');
+      setStatus('active');
     }
   }, [flockToEdit, isOpen]);
 
@@ -54,24 +60,21 @@ export const FlockModal: React.FC<FlockModalProps> = ({
 
     setIsSubmitting(true);
     try {
+      const payload: Partial<Flock> = {
+        name: name.trim(),
+        coop_name: coopName.trim() || 'Kandang A',
+        strain: strain.trim() || '-',
+        capacity: Number(capacity) || Number(initialPop) || 0,
+        chick_in_date: chickInDate,
+        chick_out_date: chickOutDate.trim() || null,
+        initial_population: Number(initialPop) || 0,
+        status: status,
+      };
+
       if (flockToEdit && onUpdateFlock) {
-        await onUpdateFlock(flockToEdit.id, {
-          name,
-          coop_name: coopName.trim() || 'Kandang A',
-          strain: strain.trim() || '-',
-          capacity: Number(capacity) || Number(initialPop) || 0,
-          chick_in_date: chickInDate,
-          initial_population: Number(initialPop) || 0,
-        });
+        await onUpdateFlock(flockToEdit.id, payload);
       } else if (onCreateFlock) {
-        await onCreateFlock({
-          name,
-          coop_name: coopName.trim() || 'Kandang A',
-          strain: strain.trim() || '-',
-          capacity: Number(capacity) || Number(initialPop) || 0,
-          chick_in_date: chickInDate,
-          initial_population: Number(initialPop) || 0,
-        });
+        await onCreateFlock(payload);
       }
       onClose();
     } catch (err) {
@@ -96,7 +99,7 @@ export const FlockModal: React.FC<FlockModalProps> = ({
                 {isEdit ? 'Edit Data Kandang' : 'Tambah Angkatan Baru'}
               </h3>
               <p className="text-[11px] font-semibold text-slate-500">
-                {isEdit ? 'Ubah rincian angkatan/kandang' : 'Pendaftaran kandang baru'}
+                {isEdit ? 'Ubah rincian & status checkout' : 'Pendaftaran kandang baru'}
               </p>
             </div>
           </div>
@@ -170,16 +173,48 @@ export const FlockModal: React.FC<FlockModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tgl Chick-In</label>
-            <input
-              type="date"
-              value={chickInDate}
-              onChange={(e) => setChickInDate(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-              required
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tgl Chick-In</label>
+              <input
+                type="date"
+                value={chickInDate}
+                onChange={(e) => setChickInDate(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center justify-between">
+                <span>Tgl Checkout</span>
+                <span className="text-[9px] text-rose-600 font-black">Afkir Final</span>
+              </label>
+              <input
+                type="date"
+                value={chickOutDate}
+                onChange={(e) => {
+                  setChickOutDate(e.target.value);
+                  if (e.target.value) setStatus('checked_out');
+                }}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-rose-700 outline-none focus:border-rose-500"
+              />
+            </div>
           </div>
+
+          {isEdit && (
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Status Operational Kandang</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+              >
+                <option value="active">🟢 Aktif (Sedang Berproduksi)</option>
+                <option value="checked_out">🔴 Checkout (Afkir Final / Peremajaan)</option>
+                <option value="archived">📦 Arsip / Selesai</option>
+              </select>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -194,4 +229,3 @@ export const FlockModal: React.FC<FlockModalProps> = ({
     </div>
   );
 };
-

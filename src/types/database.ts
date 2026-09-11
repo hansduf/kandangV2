@@ -5,12 +5,13 @@ export interface Flock {
   strain: string;
   capacity?: number;
   chick_in_date: string;
+  chick_out_date?: string | null;
   initial_population: number;
   current_population: number;
   total_mortality?: number;
   total_culling?: number;
   age_weeks: number;
-  status: 'active' | 'archived';
+  status: 'active' | 'archived' | 'checked_out';
   created_at?: string;
 }
 

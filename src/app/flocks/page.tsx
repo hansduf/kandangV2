@@ -110,11 +110,16 @@ export default function FlocksPage() {
               }`}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="bg-emerald-50 text-[#00684a] border border-emerald-200 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">
                     {f.coop_name}
                   </span>
                   <span className="text-xs font-bold text-slate-500">{f.strain}</span>
+                  {f.status === 'checked_out' && (
+                    <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                      Checked Out (Afkir Final)
+                    </span>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-1.5">
@@ -152,7 +157,7 @@ export default function FlocksPage() {
               <div>
                 <h3 className="text-base font-black text-slate-900">{f.name}</h3>
                 <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                  Chick-in: {f.chick_in_date} (Umur {f.age_weeks} Minggu)
+                  Chick-in: {f.chick_in_date} {f.chick_out_date ? `• Checkout: ${f.chick_out_date}` : `(Umur ${f.age_weeks} Minggu)`}
                 </p>
               </div>
 

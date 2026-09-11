@@ -5,20 +5,15 @@ import { Egg, Layers, Plus } from 'lucide-react';
 import { Flock } from '@/types/database';
 
 interface NavbarProps {
-  flocks: Flock[];
-  activeFlockId: string;
-  onSelectFlock: (id: string) => void;
+  flocks?: Flock[];
+  activeFlockId?: string;
+  onSelectFlock?: (id: string) => void;
   onOpenNewFlockModal: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  flocks,
-  activeFlockId,
-  onSelectFlock,
   onOpenNewFlockModal,
 }) => {
-  const activeFlock = flocks.find((f) => f.id === activeFlockId) || flocks[0];
-
   return (
     <header className="sticky top-0 z-40 w-full nav-blur px-4 py-3 shadow-xs">
       <div className="max-w-md mx-auto flex items-center justify-between">
@@ -36,32 +31,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Flock Selector & Actions */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex items-center bg-slate-100 rounded-2xl px-3 py-1.5 border border-slate-200 shadow-inner">
-            <Layers className="w-4 h-4 text-[#00684a] mr-1.5 shrink-0" />
-            <select
-              value={activeFlockId}
-              onChange={(e) => onSelectFlock(e.target.value)}
-              className="bg-transparent text-xs font-black text-slate-800 outline-none cursor-pointer max-w-[125px] truncate"
-            >
-              {flocks.map((f) => (
-                <option key={f.id} value={f.id} className="bg-white text-slate-900 font-bold">
-                  {f.coop_name} - {f.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Add Flock Button */}
-          <button
-            onClick={onOpenNewFlockModal}
-            className="w-9 h-9 rounded-2xl bg-[#e6f4ed] hover:bg-[#d2ede0] active:scale-95 text-[#00684a] flex items-center justify-center transition-all shadow-xs border border-emerald-200"
-            title="Tambah Kandang / Angkatan"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-          </button>
-        </div>
+        {/* Add Flock Action Button */}
+        <button
+          onClick={onOpenNewFlockModal}
+          className="px-3 py-1.5 rounded-2xl bg-[#e6f4ed] hover:bg-[#d2ede0] active:scale-95 text-[#00684a] flex items-center gap-1.5 transition-all shadow-xs border border-emerald-200 text-xs font-black"
+          title="Tambah Kandang / Angkatan"
+        >
+          <Plus className="w-4 h-4 stroke-[3]" />
+          <span>Tambah Kandang</span>
+        </button>
       </div>
     </header>
   );

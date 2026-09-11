@@ -13,28 +13,45 @@ const isConfigured = !!(
 );
 
 // MOCK LOCAL STORAGE FALLBACK DATA FOR PREVIEW MODE IF SUPABASE IS NOT YET CONNECTED
-const DEMO_FLOCK: Flock = {
-  id: 'flock-demo-1',
-  name: 'Angkatan 12 - Layer Alpha',
-  coop_name: 'Kandang A',
-  strain: 'Isa Brown',
-  capacity: 2500,
-  chick_in_date: '2026-05-01',
-  initial_population: 2000,
-  current_population: 1982,
-  total_mortality: 18,
-  total_culling: 0,
-  age_weeks: 18,
-  status: 'active',
-  created_at: new Date().toISOString()
-};
+const DEMO_FLOCKS: Flock[] = [
+  {
+    id: 'flock-demo-1',
+    name: 'Angkatan 12 - Layer Alpha',
+    coop_name: 'Kandang A',
+    strain: 'Isa Brown',
+    capacity: 2500,
+    chick_in_date: '2026-05-01',
+    initial_population: 2000,
+    current_population: 1982,
+    total_mortality: 18,
+    total_culling: 0,
+    age_weeks: 18,
+    status: 'active',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'flock-demo-2',
+    name: 'Angkatan 14 - Layer Beta',
+    coop_name: 'Kandang B',
+    strain: 'Lohmann Brown',
+    capacity: 3000,
+    chick_in_date: '2026-06-15',
+    initial_population: 2500,
+    current_population: 2490,
+    total_mortality: 10,
+    total_culling: 0,
+    age_weeks: 12,
+    status: 'active',
+    created_at: new Date().toISOString()
+  }
+];
 
 function getLocalFlocks(): Flock[] {
-  if (typeof window === 'undefined') return [DEMO_FLOCK];
-  const data = localStorage.getItem('kandang_flocks');
+  if (typeof window === 'undefined') return DEMO_FLOCKS;
+  const data = localStorage.getItem('kandang_flocks_v2');
   if (!data) {
-    localStorage.setItem('kandang_flocks', JSON.stringify([DEMO_FLOCK]));
-    return [DEMO_FLOCK];
+    localStorage.setItem('kandang_flocks_v2', JSON.stringify(DEMO_FLOCKS));
+    return DEMO_FLOCKS;
   }
   return JSON.parse(data);
 }
@@ -132,7 +149,7 @@ export async function fetchFlocks(): Promise<Flock[]> {
 export async function fetchDashboardSummary(flockId: string): Promise<DashboardSummary> {
   if (!isConfigured) {
     const flocks = getLocalFlocks();
-    const flock = flocks.find((f) => f.id === flockId) || DEMO_FLOCK;
+    const flock = flocks.find((f) => f.id === flockId) || DEMO_FLOCKS[0];
     const records = getLocalDailyRecords(flockId);
     const todayStr = new Date().toISOString().split('T')[0];
     const todayRecord = records.find((r) => r.record_date === todayStr) || records[0];

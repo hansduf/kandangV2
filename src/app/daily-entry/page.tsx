@@ -53,9 +53,6 @@ export default function DailyEntryPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
       <Navbar
-        flocks={flocks}
-        activeFlockId={activeFlockId}
-        onSelectFlock={setActiveFlockId}
         onOpenNewFlockModal={() => setIsFlockModalOpen(true)}
       />
 

@@ -76,6 +76,20 @@ CREATE POLICY "Allow public delete health_records" ON public.health_records FOR 
 -- STORED FUNCTIONS / RPCs
 -- ========================================================
 
+-- DROP EXISTING FUNCTIONS TO PREVENT TYPE CHANGE ERRORS (42P13)
+DROP FUNCTION IF EXISTS public.create_flock(TEXT, TEXT, TEXT, INT, DATE, INT);
+DROP FUNCTION IF EXISTS public.create_flock(TEXT, TEXT, TEXT, INT, DATE, INT, DATE, TEXT);
+DROP FUNCTION IF EXISTS public.get_flocks();
+DROP FUNCTION IF EXISTS public.get_flock_dashboard_summary(UUID);
+DROP FUNCTION IF EXISTS public.get_flock_daily_history(UUID, INT);
+DROP FUNCTION IF EXISTS public.upsert_daily_record(UUID, DATE, INT, NUMERIC, INT, NUMERIC, INT, INT, NUMERIC, TEXT);
+DROP FUNCTION IF EXISTS public.get_flock_health_records(UUID);
+DROP FUNCTION IF EXISTS public.add_health_record(UUID, DATE, TEXT, TEXT, TEXT, INT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.update_flock(UUID, TEXT, TEXT, TEXT, INT, DATE, INT);
+DROP FUNCTION IF EXISTS public.update_flock(UUID, TEXT, TEXT, TEXT, INT, DATE, INT, DATE, TEXT);
+DROP FUNCTION IF EXISTS public.delete_flock(UUID);
+
+
 -- RPC 1: Create a new Flock
 CREATE OR REPLACE FUNCTION public.create_flock(
     p_name TEXT,

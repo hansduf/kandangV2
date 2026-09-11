@@ -32,6 +32,7 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
   const [showAddPreset, setShowAddPreset] = useState(false);
 
   const [dosage, setDosage] = useState('');
+  const [vaccinatedBirdsCount, setVaccinatedBirdsCount] = useState<number | ''>('');
   const [method, setMethod] = useState('Air Minum');
   const [notes, setNotes] = useState('');
 
@@ -93,6 +94,7 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
         category: category as any,
         item_name: itemName.trim(),
         dosage: dosage.trim(),
+        vaccinated_birds_count: Number(vaccinatedBirdsCount) || 0,
         method,
         notes: notes.trim(),
       });
@@ -100,6 +102,7 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
       setSuccessMessage(`✅ DATA ${category.toUpperCase()} BERHASIL DISIMPAN!`);
       setItemName('');
       setDosage('');
+      setVaccinatedBirdsCount('');
       setNotes('');
       setTimeout(() => setSuccessMessage(''), 3500);
     } catch (err) {
@@ -255,7 +258,7 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
 
         <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis</label>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis Pemakaian</label>
             <input
               type="text"
               value={dosage}
@@ -266,19 +269,32 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Cara Pakai</label>
-            <select
-              value={method}
-              onChange={(e) => setMethod(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-            >
-              <option value="Air Minum">Air Minum</option>
-              <option value="Injeksi">Suntik (Injeksi)</option>
-              <option value="Tetes Mata">Tetes Mata</option>
-              <option value="Pakan">Campur Pakan</option>
-              <option value="Semprot">Semprot Kandang</option>
-            </select>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jml Ayam (Ekor)</label>
+            <input
+              type="number"
+              min="0"
+              value={vaccinatedBirdsCount}
+              onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="e.g. 2000"
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-[#00684a] outline-none focus:border-[#00684a]"
+            />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tatacara / Metode Aplikasi</label>
+          <select
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+          >
+            <option value="Air Minum">Air Minum (Minuman Kandang)</option>
+            <option value="Injeksi / Suntik">Injeksi / Suntik (Intramuskular)</option>
+            <option value="Tetes Mata">Tetes Mata (Ocular)</option>
+            <option value="Campur Pakan">Campur Pakan (Feed Premix)</option>
+            <option value="Semprot / Fogging">Semprot / Fogging Disinfeksi</option>
+            <option value="Tetes Mulut">Tetes Mulut (Oral Drop)</option>
+          </select>
         </div>
 
         <div>

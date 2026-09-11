@@ -291,6 +291,7 @@ export async function saveHealthRecord(record: HealthRecord): Promise<void> {
     p_category: record.category,
     p_item_name: record.item_name,
     p_dosage: record.dosage || '',
+    p_vaccinated_birds_count: record.vaccinated_birds_count || 0,
     p_method: record.method || '',
     p_notes: record.notes || ''
   });

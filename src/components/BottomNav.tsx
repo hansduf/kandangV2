@@ -14,7 +14,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickInput }) => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-1 sm:px-4 sm:py-1.5 pb-safe">
-      <div className="max-w-md mx-auto flex items-end justify-between relative">
+      <div className="max-w-md md:max-w-2xl lg:max-w-3xl mx-auto flex items-end justify-between relative">
         
         {/* Item 1: Beranda */}
         <Link

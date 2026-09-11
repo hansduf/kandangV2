@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS public.health_records (
     category TEXT NOT NULL, -- 'Vaksin', 'Obat', 'Vitamin', 'Desinfektan'
     item_name TEXT NOT NULL,
     dosage TEXT,
-    method TEXT, -- 'Air Minum', 'Injeksi', 'Tetes Mata', 'Pakan', 'Semprot'
+    vaccinated_birds_count INT DEFAULT 0, -- Jumlah ayam yang diberi vaksin/obat
+    method TEXT, -- 'Air Minum', 'Injeksi / Suntik', 'Tetes Mata', 'Campur Pakan', 'Semprot / Fogging', 'Tetes Mulut'
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -382,6 +383,7 @@ RETURNS TABLE (
     category TEXT,
     item_name TEXT,
     dosage TEXT,
+    vaccinated_birds_count INT,
     method TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ
@@ -390,7 +392,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT h.id, h.record_date, h.category, h.item_name, h.dosage, h.method, h.notes, h.created_at
+    SELECT h.id, h.record_date, h.category, h.item_name, h.dosage, COALESCE(h.vaccinated_birds_count, 0)::INT, h.method, h.notes, h.created_at
     FROM public.health_records h
     WHERE h.flock_id = p_flock_id
     ORDER BY h.record_date DESC, h.created_at DESC;
@@ -405,6 +407,7 @@ CREATE OR REPLACE FUNCTION public.add_health_record(
     p_category TEXT,
     p_item_name TEXT,
     p_dosage TEXT,
+    p_vaccinated_birds_count INT,
     p_method TEXT,
     p_notes TEXT
 )
@@ -414,82 +417,10 @@ AS $$
 DECLARE
     v_health public.health_records%ROWTYPE;
 BEGIN
-    INSERT INTO public.health_records (flock_id, record_date, category, item_name, dosage, method, notes)
-    VALUES (p_flock_id, p_record_date, p_category, p_item_name, p_dosage, p_method, p_notes)
+    INSERT INTO public.health_records (flock_id, record_date, category, item_name, dosage, vaccinated_birds_count, method, notes)
+    VALUES (p_flock_id, p_record_date, p_category, p_item_name, p_dosage, COALESCE(p_vaccinated_birds_count, 0), p_method, p_notes)
     RETURNING * INTO v_health;
 
     RETURN to_jsonb(v_health);
-END;
-$$;
-
-
--- RPC 8: Seed Demo Data Function for Quick Testing
-CREATE OR REPLACE FUNCTION public.seed_sample_data()
-RETURNS UUID
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    v_flock_id UUID;
-    v_date DATE;
-    i INT;
-    v_good_pcs INT;
-    v_good_kg NUMERIC(8,2);
-    v_feed NUMERIC(8,2);
-    v_mortality INT;
-BEGIN
-    -- Insert a sample flock
-    INSERT INTO public.flocks (name, coop_name, strain, chick_in_date, initial_population, status)
-    VALUES ('Flock 12 - Layer Alpha', 'Kandang A', 'Isa Brown', CURRENT_DATE - INTERVAL '120 days', 2000, 'active')
-    RETURNING id INTO v_flock_id;
-
-    -- Generate 14 days of realistic daily data
-    FOR i IN REVERSE 0..13 LOOP
-        v_date := CURRENT_DATE - (i || ' day')::INTERVAL;
-        v_good_pcs := 1720 + (RANDOM() * 100)::INT;
-        v_good_kg := ROUND((v_good_pcs * 0.062)::NUMERIC, 2);
-        v_feed := ROUND((115.0 * 2000 / 1000.0 + (RANDOM() * 5.0))::NUMERIC, 2);
-        
-        IF RANDOM() > 0.7 THEN
-            v_mortality := 1;
-        ELSE
-            v_mortality := 0;
-        END IF;
-
-        PERFORM public.upsert_daily_record(
-            v_flock_id,
-            v_date,
-            v_good_pcs,
-            v_good_kg,
-            12,
-            0.72,
-            v_mortality,
-            0,
-            v_feed,
-            'Kondisi ayam sehat dan aktif.'
-        );
-    END FOR;
-
-    -- Insert health records
-    PERFORM public.add_health_record(
-        v_flock_id,
-        CURRENT_DATE - INTERVAL '10 days',
-        'Vaksin',
-        'Vaksin ND-IB Booster',
-        '2000 Dosis',
-        'Air Minum',
-        'Booster rutin umur 16 minggu'
-    );
-
-    PERFORM public.add_health_record(
-        v_flock_id,
-        CURRENT_DATE - INTERVAL '3 days',
-        'Vitamin',
-        'Egg Stimulant Vita',
-        '100g / 200L Air',
-        'Air Minum',
-        'Pemberian vitamin pemicu telur'
-    );
-
-    RETURN v_flock_id;
 END;
 $$;

@@ -45,6 +45,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   const [healthCategory, setHealthCategory] = useState<'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'>('Vaksin');
   const [healthItemName, setHealthItemName] = useState('');
   const [healthDosage, setHealthDosage] = useState('');
+  const [vaccinatedBirdsCount, setVaccinatedBirdsCount] = useState<number | ''>('');
   const [healthMethod, setHealthMethod] = useState('Air Minum');
   const [healthNotes, setHealthNotes] = useState('');
 
@@ -73,6 +74,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
         category: healthCategory,
         item_name: healthItemName.trim(),
         dosage: healthDosage.trim(),
+        vaccinated_birds_count: Number(vaccinatedBirdsCount) || activeFlock.current_population || 0,
         method: healthMethod,
         notes: healthNotes.trim(),
       });
@@ -184,6 +186,19 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
         {/* TAB 2: OBAT & VAKSIN */}
         {activeTab === 'health' && (
           <form onSubmit={handleSaveHealthSubmit} className="space-y-3.5">
+            {/* Tanggal Pencatatan */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
+              <label className="text-xs font-black text-slate-800 uppercase tracking-wider">Tanggal Aplikasi</label>
+              <input
+                type="date"
+                value={recordDate}
+                onChange={(e) => setRecordDate(e.target.value)}
+                className="bg-white border border-slate-300 text-slate-900 text-xs font-black rounded-xl px-3 py-1.5 outline-none focus:border-[#00684a]"
+                required
+              />
+            </div>
+
+            {/* Category Selector */}
             <div className="grid grid-cols-2 gap-2">
               {[
                 { cat: 'Vaksin', icon: Syringe },
@@ -229,29 +244,53 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Dosis Pemakaian</label>
                   <input
                     type="text"
                     value={healthDosage}
                     onChange={(e) => setHealthDosage(e.target.value)}
-                    placeholder="100g / 200L Air"
+                    placeholder="e.g. 100g / 200L Air"
                     className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Metode</label>
-                  <select
-                    value={healthMethod}
-                    onChange={(e) => setHealthMethod(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none"
-                  >
-                    <option value="Air Minum">Air Minum</option>
-                    <option value="Injeksi">Suntik</option>
-                    <option value="Tetes Mata">Tetes Mata</option>
-                    <option value="Pakan">Campur Pakan</option>
-                    <option value="Semprot">Semprot</option>
-                  </select>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jml Ayam (Ekor)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={vaccinatedBirdsCount}
+                    onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder={`e.g. ${activeFlock?.current_population || 2000}`}
+                    className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-[#00684a] outline-none"
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tatacara / Metode Aplikasi</label>
+                <select
+                  value={healthMethod}
+                  onChange={(e) => setHealthMethod(e.target.value)}
+                  className="w-full bg-white border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                >
+                  <option value="Air Minum">Air Minum (Minuman Kandang)</option>
+                  <option value="Injeksi / Suntik">Injeksi / Suntik (Intramuskular)</option>
+                  <option value="Tetes Mata">Tetes Mata (Ocular)</option>
+                  <option value="Campur Pakan">Campur Pakan (Feed Premix)</option>
+                  <option value="Semprot / Fogging">Semprot / Fogging Disinfeksi</option>
+                  <option value="Tetes Mulut">Tetes Mulut (Oral Drop)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Catatan Tambahan & Gejala</label>
+                <textarea
+                  rows={2}
+                  value={healthNotes}
+                  onChange={(e) => setHealthNotes(e.target.value)}
+                  placeholder="Catatan respon ayam, tim pelaksana, atau gejala klinis..."
+                  className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-semibold text-slate-900 outline-none focus:border-[#00684a]"
+                />
               </div>
             </div>
 

@@ -18,11 +18,12 @@ interface PerformanceChartProps {
 
 export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) => {
   const [metric, setMetric] = useState<'hd' | 'kg' | 'feed' | 'mortality'>('hd');
+  const [days, setDays] = useState<7 | 14 | 30>(14);
 
   // Format data for chart (oldest to newest)
   const chartData = [...records]
     .reverse()
-    .slice(-14)
+    .slice(-days)
     .map((r) => ({
       date: r.record_date.slice(5), // MM-DD
       hd: r.hd_percent || 0,
@@ -40,27 +41,46 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
 
   return (
     <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 space-y-3 shadow-sm">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
-          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Tren Performa 14 Hari</h3>
+          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Tren Performa ({days} Hari)</h3>
           <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Visualisasi metrik harian</p>
         </div>
         
-        {/* Metric Selector Pills */}
-        <div className="flex gap-1 bg-slate-100 p-0.5 sm:p-1 rounded-xl sm:rounded-2xl border border-slate-200">
-          {(['hd', 'kg', 'mortality'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMetric(m)}
-              className={`px-2 py-1 sm:px-2.5 text-[10px] sm:text-[11px] font-black rounded-lg sm:rounded-xl transition-all ${
-                metric === m
-                  ? 'bg-[#00684a] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {m === 'hd' ? 'HD %' : m === 'kg' ? 'Kg Telur' : 'Mati'}
-            </button>
-          ))}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Timeframe Selector Pills */}
+          <div className="flex gap-0.5 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+            {([7, 14, 30] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={`px-2 py-0.5 text-[9px] sm:text-[10px] font-black rounded-lg transition-all ${
+                  days === d
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {d}H
+              </button>
+            ))}
+          </div>
+
+          {/* Metric Selector Pills */}
+          <div className="flex gap-0.5 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+            {(['hd', 'kg', 'mortality'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMetric(m)}
+                className={`px-2 py-0.5 text-[9px] sm:text-[10px] font-black rounded-lg transition-all ${
+                  metric === m
+                    ? 'bg-[#00684a] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {m === 'hd' ? 'HD %' : m === 'kg' ? 'Kg Telur' : 'Mati'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -39,7 +39,8 @@ export interface HealthRecord {
   category: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan';
   item_name: string;
   dosage?: string;
-  method?: 'Air Minum' | 'Injeksi' | 'Tetes Mata' | 'Pakan' | 'Semprot' | string;
+  vaccinated_birds_count?: number;
+  method?: 'Air Minum' | 'Injeksi / Suntik' | 'Tetes Mata' | 'Campur Pakan' | 'Semprot / Fogging' | 'Tetes Mulut' | string;
   notes?: string;
   created_at?: string;
 }

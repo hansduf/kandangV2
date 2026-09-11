@@ -136,6 +136,18 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         </div>
       )}
 
+      {/* TANGGAL PENCATATAN */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
+        <label className="text-xs font-black text-slate-800 uppercase tracking-wider">Tanggal Pencatatan</label>
+        <input
+          type="date"
+          value={recordDate}
+          onChange={(e) => setRecordDate(e.target.value)}
+          className="bg-white border border-slate-300 text-slate-900 text-xs font-black rounded-xl px-3 py-1.5 outline-none focus:border-[#00684a]"
+          required
+        />
+      </div>
+
       {/* 2-COLUMN EGG PRODUCTION INPUT */}
       <div className="grid grid-cols-2 gap-3">
         {/* LEFT COLUMN: TELUR UTUH (BUTIR & KG) */}

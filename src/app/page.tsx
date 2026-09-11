@@ -120,7 +120,7 @@ export default function DashboardHomePage() {
         onOpenNewFlockModal={() => setIsFlockModalOpen(true)}
       />
 
-      <main className="max-w-md mx-auto px-3 py-3.5 sm:px-4 sm:py-4 space-y-3.5 sm:space-y-4">
+      <main className="max-w-md md:max-w-2xl lg:max-w-3xl mx-auto px-3 py-3.5 sm:px-4 sm:py-4 space-y-3.5 sm:space-y-4">
         {/* Horizontal Swipeable Coop Sub-Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar snap-x scroll-smooth">
           {flocks.map((f) => {

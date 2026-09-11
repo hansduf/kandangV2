@@ -34,10 +34,10 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   const todayStr = new Date().toISOString().split('T')[0];
   const [recordDate, setRecordDate] = useState(todayStr);
 
-  const [eggGoodPcs, setEggGoodPcs] = useState<number | ''>(1740);
-  const [eggGoodKg, setEggGoodKg] = useState<number | ''>(108.5);
+  const [eggGoodPcs, setEggGoodPcs] = useState<number | ''>('');
+  const [eggGoodKg, setEggGoodKg] = useState<number | ''>('');
 
-  const [eggBadPcs, setEggBadPcs] = useState<number | ''>(10);
+  const [eggBadPcs, setEggBadPcs] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,13 +53,14 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   const adjustPcs = (amount: number) => {
     const current = Number(eggGoodPcs) || 0;
     const nextVal = Math.max(0, current + amount);
-    setEggGoodPcs(nextVal);
-    setEggGoodKg(Number((nextVal * 0.0623).toFixed(2)));
+    setEggGoodPcs(nextVal > 0 ? nextVal : '');
+    setEggGoodKg(nextVal > 0 ? Number((nextVal * 0.0625).toFixed(2)) : '');
   };
 
   const adjustBadPcs = (amount: number) => {
     const current = Number(eggBadPcs) || 0;
-    setEggBadPcs(Math.max(0, current + amount));
+    const nextVal = Math.max(0, current + amount);
+    setEggBadPcs(nextVal > 0 ? nextVal : '');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -165,6 +166,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 min="0"
                 value={eggGoodPcs}
                 onChange={(e) => setEggGoodPcs(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="0"
                 className="w-16 text-center text-xl font-black text-[#00684a] bg-transparent outline-none"
                 required
               />
@@ -188,7 +190,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 min="0"
                 value={eggGoodKg}
                 onChange={(e) => setEggGoodKg(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="108.5"
+                placeholder="0.0"
                 className="w-full text-right text-base font-black text-amber-700 bg-white border border-amber-200 rounded-xl px-2.5 py-1 outline-none focus:border-amber-500"
                 required
               />
@@ -225,8 +227,8 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 min="0"
                 value={eggBadPcs}
                 onChange={(e) => setEggBadPcs(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="0"
                 className="w-16 text-center text-xl font-black text-amber-700 bg-transparent outline-none"
-                required
               />
               <button
                 type="button"

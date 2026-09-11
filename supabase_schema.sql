@@ -11,9 +11,10 @@ CREATE TABLE IF NOT EXISTS public.flocks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     coop_name TEXT NOT NULL,
-    strain TEXT DEFAULT 'Isa Brown',
+    strain TEXT DEFAULT '-',
+    capacity INT NOT NULL DEFAULT 0,
     chick_in_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    initial_population INT NOT NULL DEFAULT 1000,
+    initial_population INT NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'archived'
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -78,6 +79,7 @@ CREATE OR REPLACE FUNCTION public.create_flock(
     p_name TEXT,
     p_coop_name TEXT,
     p_strain TEXT,
+    p_capacity INT,
     p_chick_in_date DATE,
     p_initial_population INT
 )
@@ -87,8 +89,8 @@ AS $$
 DECLARE
     v_flock public.flocks%ROWTYPE;
 BEGIN
-    INSERT INTO public.flocks (name, coop_name, strain, chick_in_date, initial_population, status)
-    VALUES (p_name, p_coop_name, COALESCE(p_strain, 'Isa Brown'), p_chick_in_date, p_initial_population, 'active')
+    INSERT INTO public.flocks (name, coop_name, strain, capacity, chick_in_date, initial_population, status)
+    VALUES (p_name, p_coop_name, COALESCE(p_strain, '-'), COALESCE(p_capacity, p_initial_population, 0), p_chick_in_date, p_initial_population, 'active')
     RETURNING * INTO v_flock;
 
     RETURN to_jsonb(v_flock);
@@ -103,6 +105,7 @@ RETURNS TABLE (
     name TEXT,
     coop_name TEXT,
     strain TEXT,
+    capacity INT,
     chick_in_date DATE,
     initial_population INT,
     current_population INT,
@@ -121,6 +124,7 @@ BEGIN
         f.name,
         f.coop_name,
         f.strain,
+        COALESCE(f.capacity, f.initial_population, 0)::INT AS capacity,
         f.chick_in_date,
         f.initial_population,
         (f.initial_population - COALESCE(SUM(d.mortality_pcs), 0)::INT - COALESCE(SUM(d.culling_pcs), 0)::INT) AS current_population,

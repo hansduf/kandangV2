@@ -18,6 +18,7 @@ const DEMO_FLOCK: Flock = {
   name: 'Angkatan 12 - Layer Alpha',
   coop_name: 'Kandang A',
   strain: 'Isa Brown',
+  capacity: 2500,
   chick_in_date: '2026-05-01',
   initial_population: 2000,
   current_population: 1982,
@@ -286,10 +287,11 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
       id: `flock-${Date.now()}`,
       name: flock.name || 'Angkatan Baru',
       coop_name: flock.coop_name || 'Kandang A',
-      strain: flock.strain || 'Isa Brown',
+      strain: flock.strain || '-',
+      capacity: flock.capacity || flock.initial_population || 0,
       chick_in_date: flock.chick_in_date || new Date().toISOString().split('T')[0],
-      initial_population: flock.initial_population || 1000,
-      current_population: flock.initial_population || 1000,
+      initial_population: flock.initial_population || 0,
+      current_population: flock.initial_population || 0,
       total_mortality: 0,
       total_culling: 0,
       age_weeks: 1,
@@ -304,7 +306,8 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
   const { data, error } = await supabase.rpc('create_flock', {
     p_name: flock.name,
     p_coop_name: flock.coop_name,
-    p_strain: flock.strain || 'Isa Brown',
+    p_strain: flock.strain || '-',
+    p_capacity: flock.capacity || flock.initial_population || 0,
     p_chick_in_date: flock.chick_in_date,
     p_initial_population: flock.initial_population
   });

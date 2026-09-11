@@ -13,10 +13,11 @@ interface FlockModalProps {
 export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreateFlock }) => {
   const today = new Date().toISOString().split('T')[0];
   const [name, setName] = useState('');
-  const [coopName, setCoopName] = useState('Kandang A');
-  const [strain, setStrain] = useState('Isa Brown');
+  const [coopName, setCoopName] = useState('');
+  const [strain, setStrain] = useState('');
+  const [capacity, setCapacity] = useState<number | ''>('');
   const [chickInDate, setChickInDate] = useState(today);
-  const [initialPop, setInitialPop] = useState<number | ''>(1000);
+  const [initialPop, setInitialPop] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -29,10 +30,11 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
     try {
       await onCreateFlock({
         name,
-        coop_name: coopName,
-        strain,
+        coop_name: coopName.trim() || 'Kandang A',
+        strain: strain.trim() || '-',
+        capacity: Number(capacity) || Number(initialPop) || 0,
         chick_in_date: chickInDate,
-        initial_population: Number(initialPop) || 1000,
+        initial_population: Number(initialPop) || 0,
       });
       onClose();
     } catch (err) {
@@ -80,49 +82,60 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
                 type="text"
                 value={coopName}
                 onChange={(e) => setCoopName(e.target.value)}
-                placeholder="Kandang A"
+                placeholder="e.g. Kandang A"
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
                 required
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jenis Strain Ayam</label>
-              <select
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jenis / Strain Ayam</label>
+              <input
+                type="text"
                 value={strain}
                 onChange={(e) => setStrain(e.target.value)}
+                placeholder="Ketuk & isi manual..."
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-              >
-                <option value="Isa Brown">Isa Brown</option>
-                <option value="Lohmann Brown">Lohmann Brown</option>
-                <option value="Hy-Line Brown">Hy-Line Brown</option>
-                <option value="Hisex Brown">Hisex Brown</option>
-                <option value="Lainnya">Lainnya</option>
-              </select>
+                required
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tgl Chick-In</label>
-              <input
-                type="date"
-                value={chickInDate}
-                onChange={(e) => setChickInDate(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Populasi Awal (Ekor)</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kapasitas Kandang</label>
               <input
                 type="number"
-                value={initialPop}
-                onChange={(e) => setInitialPop(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="1000"
+                min="0"
+                value={capacity}
+                onChange={(e) => setCapacity(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="e.g. 2500 ekor"
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-[#00684a] outline-none focus:border-[#00684a]"
                 required
               />
             </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Populasi Awal</label>
+              <input
+                type="number"
+                min="0"
+                value={initialPop}
+                onChange={(e) => setInitialPop(e.target.value === '' ? '' : Number(e.target.value))}
+                placeholder="e.g. 2000 ekor"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-[#00684a] outline-none focus:border-[#00684a]"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tgl Chick-In</label>
+            <input
+              type="date"
+              value={chickInDate}
+              onChange={(e) => setChickInDate(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+              required
+            />
           </div>
 
           <button

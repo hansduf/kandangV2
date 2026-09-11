@@ -3,6 +3,7 @@ export interface Flock {
   name: string;
   coop_name: string;
   strain: string;
+  capacity?: number;
   chick_in_date: string;
   initial_population: number;
   current_population: number;

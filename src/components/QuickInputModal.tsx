@@ -49,8 +49,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   const [healthNotes, setHealthNotes] = useState('');
 
   // Mortality State
-  const [mortalityPcs, setMortalityPcs] = useState<number | ''>(0);
-  const [cullingPcs, setCullingPcs] = useState<number | ''>(0);
+  const [mortalityPcs, setMortalityPcs] = useState<number | ''>('');
+  const [cullingPcs, setCullingPcs] = useState<number | ''>('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');

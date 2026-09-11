@@ -117,13 +117,17 @@ export default function FlocksPage() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs">
+              <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-xs">
                 <div>
-                  <span className="block text-[10px] font-bold text-slate-500 uppercase">Populasi Awal</span>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase">Kapasitas</span>
+                  <span className="font-black text-slate-900">{f.capacity || f.initial_population || 0} ekor</span>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase">Pop. Awal</span>
                   <span className="font-black text-slate-900">{f.initial_population} ekor</span>
                 </div>
                 <div>
-                  <span className="block text-[10px] font-bold text-slate-500 uppercase">Populasi Saat Ini</span>
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase">Pop. Saat Ini</span>
                   <span className="font-black text-[#00684a]">{f.current_population} ekor</span>
                 </div>
               </div>

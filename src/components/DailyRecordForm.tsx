@@ -20,16 +20,16 @@ export const DailyRecordForm: React.FC<DailyRecordFormProps> = ({
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(initialDate || today);
 
-  const [eggGoodPcs, setEggGoodPcs] = useState<number | ''>(1740);
-  const [eggGoodKg, setEggGoodKg] = useState<number | ''>(108.5);
+  const [eggGoodPcs, setEggGoodPcs] = useState<number | ''>('');
+  const [eggGoodKg, setEggGoodKg] = useState<number | ''>('');
 
-  const [eggBadPcs, setEggBadPcs] = useState<number | ''>(12);
-  const [eggBadKg, setEggBadKg] = useState<number | ''>(0.75);
+  const [eggBadPcs, setEggBadPcs] = useState<number | ''>('');
+  const [eggBadKg, setEggBadKg] = useState<number | ''>('');
 
-  const [mortalityPcs, setMortalityPcs] = useState<number | ''>(0);
-  const [cullingPcs, setCullingPcs] = useState<number | ''>(0);
+  const [mortalityPcs, setMortalityPcs] = useState<number | ''>('');
+  const [cullingPcs, setCullingPcs] = useState<number | ''>('');
 
-  const [feedKg, setFeedKg] = useState<number | ''>(230);
+  const [feedKg, setFeedKg] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -26,7 +26,9 @@ export interface DailyRecord {
   mortality_pcs: number;
   culling_pcs: number;
   feed_kg: number;
-  hd_percent?: number;
+  hd_percent?: number; // Hen-Day Production % (HDP)
+  hdp_percent?: number; // Hen-Day Production % = (Telur Utuh / Populasi Hidup) * 100
+  hhp_percent?: number; // Hen-Housed Production % = (Telur Utuh / Populasi Awal) * 100
   fcr?: number;
   avg_egg_weight_g?: number;
   notes?: string;
@@ -58,13 +60,18 @@ export interface DashboardSummary {
     mortality_pcs: number;
     culling_pcs: number;
     feed_kg: number;
-    hd_percent: number;
+    hd_percent: number; // HDP
+    hdp_percent: number;
+    hhp_percent: number;
     fcr: number;
     avg_egg_weight_g: number;
     notes: string;
   };
   totals: {
+    weekly_mortality: number;
+    monthly_mortality: number;
     total_mortality: number;
+    mortality_rate_percent: number;
     total_culling: number;
     total_egg_good_pcs: number;
     total_egg_good_kg: number;
@@ -73,6 +80,8 @@ export interface DashboardSummary {
     total_feed_kg: number;
     total_days_recorded: number;
     overall_hd_percent: number;
+    overall_hdp_percent: number;
+    overall_hhp_percent: number;
     overall_fcr: number;
   };
 }

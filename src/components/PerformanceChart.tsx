@@ -18,7 +18,7 @@ interface PerformanceChartProps {
 }
 
 export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) => {
-  const [metric, setMetric] = useState<'hd' | 'kg' | 'mortality'>('hd');
+  const [metric, setMetric] = useState<'hdp' | 'hhp' | 'kg' | 'mortality'>('hdp');
   const [timeMode, setTimeMode] = useState<'7' | '14' | '30' | 'all' | 'custom'>('14');
   
   const todayStr = new Date().toISOString().split('T')[0];
@@ -41,13 +41,13 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
       (r) => r.record_date >= startDate && r.record_date <= endDate
     );
   }
-  // 'all' uses all filteredRecords
 
   // Format data for chart
   const chartData = filteredRecords.map((r) => ({
-    date: r.record_date.length >= 10 ? r.record_date.slice(5) : r.record_date, // MM-DD
+    date: r.record_date.length >= 10 ? r.record_date.slice(5) : r.record_date,
     fullDate: r.record_date,
-    hd: r.hd_percent || 0,
+    hdp: r.hdp_percent || r.hd_percent || 0,
+    hhp: r.hhp_percent || 0,
     egg_kg: r.egg_good_kg || 0,
     feed_kg: r.feed_kg || 0,
     fcr: r.fcr || 0,
@@ -55,8 +55,9 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
   }));
 
   const metricConfig = {
-    hd: { label: 'Hen-Day (%)', dataKey: 'hd', color: '#00684a', gradientId: 'emeraldGrad', unit: '%' },
-    kg: { label: 'Telur Utuh (Kg)', dataKey: 'egg_kg', color: '#d97706', gradientId: 'amberGrad', unit: 'kg' },
+    hdp: { label: 'Hen-Day Production (HDP %)', dataKey: 'hdp', color: '#00684a', gradientId: 'emeraldGrad', unit: '%' },
+    hhp: { label: 'Hen-Housed Production (HHP %)', dataKey: 'hhp', color: '#d97706', gradientId: 'amberGrad', unit: '%' },
+    kg: { label: 'Telur Utuh (Kg)', dataKey: 'egg_kg', color: '#2563eb', gradientId: 'blueGrad', unit: 'kg' },
     mortality: { label: 'Mortalitas (Ekor)', dataKey: 'mortality', color: '#e11d48', gradientId: 'roseGrad', unit: 'ekor' },
   }[metric];
 
@@ -65,9 +66,9 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-            Tren Performa {timeMode === 'all' ? '(Semua)' : timeMode === 'custom' ? '(Kustom)' : `(${timeMode} Hari)`}
+            Grafik Performa {timeMode === 'all' ? '(Semua)' : timeMode === 'custom' ? '(Kustom)' : `(${timeMode} Hari)`}
           </h3>
-          <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Visualisasi metrik harian</p>
+          <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Visualisasi metrik HDP, HHP, Kg & Kematian</p>
         </div>
         
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -90,7 +91,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
 
           {/* Metric Selector Pills */}
           <div className="flex gap-0.5 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
-            {(['hd', 'kg', 'mortality'] as const).map((m) => (
+            {(['hdp', 'hhp', 'kg', 'mortality'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMetric(m)}
@@ -100,7 +101,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {m === 'hd' ? 'HD %' : m === 'kg' ? 'Kg Telur' : 'Mati'}
+                {m === 'hdp' ? 'HDP %' : m === 'hhp' ? 'HHP %' : m === 'kg' ? 'Kg Telur' : 'Mati'}
               </button>
             ))}
           </div>
@@ -112,7 +113,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-xs font-bold animate-in fade-in duration-200">
           <div className="flex items-center gap-1.5 text-slate-700">
             <Calendar className="w-3.5 h-3.5 text-[#00684a]" />
-            <span>Pilih Rentang Tanggal:</span>
+            <span>Rentang Tanggal:</span>
           </div>
           <div className="flex items-center gap-1.5">
             <input
@@ -144,6 +145,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({ records }) =
                 <linearGradient id="amberGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#d97706" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#d97706" stopOpacity={0.0} />
+                </linearGradient>
+                <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
                 </linearGradient>
                 <linearGradient id="roseGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#e11d48" stopOpacity={0.3} />

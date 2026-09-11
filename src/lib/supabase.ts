@@ -88,6 +88,12 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
     const todayStr = new Date().toISOString().split('T')[0];
     const todayRecord = records.find((r) => r.record_date === todayStr);
 
+    const now = new Date();
+    const date7DaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString().split('T')[0];
+    const date30DaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString().split('T')[0];
+
+    const weeklyMort = records.filter((r) => r.record_date >= date7DaysAgo).reduce((acc, r) => acc + (r.mortality_pcs || 0), 0);
+    const monthlyMort = records.filter((r) => r.record_date >= date30DaysAgo).reduce((acc, r) => acc + (r.mortality_pcs || 0), 0);
     const totalMort = records.reduce((acc, r) => acc + (r.mortality_pcs || 0), 0);
     const totalCull = records.reduce((acc, r) => acc + (r.culling_pcs || 0), 0);
     const totalEggGoodPcs = records.reduce((acc, r) => acc + (r.egg_good_pcs || 0), 0);
@@ -97,7 +103,15 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
     const totalEggBadKg = records.reduce((acc, r) => acc + (r.egg_bad_kg || 0), 0);
 
     const currentPop = Math.max(0, (flock.initial_population || 0) - totalMort - totalCull);
-    const overallHD = records.length > 0 && currentPop > 0 ? (totalEggGoodPcs / (currentPop * records.length)) * 100 : 0;
+    const initialPop = flock.initial_population || currentPop || 1;
+
+    const todayGoodPcs = todayRecord?.egg_good_pcs || 0;
+    const todayHdp = currentPop > 0 ? Number(((todayGoodPcs / currentPop) * 100).toFixed(2)) : 0;
+    const todayHhp = initialPop > 0 ? Number(((todayGoodPcs / initialPop) * 100).toFixed(2)) : 0;
+
+    const overallHdp = records.length > 0 && currentPop > 0 ? Number(((totalEggGoodPcs / (currentPop * records.length)) * 100).toFixed(2)) : 0;
+    const overallHhp = records.length > 0 && initialPop > 0 ? Number(((totalEggGoodPcs / (initialPop * records.length)) * 100).toFixed(2)) : 0;
+    const mortRate = initialPop > 0 ? Number(((totalMort / initialPop) * 100).toFixed(2)) : 0;
     const overallFCR = totalEggGoodKg > 0 ? totalFeedKg / totalEggGoodKg : 0;
 
     return {
@@ -105,20 +119,25 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
       today: {
         has_recorded: !!todayRecord,
         record_date: todayRecord?.record_date || todayStr,
-        egg_good_pcs: todayRecord?.egg_good_pcs || 0,
+        egg_good_pcs: todayGoodPcs,
         egg_good_kg: todayRecord?.egg_good_kg || 0,
         egg_bad_pcs: todayRecord?.egg_bad_pcs || 0,
         egg_bad_kg: todayRecord?.egg_bad_kg || 0,
         mortality_pcs: todayRecord?.mortality_pcs || 0,
         culling_pcs: todayRecord?.culling_pcs || 0,
         feed_kg: todayRecord?.feed_kg || 0,
-        hd_percent: todayRecord?.hd_percent || 0,
+        hd_percent: todayHdp,
+        hdp_percent: todayHdp,
+        hhp_percent: todayHhp,
         fcr: todayRecord?.fcr || 0,
         avg_egg_weight_g: todayRecord?.avg_egg_weight_g || 0,
         notes: todayRecord?.notes || ''
       },
       totals: {
+        weekly_mortality: weeklyMort,
+        monthly_mortality: monthlyMort,
         total_mortality: totalMort,
+        mortality_rate_percent: mortRate,
         total_culling: totalCull,
         total_egg_good_pcs: totalEggGoodPcs,
         total_egg_good_kg: Number(totalEggGoodKg.toFixed(2)),
@@ -126,7 +145,9 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
         total_egg_bad_kg: Number(totalEggBadKg.toFixed(2)),
         total_feed_kg: Number(totalFeedKg.toFixed(2)),
         total_days_recorded: records.length,
-        overall_hd_percent: Number(overallHD.toFixed(2)),
+        overall_hd_percent: overallHdp,
+        overall_hdp_percent: overallHdp,
+        overall_hhp_percent: overallHhp,
         overall_fcr: Number(overallFCR.toFixed(2))
       }
     };
@@ -161,14 +182,21 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
     const records = getLocalDailyRecords(record.flock_id);
     const existingIndex = records.findIndex((r) => r.record_date === record.record_date);
 
-    const activePop = 1982;
-    const hd = Number(((record.egg_good_pcs / activePop) * 100).toFixed(2));
+    const flocks = getLocalFlocks();
+    const flock = flocks.find((f) => f.id === record.flock_id);
+    const activePop = flock?.current_population || 1000;
+    const initialPop = flock?.initial_population || activePop || 1000;
+
+    const hdp = activePop > 0 ? Number(((record.egg_good_pcs / activePop) * 100).toFixed(2)) : 0;
+    const hhp = initialPop > 0 ? Number(((record.egg_good_pcs / initialPop) * 100).toFixed(2)) : 0;
     const fcr = record.egg_good_kg > 0 ? Number((record.feed_kg / record.egg_good_kg).toFixed(2)) : 0;
     const avgW = record.egg_good_pcs > 0 ? Number(((record.egg_good_kg * 1000) / record.egg_good_pcs).toFixed(2)) : 0;
 
     const fullRecord: DailyRecord = {
       ...record,
-      hd_percent: hd,
+      hd_percent: hdp,
+      hdp_percent: hdp,
+      hhp_percent: hhp,
       fcr: fcr,
       avg_egg_weight_g: avgW
     };

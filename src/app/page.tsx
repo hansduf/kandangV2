@@ -236,26 +236,26 @@ export default function DashboardHomePage() {
             {/* Metric Grid Cards */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
               <StatCard
-                title="Hen-Day (HD)"
-                value={today?.hd_percent || 0}
+                title="Hen-Day (HDP)"
+                value={today?.hdp_percent || today?.hd_percent || 0}
                 unit="%"
-                subtitle="Target Produksi: >85%"
+                subtitle={`Telur/Ayam Hidup (HHP: ${today?.hhp_percent || 0}%)`}
                 icon={TrendingUp}
                 colorTheme="emerald"
               />
               <StatCard
-                title="Telur Utuh Hari Ini"
-                value={today?.egg_good_pcs || 0}
-                unit="btr"
-                subtitle={`${today?.egg_good_kg || 0} kg total`}
-                icon={Egg}
+                title="Hen-Housed (HHP)"
+                value={today?.hhp_percent || 0}
+                unit="%"
+                subtitle={`Telur/Pop. Awal (${activeFlock?.initial_population || 0} ekor)`}
+                icon={TrendingUp}
                 colorTheme="amber"
               />
               <StatCard
-                title="Telur Retak Hari Ini"
-                value={today?.egg_bad_pcs || 0}
+                title="Telur Utuh Hari Ini"
+                value={today?.egg_good_pcs.toLocaleString('id-ID') || 0}
                 unit="btr"
-                subtitle={`~${today?.egg_bad_kg || 0} kg retak`}
+                subtitle={`${today?.egg_good_kg || 0} kg total`}
                 icon={Egg}
                 colorTheme="blue"
               />
@@ -263,10 +263,38 @@ export default function DashboardHomePage() {
                 title="Kematian Hari Ini"
                 value={today?.mortality_pcs || 0}
                 unit="ekor"
-                subtitle={`Kumulatif: ${summary?.totals.total_mortality || 0} ekor`}
+                subtitle={`Mgg: ${summary?.totals.weekly_mortality || 0} | Bln: ${summary?.totals.monthly_mortality || 0} | Total: ${summary?.totals.total_mortality || 0}`}
                 icon={Skull}
                 colorTheme="rose"
               />
+            </div>
+
+            {/* RINGKASAN MORTALITAS KANDANG (MINGGUAN / BULANAN / KUMULATIF) */}
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Skull className="w-4 h-4 text-rose-600" />
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Statistik Kematian Kandang</h3>
+                </div>
+                <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                  Tingkat Mati: {summary?.totals.mortality_rate_percent || 0}%
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200 text-center">
+                <div>
+                  <span className="block text-[9px] font-bold text-slate-500 uppercase">Minggu Ini (7H)</span>
+                  <span className="text-sm font-black text-slate-900">{summary?.totals.weekly_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
+                </div>
+                <div className="border-x border-slate-200">
+                  <span className="block text-[9px] font-bold text-slate-500 uppercase">Bulan Ini (30H)</span>
+                  <span className="text-sm font-black text-slate-900">{summary?.totals.monthly_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
+                </div>
+                <div>
+                  <span className="block text-[9px] font-bold text-slate-500 uppercase">Total Kumulatif</span>
+                  <span className="text-sm font-black text-rose-600">{summary?.totals.total_mortality || 0} <span className="text-[10px] text-slate-500 font-normal">ekor</span></span>
+                </div>
+              </div>
             </div>
 
             {/* MAIN PERFORMANCE GRAPH */}

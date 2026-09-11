@@ -13,16 +13,24 @@ const isConfigured = !!(
 );
 
 // MOCK LOCAL STORAGE FALLBACK DATA FOR PREVIEW MODE IF SUPABASE IS NOT YET CONNECTED
-const DEMO_FLOCKS: Flock[] = [];
-
 function getLocalFlocks(): Flock[] {
   if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem('kandang_flocks_v2');
+  // Purge legacy storage keys that contained demo data
+  localStorage.removeItem('kandang_flocks');
+  localStorage.removeItem('kandang_flocks_v2');
+
+  const data = localStorage.getItem('kandang_flocks_v3');
   if (!data) {
-    localStorage.setItem('kandang_flocks_v2', JSON.stringify([]));
+    localStorage.setItem('kandang_flocks_v3', JSON.stringify([]));
     return [];
   }
-  return JSON.parse(data);
+  const parsed: Flock[] = JSON.parse(data);
+  // Filter out any leftover demo items automatically
+  const cleanFlocks = parsed.filter((f) => f && f.id && !f.id.startsWith('flock-demo'));
+  if (cleanFlocks.length !== parsed.length) {
+    localStorage.setItem('kandang_flocks_v3', JSON.stringify(cleanFlocks));
+  }
+  return cleanFlocks;
 }
 
 function getLocalDailyRecords(flockId: string): DailyRecord[] {
@@ -54,7 +62,7 @@ export async function fetchFlocks(): Promise<Flock[]> {
   try {
     const { data, error } = await supabase.rpc('get_flocks');
     if (error) throw error;
-    return data || [];
+    return (data || []).filter((f: any) => f && f.id && !f.id.startsWith('flock-demo'));
   } catch (err) {
     console.warn('Using local fallback for get_flocks:', err);
     return getLocalFlocks();
@@ -64,10 +72,21 @@ export async function fetchFlocks(): Promise<Flock[]> {
 export async function fetchDashboardSummary(flockId: string): Promise<DashboardSummary> {
   if (!isConfigured) {
     const flocks = getLocalFlocks();
-    const flock = flocks.find((f) => f.id === flockId) || DEMO_FLOCKS[0];
-    const records = getLocalDailyRecords(flockId);
+    const flock: Flock = flocks.find((f) => f.id === flockId) || {
+      id: flockId || 'none',
+      name: 'Belum Ada Kandang',
+      coop_name: 'Kandang -',
+      strain: '-',
+      capacity: 0,
+      chick_in_date: new Date().toISOString().split('T')[0],
+      initial_population: 0,
+      current_population: 0,
+      age_weeks: 1,
+      status: 'active'
+    };
+    const records = flockId ? getLocalDailyRecords(flockId) : [];
     const todayStr = new Date().toISOString().split('T')[0];
-    const todayRecord = records.find((r) => r.record_date === todayStr) || records[0];
+    const todayRecord = records.find((r) => r.record_date === todayStr);
 
     const totalMort = records.reduce((acc, r) => acc + (r.mortality_pcs || 0), 0);
     const totalCull = records.reduce((acc, r) => acc + (r.culling_pcs || 0), 0);
@@ -77,11 +96,12 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
     const totalEggBadPcs = records.reduce((acc, r) => acc + (r.egg_bad_pcs || 0), 0);
     const totalEggBadKg = records.reduce((acc, r) => acc + (r.egg_bad_kg || 0), 0);
 
-    const overallHD = records.length > 0 ? (totalEggGoodPcs / (flock.current_population * records.length)) * 100 : 0;
+    const currentPop = Math.max(0, (flock.initial_population || 0) - totalMort - totalCull);
+    const overallHD = records.length > 0 && currentPop > 0 ? (totalEggGoodPcs / (currentPop * records.length)) * 100 : 0;
     const overallFCR = totalEggGoodKg > 0 ? totalFeedKg / totalEggGoodKg : 0;
 
     return {
-      flock,
+      flock: { ...flock, current_population: currentPop },
       today: {
         has_recorded: !!todayRecord,
         record_date: todayRecord?.record_date || todayStr,
@@ -233,7 +253,7 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
       created_at: new Date().toISOString()
     };
     flocks.unshift(newFlock);
-    localStorage.setItem('kandang_flocks_v2', JSON.stringify(flocks));
+    localStorage.setItem('kandang_flocks_v3', JSON.stringify(flocks));
     return newFlock;
   }
 
@@ -265,7 +285,7 @@ export async function updateFlock(id: string, flock: Partial<Flock>): Promise<Fl
       status: flock.status !== undefined ? flock.status : flocks[index].status,
     };
     flocks[index] = updated;
-    localStorage.setItem('kandang_flocks_v2', JSON.stringify(flocks));
+    localStorage.setItem('kandang_flocks_v3', JSON.stringify(flocks));
     return updated;
   }
 
@@ -287,7 +307,7 @@ export async function updateFlock(id: string, flock: Partial<Flock>): Promise<Fl
 export async function deleteFlock(id: string): Promise<void> {
   if (!isConfigured) {
     const flocks = getLocalFlocks().filter((f) => f.id !== id);
-    localStorage.setItem('kandang_flocks_v2', JSON.stringify(flocks));
+    localStorage.setItem('kandang_flocks_v3', JSON.stringify(flocks));
     localStorage.removeItem(`kandang_daily_${id}`);
     localStorage.removeItem(`kandang_health_${id}`);
     return;

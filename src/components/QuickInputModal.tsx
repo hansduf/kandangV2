@@ -13,6 +13,8 @@ import {
   Pill,
   ShieldAlert,
   Sparkles,
+  Home,
+  Users,
   AlertTriangle,
 } from 'lucide-react';
 
@@ -24,6 +26,7 @@ interface QuickInputModalProps {
   onSelectFlock: (id: string) => void;
   onSaveDaily: (record: DailyRecord) => Promise<void>;
   onSaveHealth: (record: HealthRecord) => Promise<void>;
+  previousEggPcs?: number;
 }
 
 export const QuickInputModal: React.FC<QuickInputModalProps> = ({
@@ -34,6 +37,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   onSelectFlock,
   onSaveDaily,
   onSaveHealth,
+  previousEggPcs = 0,
 }) => {
   const activeFlock = flocks.find((f) => f.id === activeFlockId) || flocks[0];
   const todayStr = new Date().toISOString().split('T')[0];
@@ -58,6 +62,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
   if (!isOpen) return null;
 
+  const currentPopulation = activeFlock?.current_population || 0;
+
   const handleSaveHealthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!healthItemName.trim()) {
@@ -74,7 +80,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
         category: healthCategory,
         item_name: healthItemName.trim(),
         dosage: healthDosage.trim(),
-        vaccinated_birds_count: Number(vaccinatedBirdsCount) || activeFlock.current_population || 0,
+        vaccinated_birds_count: Number(vaccinatedBirdsCount) || currentPopulation,
         method: healthMethod,
         notes: healthNotes.trim(),
       });
@@ -122,21 +128,52 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl p-4 space-y-4 animate-in slide-in-from-bottom duration-300">
+      <div className="bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl p-4 space-y-3.5 animate-in slide-in-from-bottom duration-300">
         
         {/* Header & Close Button */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
           <div>
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">PENCATATAN HARIAN KANDANG</h3>
             <p className="text-[11px] font-semibold text-slate-500">Isi data produksi, obat, atau kematian</p>
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors border border-slate-200"
+            className="w-8 h-8 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors border border-slate-200"
           >
             <X className="w-4 h-4 stroke-[2.5]" />
           </button>
         </div>
+
+        {/* COMPACT CLEAN COOP SELECTOR BAR (No duplicate giant cards) */}
+        {activeFlock && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-2">
+              <Home className="w-4 h-4 text-[#00684a]" />
+              <div className="flex items-center gap-1.5">
+                {flocks.length > 1 ? (
+                  <select
+                    value={activeFlockId}
+                    onChange={(e) => onSelectFlock(e.target.value)}
+                    className="bg-white text-slate-900 text-xs font-black rounded-lg px-2 py-0.5 outline-none cursor-pointer border border-emerald-300"
+                  >
+                    {flocks.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.coop_name} ({f.name})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs font-black text-[#00684a]">{activeFlock.coop_name}</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 text-[11px] font-black text-[#00684a] bg-white px-2 py-0.5 rounded-lg border border-emerald-200">
+              <Users className="w-3 h-3 text-emerald-600" />
+              <span>Populasi: {currentPopulation.toLocaleString('id-ID')} ekor</span>
+            </div>
+          </div>
+        )}
 
         {/* 3 OPERATIONAL TABS */}
         <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
@@ -172,7 +209,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
           </div>
         )}
 
-        {/* TAB 1: PRODUKSI TELUR & PAKAN */}
+        {/* TAB 1: PRODUKSI TELUR */}
         {activeTab === 'daily' && (
           <SleekProductionInput
             flocks={flocks}
@@ -180,13 +217,14 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
             onSelectFlock={onSelectFlock}
             onSave={onSaveDaily}
             onSuccessClose={onClose}
+            previousEggPcs={previousEggPcs}
           />
         )}
 
         {/* TAB 2: OBAT & VAKSIN */}
         {activeTab === 'health' && (
           <form onSubmit={handleSaveHealthSubmit} className="space-y-3.5">
-            {/* Tanggal Pencatatan */}
+            {/* Tanggal Aplikasi */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
               <label className="text-xs font-black text-slate-800 uppercase tracking-wider">Tanggal Aplikasi</label>
               <input
@@ -260,7 +298,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                     min="0"
                     value={vaccinatedBirdsCount}
                     onChange={(e) => setVaccinatedBirdsCount(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder={`e.g. ${activeFlock?.current_population || 2000}`}
+                    placeholder={`e.g. ${currentPopulation || 2000}`}
                     className="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-[#00684a] outline-none"
                   />
                 </div>
@@ -344,4 +382,3 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
     </div>
   );
 };
-

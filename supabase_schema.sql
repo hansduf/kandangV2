@@ -424,3 +424,46 @@ BEGIN
     RETURN to_jsonb(v_health);
 END;
 $$;
+
+
+-- RPC 8: Update Existing Flock
+CREATE OR REPLACE FUNCTION public.update_flock(
+    p_id UUID,
+    p_name TEXT,
+    p_coop_name TEXT,
+    p_strain TEXT,
+    p_capacity INT,
+    p_chick_in_date DATE,
+    p_initial_population INT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_flock public.flocks%ROWTYPE;
+BEGIN
+    UPDATE public.flocks
+    SET
+        name = COALESCE(p_name, name),
+        coop_name = COALESCE(p_coop_name, coop_name),
+        strain = COALESCE(p_strain, strain),
+        capacity = COALESCE(p_capacity, capacity),
+        chick_in_date = COALESCE(p_chick_in_date, chick_in_date),
+        initial_population = COALESCE(p_initial_population, initial_population)
+    WHERE id = p_id
+    RETURNING * INTO v_flock;
+
+    RETURN to_jsonb(v_flock);
+END;
+$$;
+
+
+-- RPC 9: Delete Flock
+CREATE OR REPLACE FUNCTION public.delete_flock(p_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    DELETE FROM public.flocks WHERE id = p_id;
+END;
+$$;

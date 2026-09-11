@@ -1,16 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Flock } from '@/types/database';
-import { X, Layers, Plus } from 'lucide-react';
+import { X, Layers, Plus, Save } from 'lucide-react';
 
 interface FlockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateFlock: (flock: Partial<Flock>) => Promise<Flock>;
+  flockToEdit?: Flock | null;
+  onCreateFlock?: (flock: Partial<Flock>) => Promise<Flock>;
+  onUpdateFlock?: (id: string, flock: Partial<Flock>) => Promise<Flock>;
 }
 
-export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreateFlock }) => {
+export const FlockModal: React.FC<FlockModalProps> = ({
+  isOpen,
+  onClose,
+  flockToEdit,
+  onCreateFlock,
+  onUpdateFlock,
+}) => {
   const today = new Date().toISOString().split('T')[0];
   const [name, setName] = useState('');
   const [coopName, setCoopName] = useState('');
@@ -20,6 +28,24 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
   const [initialPop, setInitialPop] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (flockToEdit) {
+      setName(flockToEdit.name || '');
+      setCoopName(flockToEdit.coop_name || '');
+      setStrain(flockToEdit.strain || '');
+      setCapacity(flockToEdit.capacity || '');
+      setChickInDate(flockToEdit.chick_in_date || today);
+      setInitialPop(flockToEdit.initial_population || '');
+    } else {
+      setName('');
+      setCoopName('');
+      setStrain('');
+      setCapacity('');
+      setChickInDate(today);
+      setInitialPop('');
+    }
+  }, [flockToEdit, isOpen]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,21 +54,34 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
 
     setIsSubmitting(true);
     try {
-      await onCreateFlock({
-        name,
-        coop_name: coopName.trim() || 'Kandang A',
-        strain: strain.trim() || '-',
-        capacity: Number(capacity) || Number(initialPop) || 0,
-        chick_in_date: chickInDate,
-        initial_population: Number(initialPop) || 0,
-      });
+      if (flockToEdit && onUpdateFlock) {
+        await onUpdateFlock(flockToEdit.id, {
+          name,
+          coop_name: coopName.trim() || 'Kandang A',
+          strain: strain.trim() || '-',
+          capacity: Number(capacity) || Number(initialPop) || 0,
+          chick_in_date: chickInDate,
+          initial_population: Number(initialPop) || 0,
+        });
+      } else if (onCreateFlock) {
+        await onCreateFlock({
+          name,
+          coop_name: coopName.trim() || 'Kandang A',
+          strain: strain.trim() || '-',
+          capacity: Number(capacity) || Number(initialPop) || 0,
+          chick_in_date: chickInDate,
+          initial_population: Number(initialPop) || 0,
+        });
+      }
       onClose();
     } catch (err) {
-      alert('Gagal menambah angkatan.');
+      alert('Gagal menyimpan data kandang.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const isEdit = !!flockToEdit;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -53,8 +92,12 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
               <Layers className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h3 className="text-base font-black text-slate-900">Tambah Angkatan Baru</h3>
-              <p className="text-[11px] font-semibold text-slate-500">Pendaftaran kandang baru</p>
+              <h3 className="text-base font-black text-slate-900">
+                {isEdit ? 'Edit Data Kandang' : 'Tambah Angkatan Baru'}
+              </h3>
+              <p className="text-[11px] font-semibold text-slate-500">
+                {isEdit ? 'Ubah rincian angkatan/kandang' : 'Pendaftaran kandang baru'}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-500 hover:text-slate-900 bg-slate-100 border border-slate-200">
@@ -143,8 +186,8 @@ export const FlockModal: React.FC<FlockModalProps> = ({ isOpen, onClose, onCreat
             disabled={isSubmitting}
             className="w-full mt-2 bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black py-3.5 rounded-2xl shadow-md flex items-center justify-center gap-2 text-xs transition-all"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>{isSubmitting ? 'MENYIMPAN...' : 'SIMPAN ANGKATAN BARU'}</span>
+            {isEdit ? <Save className="w-4 h-4 stroke-[3]" /> : <Plus className="w-4 h-4 stroke-[3]" />}
+            <span>{isSubmitting ? 'MENYIMPAN...' : isEdit ? 'SIMPAN PERUBAHAN' : 'SIMPAN ANGKATAN BARU'}</span>
           </button>
         </form>
       </div>

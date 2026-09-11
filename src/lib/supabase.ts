@@ -13,45 +13,14 @@ const isConfigured = !!(
 );
 
 // MOCK LOCAL STORAGE FALLBACK DATA FOR PREVIEW MODE IF SUPABASE IS NOT YET CONNECTED
-const DEMO_FLOCKS: Flock[] = [
-  {
-    id: 'flock-demo-1',
-    name: 'Angkatan 12 - Layer Alpha',
-    coop_name: 'Kandang A',
-    strain: 'Isa Brown',
-    capacity: 2500,
-    chick_in_date: '2026-05-01',
-    initial_population: 2000,
-    current_population: 1982,
-    total_mortality: 18,
-    total_culling: 0,
-    age_weeks: 18,
-    status: 'active',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: 'flock-demo-2',
-    name: 'Angkatan 14 - Layer Beta',
-    coop_name: 'Kandang B',
-    strain: 'Lohmann Brown',
-    capacity: 3000,
-    chick_in_date: '2026-06-15',
-    initial_population: 2500,
-    current_population: 2490,
-    total_mortality: 10,
-    total_culling: 0,
-    age_weeks: 12,
-    status: 'active',
-    created_at: new Date().toISOString()
-  }
-];
+const DEMO_FLOCKS: Flock[] = [];
 
 function getLocalFlocks(): Flock[] {
-  if (typeof window === 'undefined') return DEMO_FLOCKS;
+  if (typeof window === 'undefined') return [];
   const data = localStorage.getItem('kandang_flocks_v2');
   if (!data) {
-    localStorage.setItem('kandang_flocks_v2', JSON.stringify(DEMO_FLOCKS));
-    return DEMO_FLOCKS;
+    localStorage.setItem('kandang_flocks_v2', JSON.stringify([]));
+    return [];
   }
   return JSON.parse(data);
 }
@@ -60,40 +29,8 @@ function getLocalDailyRecords(flockId: string): DailyRecord[] {
   if (typeof window === 'undefined') return [];
   const data = localStorage.getItem(`kandang_daily_${flockId}`);
   if (!data) {
-    const initialRecords: DailyRecord[] = [];
-    const today = new Date();
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const eggPcs = Math.floor(1730 + Math.random() * 80);
-      const eggKg = Number((eggPcs * 0.0625).toFixed(2));
-      const feedKg = Number((230 + Math.random() * 5).toFixed(2));
-      const mort = Math.random() > 0.75 ? 1 : 0;
-      
-      const activePop = 1982;
-      const hd = Number(((eggPcs / activePop) * 100).toFixed(2));
-      const fcr = Number((feedKg / eggKg).toFixed(2));
-      const avgW = Number(((eggKg * 1000) / eggPcs).toFixed(2));
-
-      initialRecords.push({
-        flock_id: flockId,
-        record_date: dateStr,
-        egg_good_pcs: eggPcs,
-        egg_good_kg: eggKg,
-        egg_bad_pcs: 14,
-        egg_bad_kg: 0.85,
-        mortality_pcs: mort,
-        culling_pcs: 0,
-        feed_kg: feedKg,
-        hd_percent: hd,
-        fcr: fcr,
-        avg_egg_weight_g: avgW,
-        notes: i === 0 ? 'Kondisi ayam sehat, nafsu makan normal.' : ''
-      });
-    }
-    localStorage.setItem(`kandang_daily_${flockId}`, JSON.stringify(initialRecords));
-    return initialRecords;
+    localStorage.setItem(`kandang_daily_${flockId}`, JSON.stringify([]));
+    return [];
   }
   return JSON.parse(data);
 }
@@ -102,30 +39,8 @@ function getLocalHealthRecords(flockId: string): HealthRecord[] {
   if (typeof window === 'undefined') return [];
   const data = localStorage.getItem(`kandang_health_${flockId}`);
   if (!data) {
-    const initialHealth: HealthRecord[] = [
-      {
-        id: 'h-1',
-        flock_id: flockId,
-        record_date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
-        category: 'Vitamin',
-        item_name: 'Egg Stimulant Vita',
-        dosage: '100g / 200L Air',
-        method: 'Air Minum',
-        notes: 'Pemberian vitamin rutin pemicu telur'
-      },
-      {
-        id: 'h-2',
-        flock_id: flockId,
-        record_date: new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0],
-        category: 'Vaksin',
-        item_name: 'Vaksin ND-IB Booster',
-        dosage: '2000 Dosis',
-        method: 'Air Minum',
-        notes: 'Vaksinasi booster rutin umur 16 minggu'
-      }
-    ];
-    localStorage.setItem(`kandang_health_${flockId}`, JSON.stringify(initialHealth));
-    return initialHealth;
+    localStorage.setItem(`kandang_health_${flockId}`, JSON.stringify([]));
+    return [];
   }
   return JSON.parse(data);
 }
@@ -317,7 +232,7 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
       created_at: new Date().toISOString()
     };
     flocks.unshift(newFlock);
-    localStorage.setItem('kandang_flocks', JSON.stringify(flocks));
+    localStorage.setItem('kandang_flocks_v2', JSON.stringify(flocks));
     return newFlock;
   }
 
@@ -331,6 +246,48 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
   });
   if (error) throw error;
   return data;
+}
+
+export async function updateFlock(id: string, flock: Partial<Flock>): Promise<Flock> {
+  if (!isConfigured) {
+    const flocks = getLocalFlocks();
+    const index = flocks.findIndex((f) => f.id === id);
+    if (index === -1) throw new Error('Flock not found');
+    const updated: Flock = {
+      ...flocks[index],
+      ...flock,
+      capacity: flock.capacity !== undefined ? flock.capacity : flocks[index].capacity,
+      initial_population: flock.initial_population !== undefined ? flock.initial_population : flocks[index].initial_population,
+    };
+    flocks[index] = updated;
+    localStorage.setItem('kandang_flocks_v2', JSON.stringify(flocks));
+    return updated;
+  }
+
+  const { data, error } = await supabase.rpc('update_flock', {
+    p_id: id,
+    p_name: flock.name,
+    p_coop_name: flock.coop_name,
+    p_strain: flock.strain || '-',
+    p_capacity: flock.capacity || 0,
+    p_chick_in_date: flock.chick_in_date,
+    p_initial_population: flock.initial_population || 0,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteFlock(id: string): Promise<void> {
+  if (!isConfigured) {
+    const flocks = getLocalFlocks().filter((f) => f.id !== id);
+    localStorage.setItem('kandang_flocks_v2', JSON.stringify(flocks));
+    localStorage.removeItem(`kandang_daily_${id}`);
+    localStorage.removeItem(`kandang_health_${id}`);
+    return;
+  }
+
+  const { error } = await supabase.rpc('delete_flock', { p_id: id });
+  if (error) throw error;
 }
 
 // DYNAMIC CATEGORIES & PRESETS HELPER FUNCTIONS (Persisted in DB / localStorage)

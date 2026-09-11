@@ -14,19 +14,20 @@ import {
   saveDailyRecord,
   saveHealthRecord,
   createFlock,
+  updateFlock,
 } from '@/lib/supabase';
 import { Flock, DashboardSummary, DailyRecord, HealthRecord } from '@/types/database';
 import {
   Egg,
   TrendingUp,
   Skull,
-  Wheat,
   Activity,
   ChevronRight,
   BarChart3,
   CheckCircle,
   AlertCircle,
   Plus,
+  Home,
 } from 'lucide-react';
 
 export default function DashboardHomePage() {
@@ -39,6 +40,7 @@ export default function DashboardHomePage() {
   // Modals State
   const [isInputModalOpen, setIsInputModalOpen] = useState(false);
   const [isFlockModalOpen, setIsFlockModalOpen] = useState(false);
+  const [editingFlock, setEditingFlock] = useState<Flock | null>(null);
 
   useEffect(() => {
     loadFlocks();
@@ -54,7 +56,7 @@ export default function DashboardHomePage() {
     try {
       const data = await fetchFlocks();
       setFlocks(data);
-      if (data.length > 0) {
+      if (data.length > 0 && !activeFlockId) {
         setActiveFlockId(data[0].id);
       }
     } catch (err) {
@@ -68,7 +70,7 @@ export default function DashboardHomePage() {
     setLoading(true);
     try {
       const sumData = await fetchDashboardSummary(flockId);
-      const histData = await fetchDailyHistory(flockId, 14);
+      const histData = await fetchDailyHistory(flockId, 30);
       setSummary(sumData);
       setHistory(histData);
     } catch (err) {
@@ -94,9 +96,16 @@ export default function DashboardHomePage() {
 
   const handleCreateFlock = async (flockData: Partial<Flock>) => {
     const newFlock = await createFlock(flockData);
-    setFlocks((prev) => [newFlock, ...prev]);
+    await loadFlocks();
     setActiveFlockId(newFlock.id);
     return newFlock;
+  };
+
+  const handleUpdateFlock = async (id: string, flockData: Partial<Flock>) => {
+    const updated = await updateFlock(id, flockData);
+    await loadFlocks();
+    setEditingFlock(null);
+    return updated;
   };
 
   if (loading && flocks.length === 0) {
@@ -113,11 +122,17 @@ export default function DashboardHomePage() {
   const activeFlock = summary?.flock;
   const today = summary?.today;
 
+  // Track previous day egg count
+  const previousEggPcs = history.length > 0 ? (history[0].egg_good_pcs || 0) : 0;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
       {/* Top Navbar */}
       <Navbar
-        onOpenNewFlockModal={() => setIsFlockModalOpen(true)}
+        onOpenNewFlockModal={() => {
+          setEditingFlock(null);
+          setIsFlockModalOpen(true);
+        }}
       />
 
       <main className="max-w-md md:max-w-2xl lg:max-w-3xl mx-auto px-3 py-3.5 sm:px-4 sm:py-4 space-y-3.5 sm:space-y-4">
@@ -144,7 +159,10 @@ export default function DashboardHomePage() {
             );
           })}
           <button
-            onClick={() => setIsFlockModalOpen(true)}
+            onClick={() => {
+              setEditingFlock(null);
+              setIsFlockModalOpen(true);
+            }}
             className="snap-start shrink-0 px-3 py-2 rounded-2xl text-xs font-black bg-emerald-50 text-[#00684a] border border-emerald-200 hover:bg-emerald-100 transition-all flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
@@ -152,8 +170,31 @@ export default function DashboardHomePage() {
           </button>
         </div>
 
+        {/* Empty State if No Flocks */}
+        {flocks.length === 0 && !loading && (
+          <div className="text-center py-12 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#00684a] mx-auto flex items-center justify-center border border-emerald-200">
+              <Home className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-slate-900">Belum ada kandang terdaftar</h4>
+              <p className="text-xs text-slate-500 font-semibold mt-1">Daftarkan kandang baru untuk melihat dashboard performa & mencatat telur.</p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingFlock(null);
+                setIsFlockModalOpen(true);
+              }}
+              className="bg-[#00684a] hover:bg-emerald-800 text-white font-black px-4 py-2.5 rounded-2xl text-xs inline-flex items-center gap-1.5 shadow-md transition-all"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Daftarkan Kandang Pertama</span>
+            </button>
+          </div>
+        )}
+
         {/* Active Flock Hero Banner */}
-        {activeFlock && (
+        {activeFlock && flocks.length > 0 && (
           <div className="bg-gradient-to-r from-[#00684a] via-[#046a38] to-emerald-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 text-white shadow-lg flex items-center justify-between relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
             <div className="relative z-10">
@@ -165,7 +206,7 @@ export default function DashboardHomePage() {
               </div>
               <h2 className="text-lg sm:text-xl font-black leading-tight tracking-tight text-white">{activeFlock.name}</h2>
               <p className="text-xs text-emerald-50 font-semibold mt-0.5">
-                Populasi Aktif: <strong className="text-white font-black">{activeFlock.current_population} ekor</strong> (Umur {activeFlock.age_weeks} Mgg)
+                Populasi Aktif: <strong className="text-white font-black">{activeFlock.current_population.toLocaleString('id-ID')} ekor</strong> (Umur {activeFlock.age_weeks} Mgg)
               </p>
             </div>
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shrink-0 shadow-xs">
@@ -174,90 +215,100 @@ export default function DashboardHomePage() {
           </div>
         )}
 
-        {/* Section Header: Performa Hari Ini */}
-        <div className="flex items-center justify-between px-0.5">
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <BarChart3 className="w-4 h-4 text-[#00684a]" />
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Laporan Performa Hari Ini</h3>
-          </div>
-          <span className={`text-[10px] sm:text-[11px] font-extrabold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1 border ${
-            today?.has_recorded
-              ? 'bg-emerald-50 text-[#00684a] border-emerald-200 shadow-xs'
-              : 'bg-amber-50 text-amber-700 border-amber-200'
-          }`}>
-            {today?.has_recorded ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
-            <span>{today?.has_recorded ? 'Sudah Dicatat' : 'Belum Input'}</span>
-          </span>
-        </div>
-
-        {/* Metric Grid Cards */}
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-          <StatCard
-            title="Hen-Day (HD)"
-            value={today?.hd_percent || 0}
-            unit="%"
-            subtitle="Target Produksi: >85%"
-            icon={TrendingUp}
-            colorTheme="emerald"
-          />
-          <StatCard
-            title="Telur Utuh Hari Ini"
-            value={today?.egg_good_pcs || 0}
-            unit="btr"
-            subtitle={`${today?.egg_good_kg || 0} kg total`}
-            icon={Egg}
-            colorTheme="amber"
-          />
-          <StatCard
-            title="Telur Retak Hari Ini"
-            value={today?.egg_bad_pcs || 0}
-            unit="btr"
-            subtitle={`~${today?.egg_bad_kg || 0} kg retak`}
-            icon={Egg}
-            colorTheme="blue"
-          />
-          <StatCard
-            title="Kematian Hari Ini"
-            value={today?.mortality_pcs || 0}
-            unit="ekor"
-            subtitle={`Kumulatif: ${summary?.totals.total_mortality || 0} ekor`}
-            icon={Skull}
-            colorTheme="rose"
-          />
-        </div>
-
-        {/* MAIN PERFORMANCE GRAPH */}
-        <PerformanceChart records={history} />
-
-        {/* Recent Daily Records Table */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl space-y-3 border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Riwayat Catatan 7 Hari Terakhir</h3>
-            <span className="text-[10px] sm:text-[11px] font-black text-[#00684a] flex items-center">
-              <span>Terbaru</span>
-              <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-            </span>
-          </div>
-
-          <div className="divide-y divide-slate-100">
-            {history.slice(0, 7).map((rec) => (
-              <div key={rec.record_date} className="py-2.5 flex items-center justify-between hover:bg-slate-50 rounded-xl px-1 transition-colors">
-                <div>
-                  <span className="text-xs font-black text-slate-900">{rec.record_date}</span>
-                  <span className="block text-[10px] sm:text-[11px] font-semibold text-slate-500">
-                    {rec.egg_good_pcs} btr ({rec.egg_good_kg} kg) • {rec.egg_bad_pcs} retak
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[11px] sm:text-xs font-black text-[#00684a] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">{rec.hd_percent}% HD</span>
-                  <span className="block text-[10px] font-bold text-rose-600 mt-0.5">
-                    {rec.mortality_pcs > 0 ? `+${rec.mortality_pcs} mati` : '0 mati'}
-                  </span>
-                </div>
+        {flocks.length > 0 && (
+          <>
+            {/* Section Header: Performa Hari Ini */}
+            <div className="flex items-center justify-between px-0.5">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <BarChart3 className="w-4 h-4 text-[#00684a]" />
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Laporan Performa Hari Ini</h3>
               </div>
-            ))}
-          </div>
-        </div>
+              <span className={`text-[10px] sm:text-[11px] font-extrabold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full flex items-center gap-1 border ${
+                today?.has_recorded
+                  ? 'bg-emerald-50 text-[#00684a] border-emerald-200 shadow-xs'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}>
+                {today?.has_recorded ? <CheckCircle className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                <span>{today?.has_recorded ? 'Sudah Dicatat' : 'Belum Input'}</span>
+              </span>
+            </div>
+
+            {/* Metric Grid Cards */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+              <StatCard
+                title="Hen-Day (HD)"
+                value={today?.hd_percent || 0}
+                unit="%"
+                subtitle="Target Produksi: >85%"
+                icon={TrendingUp}
+                colorTheme="emerald"
+              />
+              <StatCard
+                title="Telur Utuh Hari Ini"
+                value={today?.egg_good_pcs || 0}
+                unit="btr"
+                subtitle={`${today?.egg_good_kg || 0} kg total`}
+                icon={Egg}
+                colorTheme="amber"
+              />
+              <StatCard
+                title="Telur Retak Hari Ini"
+                value={today?.egg_bad_pcs || 0}
+                unit="btr"
+                subtitle={`~${today?.egg_bad_kg || 0} kg retak`}
+                icon={Egg}
+                colorTheme="blue"
+              />
+              <StatCard
+                title="Kematian Hari Ini"
+                value={today?.mortality_pcs || 0}
+                unit="ekor"
+                subtitle={`Kumulatif: ${summary?.totals.total_mortality || 0} ekor`}
+                icon={Skull}
+                colorTheme="rose"
+              />
+            </div>
+
+            {/* MAIN PERFORMANCE GRAPH */}
+            <PerformanceChart records={history} />
+
+            {/* Recent Daily Records Table */}
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl space-y-3 border border-slate-200/80 shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Riwayat Catatan Harian</h3>
+                <span className="text-[10px] sm:text-[11px] font-black text-[#00684a] flex items-center">
+                  <span>Terbaru</span>
+                  <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                </span>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {history.slice(0, 7).map((rec) => (
+                  <div key={rec.record_date} className="py-2.5 flex items-center justify-between hover:bg-slate-50 rounded-xl px-1 transition-colors">
+                    <div>
+                      <span className="text-xs font-black text-slate-900">{rec.record_date}</span>
+                      <span className="block text-[10px] sm:text-[11px] font-semibold text-slate-500">
+                        {rec.egg_good_pcs.toLocaleString('id-ID')} btr ({rec.egg_good_kg} kg) • {rec.egg_bad_pcs} retak
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[11px] sm:text-xs font-black text-[#00684a] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">{rec.hd_percent}% HD</span>
+                      <span className="block text-[10px] font-bold text-rose-600 mt-0.5">
+                        {rec.mortality_pcs > 0 ? `+${rec.mortality_pcs} mati` : '0 mati'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {history.length === 0 && (
+                  <div className="text-center py-6 text-slate-400 text-xs font-semibold">
+                    Belum ada riwayat catatan harian untuk kandang ini.
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       {/* BOTTOM NAVIGATION BAR WITH CATAT (+) BUTTON */}
@@ -272,15 +323,20 @@ export default function DashboardHomePage() {
         onSelectFlock={setActiveFlockId}
         onSaveDaily={handleSaveDaily}
         onSaveHealth={handleSaveHealth}
+        previousEggPcs={previousEggPcs}
       />
 
-      {/* FLOCK ADD MODAL */}
+      {/* FLOCK ADD / EDIT MODAL */}
       <FlockModal
         isOpen={isFlockModalOpen}
-        onClose={() => setIsFlockModalOpen(false)}
+        onClose={() => {
+          setIsFlockModalOpen(false);
+          setEditingFlock(null);
+        }}
+        flockToEdit={editingFlock}
         onCreateFlock={handleCreateFlock}
+        onUpdateFlock={handleUpdateFlock}
       />
     </div>
   );
 }
-

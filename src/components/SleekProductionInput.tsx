@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DailyRecord, Flock } from '@/types/database';
 import {
   Egg,
@@ -8,9 +8,8 @@ import {
   Plus,
   Minus,
   Save,
-  TrendingUp,
-  Scale,
-  Home,
+  RotateCcw,
+  Settings2,
 } from 'lucide-react';
 
 interface SleekProductionInputProps {
@@ -19,14 +18,15 @@ interface SleekProductionInputProps {
   onSelectFlock: (id: string) => void;
   onSave: (record: DailyRecord) => Promise<void>;
   onSuccessClose?: () => void;
+  previousEggPcs?: number;
 }
 
 export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   flocks,
   activeFlockId,
-  onSelectFlock,
   onSave,
   onSuccessClose,
+  previousEggPcs = 0,
 }) => {
   const activeFlock = flocks.find((f) => f.id === activeFlockId) || flocks[0];
   const currentPopulation = activeFlock?.current_population || 1000;
@@ -35,7 +35,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   const [recordDate, setRecordDate] = useState(todayStr);
 
   const [eggGoodPcs, setEggGoodPcs] = useState<number | ''>('');
-  const [eggGoodKg, setEggGoodKg] = useState<number | ''>('');
+  const [eggsPerKg, setEggsPerKg] = useState<number>(16); // Default 16 btr per kg
 
   const [eggBadPcs, setEggBadPcs] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
@@ -45,22 +45,28 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
 
   // Live Calculators
   const goodPcsNum = Number(eggGoodPcs) || 0;
-  const goodKgNum = Number(eggGoodKg) || 0;
+  const ratioNum = Number(eggsPerKg) > 0 ? Number(eggsPerKg) : 16;
+  const calculatedKg = Number((goodPcsNum / ratioNum).toFixed(2));
 
   const liveHd = currentPopulation > 0 ? ((goodPcsNum / currentPopulation) * 100).toFixed(1) : '0.0';
-  const liveAvgWeight = goodPcsNum > 0 ? ((goodKgNum * 1000) / goodPcsNum).toFixed(1) : '0.0';
+  const liveAvgWeight = goodPcsNum > 0 ? ((calculatedKg * 1000) / goodPcsNum).toFixed(1) : '0.0';
 
   const adjustPcs = (amount: number) => {
     const current = Number(eggGoodPcs) || 0;
     const nextVal = Math.max(0, current + amount);
     setEggGoodPcs(nextVal > 0 ? nextVal : '');
-    setEggGoodKg(nextVal > 0 ? Number((nextVal * 0.0625).toFixed(2)) : '');
   };
 
   const adjustBadPcs = (amount: number) => {
     const current = Number(eggBadPcs) || 0;
     const nextVal = Math.max(0, current + amount);
     setEggBadPcs(nextVal > 0 ? nextVal : '');
+  };
+
+  const usePreviousValue = () => {
+    if (previousEggPcs > 0) {
+      setEggGoodPcs(previousEggPcs);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,9 +81,9 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         flock_id: activeFlock.id,
         record_date: recordDate,
         egg_good_pcs: Number(eggGoodPcs) || 0,
-        egg_good_kg: Number(eggGoodKg) || 0,
+        egg_good_kg: calculatedKg,
         egg_bad_pcs: Number(eggBadPcs) || 0,
-        egg_bad_kg: Number(((Number(eggBadPcs) || 0) * 0.06).toFixed(2)),
+        egg_bad_kg: Number(((Number(eggBadPcs) || 0) * (1 / ratioNum)).toFixed(2)),
         mortality_pcs: 0,
         culling_pcs: 0,
         feed_kg: 0,
@@ -98,44 +104,6 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3.5">
-      {/* BANNER INFORMASI KANDANG & ANGKATAN AKTIF */}
-      {activeFlock && (
-        <div className="bg-gradient-to-r from-[#00684a] via-[#046a38] to-emerald-900 rounded-2xl p-3.5 text-white shadow-lg flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-white shadow-xs">
-              <Home className="w-4.5 h-4.5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-100 bg-white/20 px-2 py-0.5 rounded-md border border-white/20">
-                  {activeFlock.coop_name}
-                </span>
-                <span className="text-[10px] font-bold text-emerald-100">• {activeFlock.strain}</span>
-              </div>
-              <h4 className="text-xs font-black leading-tight text-white">{activeFlock.name}</h4>
-              <p className="text-[11px] font-medium text-emerald-50 mt-0.5">
-                Populasi: <strong className="text-white font-black">{currentPopulation} ekor</strong> (Umur {activeFlock.age_weeks} Mgg)
-              </p>
-            </div>
-          </div>
-
-          {/* Kandang Switcher Dropdown */}
-          {flocks.length > 1 && (
-            <select
-              value={activeFlockId}
-              onChange={(e) => onSelectFlock(e.target.value)}
-              className="bg-white/90 text-slate-900 text-[11px] font-black rounded-xl px-2.5 py-1.5 outline-none cursor-pointer border border-white/40 shadow-xs"
-            >
-              {flocks.map((f) => (
-                <option key={f.id} value={f.id} className="bg-white text-slate-900 font-bold">
-                  {f.coop_name} - {f.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      )}
-
       {/* TANGGAL PENCATATAN */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
         <label className="text-xs font-black text-slate-800 uppercase tracking-wider">Tanggal Pencatatan</label>
@@ -150,7 +118,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
 
       {/* 2-COLUMN EGG PRODUCTION INPUT */}
       <div className="grid grid-cols-2 gap-3">
-        {/* LEFT COLUMN: TELUR UTUH (BUTIR & KG) */}
+        {/* LEFT COLUMN: TELUR UTUH (BUTIR & RASIO PER KG) */}
         <div className="bg-white p-3.5 border border-slate-200 rounded-3xl shadow-md flex flex-col justify-between space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -164,7 +132,21 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
 
           {/* Stepper Butir */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center space-y-1.5 shadow-inner">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">JUMLAH BUTIR</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">JUMLAH BUTIR</span>
+              {previousEggPcs > 0 && (
+                <button
+                  type="button"
+                  onClick={usePreviousValue}
+                  className="text-[10px] font-bold text-slate-400 hover:text-[#00684a] flex items-center gap-1 transition-colors"
+                  title="Gunakan jumlah catatan sebelumnya"
+                >
+                  <RotateCcw className="w-2.5 h-2.5" />
+                  <span>Sama kemarin ({previousEggPcs.toLocaleString('id-ID')} btr)</span>
+                </button>
+              )}
+            </div>
+
             <div className="flex items-center justify-between">
               <button
                 type="button"
@@ -190,23 +172,36 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 <Plus className="w-4 h-4 stroke-[3]" />
               </button>
             </div>
+            
+            {/* Tracking text abu-abu jika ada record kemarin */}
+            {previousEggPcs > 0 && (
+              <span className="block text-[10px] font-semibold text-slate-400">
+                Terakhir: <strong className="text-slate-500 font-bold">{previousEggPcs.toLocaleString('id-ID')} btr</strong>
+              </span>
+            )}
           </div>
 
-          {/* Total Kg Timbangan */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-1 shadow-inner">
-            <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">BERAT TIMBANGAN (KG)</span>
-            <div className="flex items-center gap-1">
+          {/* Pengaturan Rasio Telur per 1 Kg */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-1.5 shadow-inner">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <Settings2 className="w-3 h-3 text-slate-400" />
+                ISI PER 1 KG
+              </span>
+              <span className="text-[10px] font-black text-[#00684a]">{calculatedKg} kg</span>
+            </div>
+            
+            <div className="flex items-center gap-1.5">
               <input
                 type="number"
-                step="0.01"
-                min="0"
-                value={eggGoodKg}
-                onChange={(e) => setEggGoodKg(e.target.value === '' ? '' : Number(e.target.value))}
-                placeholder="0.0"
-                className="w-full text-right text-base font-black text-amber-700 bg-white border border-amber-200 rounded-xl px-2.5 py-1 outline-none focus:border-amber-500"
+                step="0.5"
+                min="1"
+                value={eggsPerKg}
+                onChange={(e) => setEggsPerKg(Number(e.target.value) || 16)}
+                className="w-full text-center text-xs font-black text-slate-900 bg-white border border-slate-300 rounded-xl px-2 py-1 outline-none focus:border-[#00684a]"
                 required
               />
-              <span className="text-xs font-black text-slate-500">kg</span>
+              <span className="text-[10px] font-bold text-slate-500 shrink-0">btr/kg</span>
             </div>
           </div>
         </div>
@@ -256,7 +251,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center space-y-1 shadow-inner">
             <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">ESTIMASI BERAT RETAK</span>
             <span className="text-sm font-black text-amber-700">
-              ~{((Number(eggBadPcs) || 0) * 0.06).toFixed(2)} kg
+              ~{((Number(eggBadPcs) || 0) * (1 / ratioNum)).toFixed(2)} kg
             </span>
           </div>
         </div>
@@ -296,4 +291,3 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
     </form>
   );
 };
-

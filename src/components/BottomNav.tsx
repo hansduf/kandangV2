@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, TrendingUp, Plus, Layers } from 'lucide-react';
+import { LayoutGrid, TrendingUp, Plus, Layers, CheckSquare } from 'lucide-react';
+import { useProfile } from '@/context/ProfileContext';
 
 interface BottomNavProps {
   onOpenQuickInput?: () => void;
@@ -11,9 +12,10 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickInput }) => {
   const pathname = usePathname();
+  const { isOwner } = useProfile();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-3 py-1 sm:px-6 sm:py-1.5 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-3 py-1 sm:px-6 sm:py-1.5 pb-safe">
       <div className="max-w-md md:max-w-xl mx-auto flex items-end justify-between relative">
         
         {/* Item 1: Beranda */}
@@ -27,18 +29,20 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickInput }) => {
           <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Beranda</span>
         </Link>
 
-        {/* Item 2: Kandang */}
-        <Link
-          href="/flocks"
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
-            pathname === '/flocks' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
-          }`}
-        >
-          <Layers className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/flocks' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
-          <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Kandang</span>
-        </Link>
+        {/* Item 2: Kandang (Owner Only) */}
+        {isOwner && (
+          <Link
+            href="/flocks"
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+              pathname === '/flocks' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
+            }`}
+          >
+            <Layers className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/flocks' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+            <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Kandang</span>
+          </Link>
+        )}
 
-        {/* Item 3: Catat (+) Action Button */}
+        {/* Center: Catat (+) Action Button */}
         <div className="flex flex-col items-center justify-center flex-1 -mt-4 sm:-mt-5 relative z-10">
           <button
             onClick={onOpenQuickInput}
@@ -50,14 +54,27 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickInput }) => {
           <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight text-slate-700 mt-0.5">Catat</span>
         </div>
 
-        {/* Item 4: Analitik */}
+        {/* Item 4: Tugas / Alur Kerja (Owner Only) */}
+        {isOwner && (
+          <Link
+            href="/tasks"
+            className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
+              pathname === '/tasks' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
+            }`}
+          >
+            <CheckSquare className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/tasks' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+            <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Tugas</span>
+          </Link>
+        )}
+
+        {/* Item 5: Analitik */}
         <Link
           href="/reports"
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
             pathname === '/reports' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
           }`}
         >
-          <TrendingUp className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/reports' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+          <TrendingUp className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/reports' ? 'text-[#00684a]' : 'stroke-[1.8]'}`} />
           <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Analitik</span>
         </Link>
 

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Flock, DailyRecord, HealthRecord, DashboardSummary } from '@/types/database';
+import { Flock, DailyRecord, HealthRecord, DashboardSummary, AppProfile, FarmTask, TaskCompletion, DailyTaskView } from '@/types/database';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummykey';
@@ -439,4 +439,389 @@ export function saveCategoryPreset(category: string, newPreset: string): string[
   }
   return updated;
 }
+
+// ==============================================================================
+// PROFILES & MULTI-ROLE (OWNER & WORKER)
+// ==============================================================================
+
+const DEFAULT_PROFILES: AppProfile[] = [
+  {
+    id: 'owner-default',
+    name: 'Pemilik',
+    role: 'owner',
+    pin: '1234',
+    avatar_color: '#00684a',
+    is_active: true,
+  },
+  {
+    id: 'worker-default-1',
+    name: 'Pekerja 1',
+    role: 'worker',
+    pin: null,
+    avatar_color: '#2563eb',
+    is_active: true,
+  },
+];
+
+export async function fetchProfiles(): Promise<AppProfile[]> {
+  if (!isConfigured) {
+    if (typeof window === 'undefined') return DEFAULT_PROFILES;
+    const stored = localStorage.getItem('kandang_profiles');
+    if (!stored) {
+      localStorage.setItem('kandang_profiles', JSON.stringify(DEFAULT_PROFILES));
+      return DEFAULT_PROFILES;
+    }
+    return JSON.parse(stored);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('app_profiles')
+      .select('*')
+      .eq('is_active', true)
+      .order('role', { ascending: true })
+      .order('created_at', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      // If table doesn't exist yet, fallback to local storage
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('kandang_profiles');
+        if (stored) return JSON.parse(stored);
+        localStorage.setItem('kandang_profiles', JSON.stringify(DEFAULT_PROFILES));
+      }
+      return DEFAULT_PROFILES;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Fallback to local profiles:', err);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('kandang_profiles');
+      if (stored) return JSON.parse(stored);
+    }
+    return DEFAULT_PROFILES;
+  }
+}
+
+export async function createProfile(profile: Partial<AppProfile>): Promise<AppProfile> {
+  const newProfile: AppProfile = {
+    id: `p-${Date.now()}`,
+    name: profile.name?.trim() || 'Pekerja Baru',
+    role: profile.role || 'worker',
+    pin: profile.pin || null,
+    avatar_color: profile.avatar_color || '#00684a',
+    phone: profile.phone?.trim() || null,
+    is_active: true,
+    created_at: new Date().toISOString(),
+  };
+
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('app_profiles')
+        .insert({
+          name: newProfile.name,
+          role: newProfile.role,
+          pin: newProfile.pin,
+          avatar_color: newProfile.avatar_color,
+          phone: newProfile.phone,
+          is_active: true,
+        })
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (err) {
+      console.warn('Failed insert to supabase app_profiles, saving to local storage:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const current = await fetchProfiles();
+    const updated = [...current, newProfile];
+    localStorage.setItem('kandang_profiles', JSON.stringify(updated));
+  }
+  return newProfile;
+}
+
+export async function updateProfile(id: string, updates: Partial<AppProfile>): Promise<AppProfile> {
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('app_profiles')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (err) {
+      console.warn('Failed update to supabase app_profiles, saving to local storage:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const current = await fetchProfiles();
+    const index = current.findIndex((p) => p.id === id);
+    if (index >= 0) {
+      current[index] = { ...current[index], ...updates };
+      localStorage.setItem('kandang_profiles', JSON.stringify(current));
+      return current[index];
+    }
+  }
+  return { id, name: updates.name || '', role: updates.role || 'worker', avatar_color: updates.avatar_color || '#00684a', is_active: true };
+}
+
+export async function deleteProfile(id: string): Promise<void> {
+  if (isConfigured) {
+    try {
+      const { error } = await supabase
+        .from('app_profiles')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (!error) return;
+    } catch (err) {
+      console.warn('Failed soft-delete in supabase, deleting from local storage:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const current = await fetchProfiles();
+    const updated = current.filter((p) => p.id !== id);
+    localStorage.setItem('kandang_profiles', JSON.stringify(updated));
+  }
+}
+
+export async function verifyOwnerPin(profileId: string, inputPin: string): Promise<boolean> {
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase.rpc('verify_owner_pin', {
+        p_profile_id: profileId,
+        p_pin: inputPin.trim(),
+      });
+      if (!error && data !== null) return Boolean(data);
+    } catch (err) {
+      console.warn('RPC verify_owner_pin failed, checking local:', err);
+    }
+  }
+
+  // Local check
+  const profiles = await fetchProfiles();
+  const owner = profiles.find((p) => p.id === profileId && p.role === 'owner') || profiles.find((p) => p.role === 'owner');
+  if (!owner) return inputPin === '1234';
+  return (owner.pin || '1234') === inputPin.trim();
+}
+
+export async function updateOwnerPin(profileId: string, newPin: string): Promise<void> {
+  await updateProfile(profileId, { pin: newPin.trim() });
+}
+
+// ==============================================================================
+// FARM TASKS & RECURRING ALARMS
+// ==============================================================================
+
+export async function fetchTasksForDate(date: string, workerId?: string): Promise<DailyTaskView[]> {
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase.rpc('get_tasks_for_date', {
+        p_date: date,
+        p_worker_id: workerId || null,
+      });
+      if (!error && data) return data;
+    } catch (err) {
+      console.warn('RPC get_tasks_for_date failed, using local tasks:', err);
+    }
+  }
+
+  // Local fallback: generate tasks for date
+  if (typeof window === 'undefined') return [];
+  const storedTasks = localStorage.getItem('kandang_tasks');
+  const allTasks: FarmTask[] = storedTasks ? JSON.parse(storedTasks) : [
+    {
+      id: 'task-egg-default',
+      title: 'Catat Produksi Telur & Pakan',
+      description: 'Hitung jumlah butir telur utuh, rusak, dan timbangan sore ini',
+      task_type: 'daily_record',
+      recurrence_type: 'daily',
+      due_time: '16:30',
+      start_date: '2026-01-01',
+      is_active: true,
+    }
+  ];
+
+  const storedCompletions = localStorage.getItem('kandang_task_completions');
+  const completions: TaskCompletion[] = storedCompletions ? JSON.parse(storedCompletions) : [];
+
+  const targetDate = new Date(date);
+  const targetDayOfWeek = targetDate.getDay();
+
+  return allTasks.filter((t) => {
+    if (!t.is_active) return false;
+    if (t.start_date > date) return false;
+    if (t.end_date && t.end_date < date) return false;
+    if (workerId && t.assigned_to && t.assigned_to !== workerId) return false;
+
+    if (t.recurrence_type === 'once') return t.start_date === date;
+    if (t.recurrence_type === 'daily') return true;
+    if (t.recurrence_type === 'days_of_week') return (t.days_of_week || []).includes(targetDayOfWeek);
+    if (t.recurrence_type === 'interval') {
+      const start = new Date(t.start_date);
+      const diffDays = Math.floor((targetDate.getTime() - start.getTime()) / 86400000);
+      return diffDays >= 0 && diffDays % Math.max(1, t.recurrence_interval || 1) === 0;
+    }
+    return true;
+  }).map((t) => {
+    const isComp = completions.some((c) => c.task_id === t.id && c.task_date === date);
+    return {
+      task_id: t.id,
+      title: t.title,
+      description: t.description,
+      task_type: t.task_type,
+      flock_id: t.flock_id,
+      assigned_to: t.assigned_to,
+      recurrence_type: t.recurrence_type,
+      recurrence_interval: t.recurrence_interval,
+      days_of_week: t.days_of_week,
+      due_time: t.due_time,
+      is_completed: isComp,
+    };
+  });
+}
+
+export async function toggleTaskCompletion(
+  taskId: string,
+  date: string,
+  workerId?: string,
+  notes?: string
+): Promise<boolean> {
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase.rpc('toggle_task_completion', {
+        p_task_id: taskId,
+        p_date: date,
+        p_worker_id: workerId || null,
+        p_notes: notes || null,
+      });
+      if (!error && data !== null) return Boolean(data);
+    } catch (err) {
+      console.warn('RPC toggle_task_completion failed, updating locally:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('kandang_task_completions');
+    let completions: TaskCompletion[] = stored ? JSON.parse(stored) : [];
+    const index = completions.findIndex((c) => c.task_id === taskId && c.task_date === date);
+    if (index >= 0) {
+      completions.splice(index, 1);
+      localStorage.setItem('kandang_task_completions', JSON.stringify(completions));
+      return false;
+    } else {
+      completions.push({
+        id: `tc-${Date.now()}`,
+        task_id: taskId,
+        task_date: date,
+        completed_by: workerId || null,
+        completed_at: new Date().toISOString(),
+        notes: notes || null,
+      });
+      localStorage.setItem('kandang_task_completions', JSON.stringify(completions));
+      return true;
+    }
+  }
+  return true;
+}
+
+export async function createFarmTask(task: Partial<FarmTask>): Promise<FarmTask> {
+  const newTask: FarmTask = {
+    id: `task-${Date.now()}`,
+    title: task.title?.trim() || 'Tugas Baru',
+    description: task.description?.trim() || null,
+    task_type: task.task_type || 'custom',
+    flock_id: task.flock_id || null,
+    assigned_to: task.assigned_to || null,
+    recurrence_type: task.recurrence_type || 'daily',
+    recurrence_interval: task.recurrence_interval || 1,
+    days_of_week: task.days_of_week || [],
+    start_date: task.start_date || new Date().toISOString().split('T')[0],
+    end_date: task.end_date || null,
+    due_time: task.due_time || '16:00',
+    is_active: true,
+    created_at: new Date().toISOString(),
+  };
+
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('farm_tasks')
+        .insert({
+          title: newTask.title,
+          description: newTask.description,
+          task_type: newTask.task_type,
+          flock_id: newTask.flock_id,
+          assigned_to: newTask.assigned_to,
+          recurrence_type: newTask.recurrence_type,
+          recurrence_interval: newTask.recurrence_interval,
+          days_of_week: newTask.days_of_week,
+          start_date: newTask.start_date,
+          end_date: newTask.end_date,
+          due_time: newTask.due_time,
+          is_active: true,
+        })
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (err) {
+      console.warn('Failed insert to supabase farm_tasks, saving to local storage:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('kandang_tasks');
+    const tasks: FarmTask[] = stored ? JSON.parse(stored) : [];
+    tasks.push(newTask);
+    localStorage.setItem('kandang_tasks', JSON.stringify(tasks));
+  }
+  return newTask;
+}
+
+export async function fetchAllTasks(): Promise<FarmTask[]> {
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('farm_tasks')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      if (!error && data) return data;
+    } catch (err) {
+      console.warn('Failed to fetch from supabase farm_tasks, using local:', err);
+    }
+  }
+
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('kandang_tasks');
+  return stored ? JSON.parse(stored) : [];
+}
+
+export async function deleteTask(id: string): Promise<void> {
+  if (isConfigured) {
+    try {
+      const { error } = await supabase
+        .from('farm_tasks')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (!error) return;
+    } catch (err) {
+      console.warn('Failed soft-delete in supabase farm_tasks, deleting from local:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('kandang_tasks');
+    if (stored) {
+      const tasks: FarmTask[] = JSON.parse(stored);
+      const filtered = tasks.filter((t) => t.id !== id);
+      localStorage.setItem('kandang_tasks', JSON.stringify(filtered));
+    }
+  }
+}
+
 

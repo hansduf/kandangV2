@@ -20,6 +20,9 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+import { ProfileProvider } from '@/context/ProfileContext';
+import { ProfileSwitcherModal } from '@/components/ProfileSwitcherModal';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -35,7 +38,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-slate-50 text-slate-900 antialiased min-h-screen font-sans selection:bg-emerald-600 selection:text-white">
-        {children}
+        <ProfileProvider>
+          {children}
+          <ProfileSwitcherModal />
+        </ProfileProvider>
       </body>
     </html>
   );

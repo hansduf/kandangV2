@@ -86,3 +86,65 @@ export interface DashboardSummary {
     overall_fcr: number;
   };
 }
+
+export interface AppProfile {
+  id: string;
+  name: string;
+  role: 'owner' | 'worker';
+  pin?: string | null;
+  avatar_color: string;
+  phone?: string | null;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export type TaskType = 'daily_record' | 'vaccine' | 'feed' | 'cleaning' | 'vitamin' | 'custom';
+export type RecurrenceType = 'once' | 'daily' | 'interval' | 'days_of_week';
+
+export interface FarmTask {
+  id: string;
+  title: string;
+  description?: string | null;
+  task_type: TaskType;
+  flock_id?: string | null;
+  assigned_to?: string | null; // Profile ID or null (all workers)
+  recurrence_type: RecurrenceType;
+  recurrence_interval?: number; // every N days
+  days_of_week?: number[]; // [0,1,2,3,4,5,6] (0=Sun, 1=Mon, ...)
+  start_date: string;
+  end_date?: string | null;
+  due_time?: string | null; // e.g. '16:00'
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface TaskCompletion {
+  id: string;
+  task_id: string;
+  task_date: string;
+  completed_by?: string | null;
+  completed_at: string;
+  notes?: string | null;
+}
+
+export interface DailyTaskView {
+  task_id: string;
+  title: string;
+  description?: string | null;
+  task_type: TaskType;
+  flock_id?: string | null;
+  coop_name?: string | null;
+  flock_name?: string | null;
+  assigned_to?: string | null;
+  assigned_name?: string | null;
+  recurrence_type: RecurrenceType;
+  recurrence_interval?: number;
+  days_of_week?: number[];
+  due_time?: string | null;
+  is_completed: boolean;
+  completed_at?: string | null;
+  completed_by?: string | null;
+  completed_by_name?: string | null;
+  notes?: string | null;
+}
+

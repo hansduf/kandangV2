@@ -9,6 +9,7 @@ import {
   Minus,
   Save,
   RotateCcw,
+  Scale,
 } from 'lucide-react';
 
 interface SleekProductionInputProps {
@@ -162,44 +163,44 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         />
       </div>
 
-      {/* 2-COLUMN EGG PRODUCTION INPUT */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* LEFT COLUMN: TELUR UTUH (BUTIR & MANUAL KG / RATIO) */}
-        <div className="bg-white p-3.5 border border-slate-200 rounded-3xl shadow-md flex flex-col justify-between space-y-3">
+      {/* 2-COLUMN BALANCED EGG PRODUCTION INPUT */}
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+        {/* LEFT COLUMN: TELUR UTUH */}
+        <div className="bg-white p-3 sm:p-3.5 border border-slate-200 rounded-3xl shadow-sm space-y-2.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-emerald-50 text-[#00684a] flex items-center justify-center border border-emerald-200">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-emerald-50 text-[#00684a] flex items-center justify-center border border-emerald-200 shrink-0">
                 <Egg className="w-3.5 h-3.5 fill-[#00684a]" />
               </div>
-              <span className="text-xs font-black text-slate-800 uppercase">TELUR UTUH</span>
+              <span className="text-[11px] sm:text-xs font-black text-slate-800 uppercase tracking-tight">TELUR UTUH</span>
             </div>
             <span className="text-[9px] font-black text-[#00684a] bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md">Bagus</span>
           </div>
 
           {/* Stepper Butir */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center space-y-1.5 shadow-inner">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2 sm:p-2.5 text-center space-y-1.5 shadow-inner">
             <div className="flex items-center justify-between">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">JUMLAH BUTIR</span>
+              <span className="text-[8.5px] sm:text-[9px] font-black text-slate-500 uppercase tracking-wider">JUMLAH BUTIR</span>
               {previousEggPcs > 0 && (
                 <button
                   type="button"
                   onClick={usePreviousValue}
-                  className="text-[10px] font-bold text-slate-400 hover:text-[#00684a] flex items-center gap-1 transition-colors"
-                  title="Gunakan jumlah catatan sebelumnya"
+                  className="text-[9px] sm:text-[10px] font-bold text-slate-400 hover:text-[#00684a] flex items-center gap-0.5 transition-colors"
+                  title="Gunakan jumlah kemarin"
                 >
                   <RotateCcw className="w-2.5 h-2.5" />
-                  <span>Kemarin ({previousEggPcs.toLocaleString('id-ID')} btr)</span>
+                  <span>Kemarin ({previousEggPcs})</span>
                 </button>
               )}
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <button
                 type="button"
                 onClick={() => adjustPcs(-10)}
-                className="w-8 h-8 rounded-xl bg-white border border-slate-300 text-slate-700 font-black text-base flex items-center justify-center active:scale-95 transition-all hover:bg-slate-100 shadow-xs"
+                className="w-8 h-8 rounded-xl bg-white border border-slate-300 text-slate-700 font-black text-sm flex items-center justify-center active:scale-95 transition-all hover:bg-slate-100 shadow-2xs shrink-0"
               >
-                <Minus className="w-4 h-4 stroke-[3]" />
+                <Minus className="w-3.5 h-3.5 stroke-[3]" />
               </button>
               <input
                 type="number"
@@ -207,100 +208,54 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 value={eggGoodPcs}
                 onChange={(e) => setEggGoodPcs(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="0"
-                className="w-16 text-center text-xl font-black text-[#00684a] bg-transparent outline-none"
+                className="w-full text-center text-lg sm:text-xl font-black text-[#00684a] bg-transparent outline-none"
                 required
               />
               <button
                 type="button"
                 onClick={() => adjustPcs(+10)}
-                className="w-8 h-8 rounded-xl bg-[#00684a] text-white font-black text-base flex items-center justify-center active:scale-95 transition-all shadow-xs hover:bg-emerald-800"
+                className="w-8 h-8 rounded-xl bg-[#00684a] text-white font-black text-sm flex items-center justify-center active:scale-95 transition-all shadow-xs hover:bg-emerald-800 shrink-0"
               >
-                <Plus className="w-4 h-4 stroke-[3]" />
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
               </button>
             </div>
 
-            {/* Tracking text abu-abu jika ada record kemarin */}
-            {previousEggPcs > 0 && (
-              <span className="block text-[10px] font-semibold text-slate-400">
-                Terakhir: <strong className="text-slate-500 font-bold">{previousEggPcs.toLocaleString('id-ID')} btr</strong>
-              </span>
-            )}
-          </div>
-
-          {/* BERAT & KILOAN — UNIFIED (input salah satu, yang lain otomatis) */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-2 shadow-inner">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">BERAT & KILOAN</span>
-
-            {/* Row 1: Manual Kg Input */}
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-600">Total Kg (Timbangan):</span>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                value={manualKg}
-                onChange={(e) => {
-                  const v = e.target.value === '' ? '' : Number(e.target.value);
-                  setManualKg(v);
-                  setLastEdited('kg');
-                }}
-                placeholder="e.g. 100"
-                className="w-20 text-right text-xs font-black text-[#00684a] bg-white border border-slate-300 rounded-lg px-2 py-1 outline-none focus:border-[#00684a]"
-              />
-            </div>
-
-            {/* Row 2: Rasio btr/kg Input */}
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-600">Isi per 1 Kg:</span>
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  step="0.5"
-                  min="1"
-                  value={eggsPerKg}
-                  onChange={(e) => {
-                    const v = Number(e.target.value) || 16;
-                    setEggsPerKg(v);
-                    setLastEdited('ratio');
-                  }}
-                  className="w-14 text-center text-xs font-black text-slate-900 bg-white border border-slate-300 rounded-lg py-1 outline-none focus:border-[#00684a]"
-                />
-                <span className="text-[9px] font-bold text-slate-500">btr/kg</span>
-              </div>
-            </div>
-
-            {/* Live Calculation Result */}
-            {goodPcsNum > 0 && finalKg > 0 && (
-              <div className="text-[10px] font-black text-emerald-800 bg-emerald-100/70 px-2 py-1 rounded-lg flex items-center justify-between border border-emerald-200 mt-1">
-                <span>Rata-rata:</span>
-                <span>{finalRatio.toFixed(1)} btr/kg ({avgWeightG}g/btr) • {finalKg} kg</span>
-              </div>
-            )}
+            <span className="block text-[9.5px] sm:text-[10px] font-semibold text-slate-400 truncate">
+              {previousEggPcs > 0 ? (
+                <>Terakhir: <strong className="text-slate-500">{previousEggPcs} btr</strong></>
+              ) : (
+                'Kondisi prima'
+              )}
+            </span>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: TELUR RETAK / CACAT */}
-        <div className="bg-white p-3.5 border border-slate-200 rounded-3xl shadow-md flex flex-col justify-between space-y-3">
+        {/* RIGHT COLUMN: TELUR RETAK */}
+        <div className="bg-white p-3 sm:p-3.5 border border-slate-200 rounded-3xl shadow-sm space-y-2.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200 shrink-0">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
               </div>
-              <span className="text-xs font-black text-slate-800 uppercase">TELUR RETAK</span>
+              <span className="text-[11px] sm:text-xs font-black text-slate-800 uppercase tracking-tight">TELUR RETAK</span>
             </div>
             <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">Cacat</span>
           </div>
 
           {/* Stepper Retak */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center space-y-1.5 shadow-inner">
-            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">JUMLAH RETAK (BTR)</span>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2 sm:p-2.5 text-center space-y-1.5 shadow-inner">
             <div className="flex items-center justify-between">
+              <span className="text-[8.5px] sm:text-[9px] font-black text-slate-500 uppercase tracking-wider">JUMLAH RETAK</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-amber-700">Abnormal</span>
+            </div>
+
+            <div className="flex items-center justify-between gap-1">
               <button
                 type="button"
                 onClick={() => adjustBadPcs(-1)}
-                className="w-8 h-8 rounded-xl bg-white border border-slate-300 text-slate-700 font-black text-base flex items-center justify-center active:scale-95 transition-all hover:bg-slate-100 shadow-xs"
+                className="w-8 h-8 rounded-xl bg-white border border-slate-300 text-slate-700 font-black text-sm flex items-center justify-center active:scale-95 transition-all hover:bg-slate-100 shadow-2xs shrink-0"
               >
-                <Minus className="w-4 h-4 stroke-[3]" />
+                <Minus className="w-3.5 h-3.5 stroke-[3]" />
               </button>
               <input
                 type="number"
@@ -308,26 +263,95 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
                 value={eggBadPcs}
                 onChange={(e) => setEggBadPcs(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="0"
-                className="w-16 text-center text-xl font-black text-amber-700 bg-transparent outline-none"
+                className="w-full text-center text-lg sm:text-xl font-black text-amber-700 bg-transparent outline-none"
               />
               <button
                 type="button"
                 onClick={() => adjustBadPcs(+1)}
-                className="w-8 h-8 rounded-xl bg-amber-500 text-white font-black text-base flex items-center justify-center active:scale-95 transition-all shadow-xs hover:bg-amber-600"
+                className="w-8 h-8 rounded-xl bg-amber-500 text-white font-black text-sm flex items-center justify-center active:scale-95 transition-all shadow-xs hover:bg-amber-600 shrink-0"
               >
-                <Plus className="w-4 h-4 stroke-[3]" />
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
               </button>
             </div>
-          </div>
 
-          {/* Est. Weight Note */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center space-y-1 shadow-inner">
-            <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">ESTIMASI BERAT RETAK</span>
-            <span className="text-sm font-black text-amber-700">
-              ~{((Number(eggBadPcs) || 0) * (finalRatio > 0 ? 1 / finalRatio : 1 / 16)).toFixed(2)} kg
+            <span className="block text-[9.5px] sm:text-[10px] font-semibold text-amber-600 truncate">
+              Est. Berat: ~{((Number(eggBadPcs) || 0) * (finalRatio > 0 ? 1 / finalRatio : 1 / 16)).toFixed(2)} kg
             </span>
           </div>
         </div>
+      </div>
+
+      {/* BERAT & KILOAN TIMBANGAN (FULL-WIDTH BALANCED CARD) */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-3 sm:p-3.5 space-y-2.5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Scale className="w-4 h-4 text-[#00684a]" />
+            <span className="text-[11px] sm:text-xs font-black text-slate-800 uppercase tracking-wider">
+              Berat & Rasio Timbangan
+            </span>
+          </div>
+          <span className="text-[9.5px] font-bold text-slate-400">
+            Otomatis sinkron kg & rasio
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Box Total Kg */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2 sm:p-2.5 space-y-1 shadow-inner">
+            <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">
+              Total Kg (Timbangan)
+            </span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={manualKg}
+                onChange={(e) => {
+                  const v = e.target.value === '' ? '' : Number(e.target.value);
+                  setManualKg(v);
+                  setLastEdited('kg');
+                }}
+                placeholder="e.g. 10.5"
+                className="w-full text-sm font-black text-[#00684a] bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 outline-none focus:border-[#00684a]"
+              />
+              <span className="text-xs font-black text-slate-500">kg</span>
+            </div>
+          </div>
+
+          {/* Box Rasio btr/kg */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2 sm:p-2.5 space-y-1 shadow-inner">
+            <span className="block text-[9px] font-black text-slate-500 uppercase tracking-wider">
+              Rasio (Isi per 1 Kg)
+            </span>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                step="0.5"
+                min="1"
+                value={eggsPerKg}
+                onChange={(e) => {
+                  const v = Number(e.target.value) || 16;
+                  setEggsPerKg(v);
+                  setLastEdited('ratio');
+                }}
+                className="w-full text-sm font-black text-slate-900 bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-center outline-none focus:border-[#00684a]"
+              />
+              <span className="text-xs font-black text-slate-500">btr/kg</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Live Calculation Result Badge */}
+        {goodPcsNum > 0 && finalKg > 0 && (
+          <div className="text-[10px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center justify-between animate-in fade-in">
+            <span className="flex items-center gap-1">
+              <span>⚖️ Rata-rata:</span>
+              <span>{finalRatio.toFixed(1)} btr/kg ({avgWeightG}g/butir)</span>
+            </span>
+            <span className="text-[#00684a] font-extrabold">{finalKg} kg total</span>
+          </div>
+        )}
       </div>
 
       {/* FOOTER BAR: LIVE GAUGE + SAVE BUTTON */}

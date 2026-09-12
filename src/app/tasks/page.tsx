@@ -22,6 +22,7 @@ import {
   createFlock,
   saveDailyRecord,
   saveHealthRecord,
+  checkAndSyncDailyEggTasks,
 } from '@/lib/supabase';
 import {
   CheckSquare,
@@ -448,7 +449,7 @@ export default function TasksPage() {
             <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00684a] border border-emerald-200 flex items-center justify-center">
                     <Users className="w-4 h-4" />
                   </div>
                   <div>
@@ -784,7 +785,7 @@ export default function TasksPage() {
           <div className="bg-white border border-slate-200 rounded-3xl p-5 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-200">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00684a] flex items-center justify-center border border-emerald-200">
                   <Users className="w-4 h-4" />
                 </div>
                 <h3 className="text-sm font-black text-slate-900">Tambah Pengguna Baru</h3>
@@ -866,6 +867,7 @@ export default function TasksPage() {
         onSelectFlock={() => {}}
         onSaveDaily={async (rec) => {
           await saveDailyRecord(rec);
+          await checkAndSyncDailyEggTasks(rec.record_date, rec.flock_id, activeProfile?.id);
           await loadData();
         }}
         onSaveHealth={async (rec) => {

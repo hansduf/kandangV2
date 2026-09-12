@@ -18,6 +18,7 @@ import {
   updateFlock,
   fetchTasksForDate,
   toggleTaskCompletion,
+  checkAndSyncDailyEggTasks,
 } from '@/lib/supabase';
 import { Flock, DashboardSummary, DailyRecord, HealthRecord } from '@/types/database';
 import { DailyCalendarCard } from '@/components/DailyCalendarCard';
@@ -108,16 +109,8 @@ export default function DashboardHomePage() {
 
   const handleSaveDaily = async (record: DailyRecord) => {
     await saveDailyRecord(record);
-    // Auto-mark daily_record task as complete for today
-    try {
-      const todayTasks = await fetchTasksForDate(record.record_date, activeProfile?.id);
-      const eggTask = todayTasks.find((t) => t.task_type === 'daily_record' && !t.is_completed);
-      if (eggTask) {
-        await toggleTaskCompletion(eggTask.task_id, record.record_date, activeProfile?.id);
-      }
-    } catch (e) {
-      console.error('Failed to auto-complete egg task:', e);
-    }
+    // Auto-mark daily_record task as complete ONLY if appropriate flock or all flocks have been recorded
+    await checkAndSyncDailyEggTasks(record.record_date, record.flock_id, activeProfile?.id);
     setTaskRefreshTrigger((prev) => prev + 1);
     if (activeFlockId) {
       await loadDashboard(activeFlockId, timeMode);

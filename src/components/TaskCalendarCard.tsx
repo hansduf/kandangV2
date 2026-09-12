@@ -1,19 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DailyTaskView } from '@/types/database';
-import { fetchTasksForDate, toggleTaskCompletion } from '@/lib/supabase';
+import {
+  fetchTasksForDate,
+  toggleTaskCompletion,
+  fetchMonthTaskStatus,
+  MonthDayTaskStatus,
+} from '@/lib/supabase';
 import { useProfile } from '@/context/ProfileContext';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  CheckCircle,
   Clock,
   Egg,
   Check,
-  PlusCircle,
-  AlertCircle,
 } from 'lucide-react';
 
 interface TaskCalendarCardProps {
@@ -37,6 +39,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
   const [currentYear, setCurrentYear] = useState<number>(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState<number>(now.getMonth());
   const [tasksForDate, setTasksForDate] = useState<DailyTaskView[]>([]);
+  const [monthStatus, setMonthStatus] = useState<Record<string, MonthDayTaskStatus>>({});
   const [loading, setLoading] = useState(false);
 
   const monthNames = [
@@ -44,7 +47,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
   ];
 
-  const loadTasks = async (date: string) => {
+  const loadTasks = useCallback(async (date: string) => {
     setLoading(true);
     try {
       const data = await fetchTasksForDate(date, workerId || activeProfile?.id);
@@ -54,47 +57,58 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [workerId, activeProfile?.id]);
+
+  const loadMonthStatus = useCallback(async (year: number, month: number) => {
+    try {
+      const data = await fetchMonthTaskStatus(year, month, workerId || activeProfile?.id);
+      setMonthStatus(data);
+    } catch (err) {
+      console.error('Failed to load month task status:', err);
+    }
+  }, [workerId, activeProfile?.id]);
 
   useEffect(() => {
     loadTasks(selectedDate);
-  }, [selectedDate, workerId, activeProfile?.id]);
+  }, [selectedDate, loadTasks]);
+
+  useEffect(() => {
+    loadMonthStatus(currentYear, currentMonth);
+  }, [currentYear, currentMonth, loadMonthStatus]);
 
   const handlePrevMonth = () => {
     if (currentMonth === 0) {
       setCurrentMonth(11);
-      setCurrentYear(currentYear - 1);
+      setCurrentYear((y) => y - 1);
     } else {
-      setCurrentMonth(currentMonth - 1);
+      setCurrentMonth((m) => m - 1);
     }
   };
 
   const handleNextMonth = () => {
     if (currentMonth === 11) {
       setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
+      setCurrentYear((y) => y + 1);
     } else {
-      setCurrentMonth(currentMonth + 1);
+      setCurrentMonth((m) => m + 1);
     }
+  };
+
+  const handleGoToday = () => {
+    const today = new Date();
+    setCurrentYear(today.getFullYear());
+    setCurrentMonth(today.getMonth());
+    setSelectedDate(todayStr);
   };
 
   // Quick days shortcuts (Hari Ini, Besok, Lusa)
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
   const dayAfterTomorrow = new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0];
 
+  // Days in current month
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
-
-  const daysArray = [];
-  for (let i = 0; i < firstDayIndex; i++) {
-    daysArray.push(null);
-  }
-  for (let d = 1; d <= daysInMonth; d++) {
-    const formatted = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(
-      d
-    ).padStart(2, '0')}`;
-    daysArray.push(formatted);
-  }
+  // Monday-first offset (0 = Monday, ..., 6 = Sunday)
+  const firstDayIndex = (new Date(currentYear, currentMonth, 1).getDay() + 6) % 7;
 
   const handleToggle = async (task: DailyTaskView) => {
     if (readOnly) return;
@@ -104,49 +118,89 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
     }
     await toggleTaskCompletion(task.task_id, selectedDate, activeProfile?.id);
     await loadTasks(selectedDate);
+    await loadMonthStatus(currentYear, currentMonth);
+  };
+
+  const formatIndoDate = (dateStr: string) => {
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        return `${days[d.getDay()]}, ${parts[2]} ${monthNames[parseInt(parts[1]) - 1]} ${parts[0]}`;
+      }
+    } catch {
+      // fallback
+    }
+    return dateStr;
   };
 
   const completedCount = tasksForDate.filter((t) => t.is_completed).length;
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-3xl p-4 sm:p-5 space-y-4 shadow-sm">
-      {/* Header with Month Navigation */}
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#00684a] border border-emerald-200 flex items-center justify-center shadow-xs">
-            <CalendarIcon className="w-5 h-5" />
+    <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 space-y-3.5 shadow-sm">
+      {/* Calendar Header */}
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00684a] border border-emerald-200 flex items-center justify-center shadow-xs">
+            <CalendarIcon className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
               Kalender Tugas & Agenda
             </h3>
-            <p className="text-[11px] font-semibold text-slate-500">
-              Lihat dan selesaikan tugas harian, besok, & jadwal mendatang
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">
+              Jadwal tugas harian & agenda mendatang
             </p>
           </div>
         </div>
 
-        {/* Month Navigator */}
-        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-2xl">
+        {/* Month Navigation */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleGoToday}
+            className="px-2 py-1 text-[10px] font-black text-[#00684a] hover:bg-emerald-50 rounded-lg border border-emerald-200 transition-all mr-1"
+          >
+            Hari Ini
+          </button>
           <button
             onClick={handlePrevMonth}
-            className="p-1 rounded-xl text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
+            aria-label="Bulan Sebelumnya"
+            className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-all"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-xs font-black text-slate-800 min-w-[110px] text-center">
+          <span className="text-xs font-black text-slate-800 px-1 min-w-[105px] text-center">
             {monthNames[currentMonth]} {currentYear}
           </span>
           <button
             onClick={handleNextMonth}
-            className="p-1 rounded-xl text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
+            aria-label="Bulan Berikutnya"
+            className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-all"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Quick Day Shortcut Chips */}
+      {/* Legend Indicators */}
+      <div className="flex items-center justify-between gap-2 px-1 flex-wrap text-[10px] font-bold text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-200">
+        <span className="text-slate-400 font-extrabold uppercase tracking-wider text-[9px]">Indikator:</span>
+        <div className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span>Semua Selesai</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span>Tugas Menunggu</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-rose-500" />
+          <span>Terlewat / Belum</span>
+        </div>
+      </div>
+
+      {/* Quick Day Shortcuts */}
       <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
         {[
           { label: 'Hari Ini', date: todayStr },
@@ -166,63 +220,118 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
             {chip.label}
           </button>
         ))}
-        <span className="text-[11px] font-bold text-slate-400 ml-auto hidden sm:block">
-          Tanggal terpilih: <strong className="text-slate-700">{selectedDate}</strong>
-        </span>
       </div>
 
-      {/* Mini Month Grid */}
-      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5">
+      {/* Calendar Table Grid */}
+      <div>
+        {/* Day Name Headers (Sen - Min) */}
         <div className="grid grid-cols-7 gap-1 text-center mb-1">
-          {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((d) => (
-            <span key={d} className="text-[10px] font-black text-slate-400 uppercase">
-              {d}
-            </span>
+          {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((dayName) => (
+            <div key={dayName} className="text-[10px] font-black text-slate-400 uppercase py-1">
+              {dayName}
+            </div>
           ))}
         </div>
 
+        {/* Day Cells Grid */}
         <div className="grid grid-cols-7 gap-1">
-          {daysArray.map((dateStr, idx) => {
-            if (!dateStr) return <div key={`empty-${idx}`} className="h-8" />;
+          {/* Empty cells before month starts */}
+          {Array.from({ length: firstDayIndex }).map((_, idx) => (
+            <div key={`empty-${idx}`} className="h-11 rounded-xl bg-slate-50/50" />
+          ))}
 
-            const dayNum = parseInt(dateStr.split('-')[2]);
-            const isSelected = selectedDate === dateStr;
-            const isToday = todayStr === dateStr;
+          {/* Days of the month */}
+          {Array.from({ length: daysInMonth }).map((_, idx) => {
+            const dayNum = idx + 1;
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(
+              dayNum
+            ).padStart(2, '0')}`;
+            const isToday = dateStr === todayStr;
+            const isSelected = dateStr === selectedDate;
+            const status = monthStatus[dateStr];
+
+            const hasTasks = Boolean(status && status.total > 0);
+            const isAllCompleted = hasTasks && status.completed >= status.total;
+            const isPastOverdue = hasTasks && !isAllCompleted && dateStr < todayStr;
+            const isPending = hasTasks && !isAllCompleted && dateStr >= todayStr;
 
             return (
               <button
                 key={dateStr}
                 type="button"
                 onClick={() => setSelectedDate(dateStr)}
-                className={`h-8 rounded-xl font-black text-xs transition-all relative flex items-center justify-center ${
+                className={`h-11 rounded-xl p-1 flex flex-col items-center justify-between border transition-all relative ${
                   isSelected
-                    ? 'bg-[#00684a] text-white shadow-xs font-black'
+                    ? 'border-[#00684a] bg-emerald-50/70 shadow-sm ring-2 ring-[#00684a]/20 scale-[1.03] z-10'
                     : isToday
-                    ? 'bg-emerald-100 text-[#00684a] border border-emerald-300'
-                    : 'text-slate-700 hover:bg-white'
+                    ? 'border-emerald-300 bg-emerald-50/30 hover:bg-slate-50'
+                    : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
-                <span>{dayNum}</span>
+                <div className="flex items-center justify-between w-full px-0.5">
+                  <span
+                    className={`text-[11px] font-black leading-tight ${
+                      isSelected
+                        ? 'text-[#00684a]'
+                        : isToday
+                        ? 'text-emerald-700 font-extrabold'
+                        : 'text-slate-700'
+                    }`}
+                  >
+                    {dayNum}
+                  </span>
+                  {isToday && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  )}
+                </div>
+
+                {/* Status Indicator Dots */}
+                <div className="flex items-center justify-center gap-0.5 mt-auto">
+                  {isAllCompleted && (
+                    <span
+                      title={`${status.completed}/${status.total} selesai`}
+                      className="w-1.5 h-1.5 rounded-full bg-emerald-500"
+                    />
+                  )}
+                  {isPending && (
+                    <span
+                      title={`${status.completed}/${status.total} selesai`}
+                      className="w-1.5 h-1.5 rounded-full bg-amber-500"
+                    />
+                  )}
+                  {isPastOverdue && (
+                    <span
+                      title={`${status.completed}/${status.total} selesai`}
+                      className="w-1.5 h-1.5 rounded-full bg-rose-500"
+                    />
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Tasks List for Selected Date */}
-      <div className="space-y-2.5 pt-1">
-        <div className="flex items-center justify-between">
+      {/* Selected Date Detail Card */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
           <div className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-[#00684a]" />
-            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-              Tugas Tanggal {selectedDate}
-            </h4>
+            <Clock className="w-3.5 h-3.5 text-[#00684a]" />
+            <span className="text-xs font-black text-slate-800">
+              {formatIndoDate(selectedDate)}
+            </span>
+            {selectedDate === todayStr && (
+              <span className="text-[9px] font-black bg-emerald-100 text-[#00684a] px-2 py-0.5 rounded-full border border-emerald-200">
+                Hari Ini
+              </span>
+            )}
           </div>
-          <span className="text-[10px] font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200">
+          <span className="text-[10px] font-black bg-white text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
             {completedCount} / {tasksForDate.length} Selesai
           </span>
         </div>
 
+        {/* Tasks List */}
         <div className="space-y-2">
           {tasksForDate.map((task) => {
             const isEgg = task.task_type === 'daily_record';
@@ -232,7 +341,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                 key={task.task_id}
                 className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                   task.is_completed
-                    ? 'bg-slate-50 border-slate-200 opacity-80'
+                    ? 'bg-white/60 border-slate-200 opacity-80'
                     : 'bg-white border-slate-200 shadow-xs'
                 }`}
               >
@@ -243,7 +352,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                     onClick={() => handleToggle(task)}
                     className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
                       task.is_completed
-                        ? 'bg-emerald-600 border-emerald-600 text-white'
+                        ? 'bg-[#00684a] border-[#00684a] text-white'
                         : 'bg-white border-slate-300 hover:border-emerald-500'
                     }`}
                   >
@@ -293,7 +402,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
           })}
 
           {tasksForDate.length === 0 && !loading && (
-            <div className="text-center py-6 bg-slate-50 border border-slate-200/60 rounded-2xl text-slate-400 text-xs font-semibold">
+            <div className="text-center py-6 bg-white border border-slate-200/60 rounded-xl text-slate-400 text-xs font-semibold">
               Tidak ada tugas yang dijadwalkan pada tanggal ini.
             </div>
           )}

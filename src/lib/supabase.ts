@@ -212,6 +212,7 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
       records.unshift(fullRecord);
     }
     localStorage.setItem(`kandang_daily_${record.flock_id}`, JSON.stringify(records));
+    await checkAndSyncDailyEggTasks(record.record_date, record.flock_id);
     return;
   }
 
@@ -228,6 +229,7 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
     p_notes: record.notes || ''
   });
   if (error) throw error;
+  await checkAndSyncDailyEggTasks(record.record_date, record.flock_id);
 }
 
 export async function fetchHealthRecords(flockId: string): Promise<HealthRecord[]> {
@@ -727,6 +729,200 @@ export async function toggleTaskCompletion(
     }
   }
   return true;
+}
+
+export async function setTaskCompletion(
+  taskId: string,
+  date: string,
+  isCompleted: boolean,
+  workerId?: string,
+  notes?: string
+): Promise<void> {
+  if (isConfigured) {
+    try {
+      if (isCompleted) {
+        await supabase.from('task_completions').upsert(
+          {
+            task_id: taskId,
+            task_date: date,
+            completed_by: workerId || null,
+            notes: notes || null,
+            completed_at: new Date().toISOString(),
+          },
+          { onConflict: 'task_id,task_date' }
+        );
+      } else {
+        await supabase
+          .from('task_completions')
+          .delete()
+          .match({ task_id: taskId, task_date: date });
+      }
+      return;
+    } catch (err) {
+      console.warn('Supabase setTaskCompletion failed, using local:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('kandang_task_completions');
+    let completions: TaskCompletion[] = stored ? JSON.parse(stored) : [];
+    const index = completions.findIndex((c) => c.task_id === taskId && c.task_date === date);
+
+    if (isCompleted) {
+      if (index === -1) {
+        completions.push({
+          id: `tc-${Date.now()}`,
+          task_id: taskId,
+          task_date: date,
+          completed_by: workerId || null,
+          completed_at: new Date().toISOString(),
+          notes: notes || null,
+        });
+        localStorage.setItem('kandang_task_completions', JSON.stringify(completions));
+      }
+    } else {
+      if (index >= 0) {
+        completions.splice(index, 1);
+        localStorage.setItem('kandang_task_completions', JSON.stringify(completions));
+      }
+    }
+  }
+}
+
+export async function checkAndSyncDailyEggTasks(
+  recordDate: string,
+  savedFlockId: string,
+  workerId?: string
+): Promise<void> {
+  try {
+    const tasksForDate = await fetchTasksForDate(recordDate, workerId);
+    const eggTasks = tasksForDate.filter((t) => t.task_type === 'daily_record');
+    if (eggTasks.length === 0) return;
+
+    // Fetch all active flocks to check farm-wide record completion
+    const allFlocks = await fetchFlocks();
+    const activeFlocks = allFlocks.filter((f) => f.status === 'active' || !f.status);
+
+    // Check which flocks have records for recordDate
+    const flockChecks = await Promise.all(
+      activeFlocks.map(async (f) => {
+        if (f.id === savedFlockId) return true;
+        const hist = await fetchDailyHistory(f.id, 60);
+        return hist.some((r) => r.record_date === recordDate);
+      })
+    );
+
+    const allFlocksRecorded = activeFlocks.length > 0 && flockChecks.every(Boolean);
+
+    for (const task of eggTasks) {
+      if (task.flock_id) {
+        // Task is specific to a flock
+        if (task.flock_id === savedFlockId) {
+          await setTaskCompletion(task.task_id, recordDate, true, workerId);
+        }
+      } else {
+        // General farm-wide task: ONLY complete if ALL active flocks have recorded!
+        if (allFlocksRecorded) {
+          await setTaskCompletion(task.task_id, recordDate, true, workerId);
+        } else {
+          // If not all flocks are recorded yet, revert to incomplete
+          await setTaskCompletion(task.task_id, recordDate, false, workerId);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to sync daily egg tasks:', err);
+  }
+}
+
+export interface MonthDayTaskStatus {
+  total: number;
+  completed: number;
+}
+
+export async function fetchMonthTaskStatus(
+  year: number,
+  month: number, // 0-indexed (0 = Jan, 11 = Dec)
+  workerId?: string
+): Promise<Record<string, MonthDayTaskStatus>> {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const result: Record<string, MonthDayTaskStatus> = {};
+
+  const allTasks = await fetchAllTasks();
+  if (allTasks.length === 0) return result;
+
+  const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+  const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+  let completions: TaskCompletion[] = [];
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('task_completions')
+        .select('*')
+        .gte('task_date', startStr)
+        .lte('task_date', endStr);
+      if (!error && data) completions = data;
+    } catch (err) {
+      console.warn('Failed to fetch completions from supabase, fallback to local:', err);
+    }
+  }
+  if (completions.length === 0 && typeof window !== 'undefined') {
+    const stored = localStorage.getItem('kandang_task_completions');
+    if (stored) {
+      const allComp: TaskCompletion[] = JSON.parse(stored);
+      completions = allComp.filter((c) => c.task_date >= startStr && c.task_date <= endStr);
+    }
+  }
+
+  const compSet = new Set<string>();
+  for (const c of completions) {
+    compSet.add(`${c.task_id}_${c.task_date}`);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const targetDate = new Date(year, month, d);
+    const targetDayOfWeek = targetDate.getDay();
+
+    let total = 0;
+    let completed = 0;
+
+    for (const t of allTasks) {
+      if (!t.is_active) continue;
+      if (t.start_date > dateStr) continue;
+      if (t.end_date && t.end_date < dateStr) continue;
+      if (workerId && t.assigned_to && t.assigned_to !== workerId) continue;
+
+      let isDue = false;
+      if (t.recurrence_type === 'once') {
+        isDue = t.start_date === dateStr;
+      } else if (t.recurrence_type === 'daily') {
+        isDue = true;
+      } else if (t.recurrence_type === 'days_of_week') {
+        isDue = (t.days_of_week || []).includes(targetDayOfWeek);
+      } else if (t.recurrence_type === 'interval') {
+        const start = new Date(t.start_date);
+        const diffDays = Math.floor((targetDate.getTime() - start.getTime()) / 86400000);
+        isDue = diffDays >= 0 && diffDays % Math.max(1, t.recurrence_interval || 1) === 0;
+      } else {
+        isDue = true;
+      }
+
+      if (isDue) {
+        total++;
+        if (compSet.has(`${t.id}_${dateStr}`)) {
+          completed++;
+        }
+      }
+    }
+
+    if (total > 0) {
+      result[dateStr] = { total, completed };
+    }
+  }
+
+  return result;
 }
 
 export async function createFarmTask(task: Partial<FarmTask>): Promise<FarmTask> {

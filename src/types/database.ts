@@ -8,6 +8,7 @@ export interface Flock {
   chick_out_date?: string | null;
   initial_population: number;
   current_population: number;
+  initial_age_weeks?: number;
   total_mortality?: number;
   total_culling?: number;
   age_weeks: number;

@@ -42,9 +42,54 @@ export default function ReportsPage() {
   const [viewFlockId, setViewFlockId] = useState<string>('all'); // 'all' or flock.id
   const [loading, setLoading] = useState(true);
 
+  // Timeframe Filter State for Analytics Page
+  const [timeMode, setTimeMode] = useState<'7' | '14' | '30' | 'all' | 'custom'>('7');
+  const todayStr = new Date().toISOString().split('T')[0];
+  const defaultStart7 = new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(defaultStart7);
+  const [endDate, setEndDate] = useState(todayStr);
+
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isQuickInputOpen, setIsQuickInputOpen] = useState(false);
+
+  // Update date boundaries when timeMode changes
+  useEffect(() => {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    setEndDate(today);
+    if (timeMode === '7') {
+      const d = new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0];
+      setStartDate(d);
+    } else if (timeMode === '14') {
+      const d = new Date(Date.now() - 13 * 86400000).toISOString().split('T')[0];
+      setStartDate(d);
+    } else if (timeMode === '30') {
+      const d = new Date(Date.now() - 29 * 86400000).toISOString().split('T')[0];
+      setStartDate(d);
+    }
+  }, [timeMode]);
+
+  // Human-readable Indonesian label for selected timeframe
+  const periodLabel = useMemo(() => {
+    if (timeMode === 'all') return 'Semua Waktu';
+    if (!startDate || !endDate) return 'Periode';
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const monthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+    ];
+
+    if (startDate === endDate) {
+      return `${start.getDate()} ${monthNames[start.getMonth()]}`;
+    }
+    if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+      return `${start.getDate()} - ${end.getDate()} ${monthNames[start.getMonth()]}`;
+    }
+    return `${start.getDate()} ${monthNames[start.getMonth()]} - ${end.getDate()} ${monthNames[end.getMonth()]}`;
+  }, [timeMode, startDate, endDate]);
 
   useEffect(() => {
     loadAllData();
@@ -57,7 +102,7 @@ export default function ReportsPage() {
       setFlocks(flockList);
 
       if (flockList.length > 0) {
-        // Concurrently fetch summaries, histories, and health records for all coops
+        // Concurrently fetch summaries, histories (365 days for flexible filtering), and health records
         const [sumList, histList, healthList] = await Promise.all([
           Promise.all(
             flockList.map(async (f) => {
@@ -72,7 +117,7 @@ export default function ReportsPage() {
           Promise.all(
             flockList.map(async (f) => {
               try {
-                const recs = await fetchDailyHistory(f.id, 60);
+                const recs = await fetchDailyHistory(f.id, 365);
                 return { flock: f, records: recs };
               } catch (err) {
                 console.error(`Error loading history for flock ${f.id}:`, err);
@@ -126,14 +171,71 @@ export default function ReportsPage() {
     await loadAllData();
   };
 
-  // 1. AGGREGATE STATS ACROSS ALL FLOCKS
+  // 1. DYNAMIC PERIOD METRICS PER FLOCK (ADAPTS TO SELECTED TIMEFRAME)
+  const flockPeriodList = useMemo(() => {
+    return flocks.map((flock) => {
+      const allRecs = allHistories.find((h) => h.flock.id === flock.id)?.records || [];
+      const filteredRecs = allRecs.filter((r) => {
+        if (timeMode === 'all') return true;
+        if (!startDate || !endDate) return true;
+        return r.record_date >= startDate && r.record_date <= endDate;
+      });
+
+      const period_egg_good_pcs = filteredRecs.reduce((acc, r) => acc + (r.egg_good_pcs || 0), 0);
+      const period_egg_good_kg = Number(
+        filteredRecs.reduce((acc, r) => acc + (r.egg_good_kg || 0), 0).toFixed(2)
+      );
+      const period_egg_bad_pcs = filteredRecs.reduce((acc, r) => acc + (r.egg_bad_pcs || 0), 0);
+      const period_mortality_pcs = filteredRecs.reduce((acc, r) => acc + (r.mortality_pcs || 0), 0);
+      const period_feed_kg = Number(
+        filteredRecs.reduce((acc, r) => acc + (r.feed_kg || 0), 0).toFixed(2)
+      );
+
+      // Calculate average daily HDP in this period
+      let period_avg_hdp = 0;
+      if (filteredRecs.length > 0) {
+        const sumHdp = filteredRecs.reduce((acc, r) => {
+          const val =
+            r.hdp_percent !== undefined && r.hdp_percent !== null
+              ? r.hdp_percent
+              : r.hd_percent || 0;
+          return acc + val;
+        }, 0);
+        period_avg_hdp = Number((sumHdp / filteredRecs.length).toFixed(1));
+      } else if (flock.current_population > 0 && period_egg_good_pcs > 0) {
+        period_avg_hdp = Number(
+          ((period_egg_good_pcs / flock.current_population) * 100).toFixed(1)
+        );
+      }
+
+      let period_avg_hhp = 0;
+      if (filteredRecs.length > 0) {
+        const sumHhp = filteredRecs.reduce((acc, r) => acc + (r.hhp_percent || 0), 0);
+        period_avg_hhp = Number((sumHhp / filteredRecs.length).toFixed(1));
+      }
+
+      const summary = summaries.find((s) => s.flock.id === flock.id);
+
+      return {
+        flock,
+        summary,
+        records: filteredRecs,
+        period_egg_good_pcs,
+        period_egg_good_kg,
+        period_egg_bad_pcs,
+        period_mortality_pcs,
+        period_feed_kg,
+        period_avg_hdp,
+        period_avg_hhp,
+        records_count: filteredRecs.length,
+      };
+    });
+  }, [flocks, allHistories, summaries, timeMode, startDate, endDate]);
+
+  // 2. AGGREGATE STATS (ALL-TIME AND DYNAMIC PERIOD)
   const farmAggregates = useMemo(() => {
     let totalActivePop = 0;
     let totalInitialPop = 0;
-    let todayEggPcs = 0;
-    let todayEggKg = 0;
-    let todayEggBadPcs = 0;
-    let todayMortality = 0;
     let cumEggPcs = 0;
     let cumEggKg = 0;
     let cumMortality = 0;
@@ -144,10 +246,6 @@ export default function ReportsPage() {
     summaries.forEach((s) => {
       totalActivePop += s.flock.current_population || 0;
       totalInitialPop += s.flock.initial_population || s.flock.current_population || 0;
-      todayEggPcs += s.today.egg_good_pcs || 0;
-      todayEggKg += s.today.egg_good_kg || 0;
-      todayEggBadPcs += s.today.egg_bad_pcs || 0;
-      todayMortality += s.today.mortality_pcs || 0;
       cumEggPcs += s.totals.total_egg_good_pcs || 0;
       cumEggKg += s.totals.total_egg_good_kg || 0;
       cumMortality += s.totals.total_mortality || 0;
@@ -156,23 +254,43 @@ export default function ReportsPage() {
       cumFeedKg += s.totals.total_feed_kg || 0;
     });
 
-    const todayFarmHdp =
-      totalActivePop > 0 ? Number(((todayEggPcs / totalActivePop) * 100).toFixed(2)) : 0;
-    const todayFarmHhp =
-      totalInitialPop > 0 ? Number(((todayEggPcs / totalInitialPop) * 100).toFixed(2)) : 0;
     const farmMortRate =
       totalInitialPop > 0 ? Number(((cumMortality / totalInitialPop) * 100).toFixed(2)) : 0;
     const farmFCR = cumEggKg > 0 ? Number((cumFeedKg / cumEggKg).toFixed(2)) : 0;
 
+    // Period sums across all coops
+    let periodEggPcs = 0;
+    let periodEggKg = 0;
+    let periodEggBadPcs = 0;
+    let periodMortality = 0;
+    let periodFeedKg = 0;
+    let totalHdpSum = 0;
+    let totalHdpCount = 0;
+    let totalHhpSum = 0;
+
+    flockPeriodList.forEach((item) => {
+      periodEggPcs += item.period_egg_good_pcs;
+      periodEggKg += item.period_egg_good_kg;
+      periodEggBadPcs += item.period_egg_bad_pcs;
+      periodMortality += item.period_mortality_pcs;
+      periodFeedKg += item.period_feed_kg;
+      if (item.period_avg_hdp > 0) {
+        totalHdpSum += item.period_avg_hdp;
+        totalHdpCount += 1;
+      }
+      if (item.period_avg_hhp > 0) {
+        totalHhpSum += item.period_avg_hhp;
+      }
+    });
+
+    const periodFarmAvgHdp =
+      totalHdpCount > 0 ? Number((totalHdpSum / totalHdpCount).toFixed(1)) : 0;
+    const periodFarmAvgHhp =
+      totalHdpCount > 0 ? Number((totalHhpSum / totalHdpCount).toFixed(1)) : 0;
+
     return {
       totalActivePop,
       totalInitialPop,
-      todayEggPcs,
-      todayEggKg: Number(todayEggKg.toFixed(2)),
-      todayEggBadPcs,
-      todayMortality,
-      todayFarmHdp,
-      todayFarmHhp,
       cumEggPcs,
       cumEggKg: Number(cumEggKg.toFixed(2)),
       cumMortality,
@@ -181,34 +299,34 @@ export default function ReportsPage() {
       farmMortRate,
       cumFeedKg: Number(cumFeedKg.toFixed(2)),
       farmFCR,
+      // Dynamic period metrics:
+      periodEggPcs,
+      periodEggKg: Number(periodEggKg.toFixed(2)),
+      periodEggBadPcs,
+      periodMortality,
+      periodFeedKg: Number(periodFeedKg.toFixed(2)),
+      periodFarmAvgHdp,
+      periodFarmAvgHhp,
     };
-  }, [summaries]);
+  }, [summaries, flockPeriodList]);
 
-  // 2. LEADERBOARDS
+  // 3. LEADERBOARDS (ADAPTS TO SELECTED TIMEFRAME)
   const bestHdpFlock = useMemo(() => {
-    if (summaries.length === 0) return null;
-    return [...summaries].sort((a, b) => {
-      const hdpA = a.today.hdp_percent || a.today.hd_percent || 0;
-      const hdpB = b.today.hdp_percent || b.today.hd_percent || 0;
-      return hdpB - hdpA;
-    })[0];
-  }, [summaries]);
+    if (flockPeriodList.length === 0) return null;
+    return [...flockPeriodList].sort((a, b) => b.period_avg_hdp - a.period_avg_hdp)[0];
+  }, [flockPeriodList]);
 
   const highestProductionFlock = useMemo(() => {
-    if (summaries.length === 0) return null;
-    return [...summaries].sort(
-      (a, b) => (b.totals.total_egg_good_pcs || 0) - (a.totals.total_egg_good_pcs || 0)
-    )[0];
-  }, [summaries]);
+    if (flockPeriodList.length === 0) return null;
+    return [...flockPeriodList].sort((a, b) => b.period_egg_good_pcs - a.period_egg_good_pcs)[0];
+  }, [flockPeriodList]);
 
   const lowestMortalityFlock = useMemo(() => {
-    if (summaries.length === 0) return null;
-    return [...summaries].sort(
-      (a, b) => (a.totals.mortality_rate_percent || 0) - (b.totals.mortality_rate_percent || 0)
-    )[0];
-  }, [summaries]);
+    if (flockPeriodList.length === 0) return null;
+    return [...flockPeriodList].sort((a, b) => a.period_mortality_pcs - b.period_mortality_pcs)[0];
+  }, [flockPeriodList]);
 
-  // 3. UNIFIED FARM DAILY HISTORY (ALL FLOCKS COMBINED BY DATE)
+  // 4. UNIFIED FARM DAILY HISTORY (ALL FLOCKS COMBINED BY DATE)
   const farmDailyHistory = useMemo(() => {
     const dateMap = new Map<
       string,
@@ -313,7 +431,17 @@ export default function ReportsPage() {
   const activeFlockSummary = summaries.find((s) => s.flock.id === viewFlockId);
   const activeSingleHistory = allHistories.find((h) => h.flock.id === viewFlockId)?.records || [];
 
-  const displayedRecords = isAllView ? farmDailyHistory : activeSingleHistory;
+  const rawDisplayedRecords = isAllView ? farmDailyHistory : activeSingleHistory;
+
+  // Filter daily records according to the selected timeframe
+  const displayedRecords = useMemo(() => {
+    if (timeMode === 'all') return rawDisplayedRecords;
+    if (!startDate || !endDate) return rawDisplayedRecords;
+    return rawDisplayedRecords.filter(
+      (r) => r.record_date >= startDate && r.record_date <= endDate
+    );
+  }, [rawDisplayedRecords, timeMode, startDate, endDate]);
+
   const displayedWeeklyMort = isAllView
     ? farmAggregates.cumWeeklyMort
     : activeFlockSummary?.totals.weekly_mortality;
@@ -327,9 +455,9 @@ export default function ReportsPage() {
     ? farmAggregates.farmMortRate
     : activeFlockSummary?.totals.mortality_rate_percent;
 
-  // EXPORT ALL COOP CSV
+  // EXPORT ALL COOP CSV (INCLUDES DYNAMIC PERIOD METRICS)
   const exportMultiCoopCSV = () => {
-    if (summaries.length === 0) return;
+    if (flockPeriodList.length === 0) return;
     const headers = [
       'Kandang',
       'Nama Angkatan',
@@ -337,43 +465,39 @@ export default function ReportsPage() {
       'Umur (Mgg)',
       'Populasi Aktif',
       'Populasi Awal',
-      'HDP Hari Ini (%)',
-      'HHP Hari Ini (%)',
-      'Telur Utuh Hari Ini (Btr)',
-      'Telur Utuh Hari Ini (Kg)',
-      'Telur Retak Hari Ini (Btr)',
-      'Mati Hari Ini (Ekor)',
+      `HDP Periode (${periodLabel}) %`,
+      `Telur Periode (${periodLabel}) Btr`,
+      `Telur Periode (${periodLabel}) Kg`,
+      `Mati Periode (${periodLabel}) Ekor`,
       'Rata2 HDP Kumulatif (%)',
       'Total Telur Kumulatif (Btr)',
       'Total Telur Kumulatif (Kg)',
       'Total Mati Kumulatif (Ekor)',
-      'Tingkat Mortalitas (%)',
+      'Tingkat Mortalitas Kumulatif (%)',
       'Total Pakan (Kg)',
       'FCR Kumulatif',
       'Status',
     ];
 
-    const rows = summaries.map((s) => [
-      s.flock.coop_name,
-      `"${s.flock.name}"`,
-      s.flock.strain,
-      s.flock.age_weeks,
-      s.flock.current_population,
-      s.flock.initial_population,
-      s.today.hdp_percent || s.today.hd_percent || 0,
-      s.today.hhp_percent || 0,
-      s.today.egg_good_pcs,
-      s.today.egg_good_kg,
-      s.today.egg_bad_pcs,
-      s.today.mortality_pcs,
-      s.totals.overall_hdp_percent || s.totals.overall_hd_percent || 0,
-      s.totals.total_egg_good_pcs,
-      s.totals.total_egg_good_kg,
-      s.totals.total_mortality,
-      s.totals.mortality_rate_percent,
-      s.totals.total_feed_kg,
-      s.totals.overall_fcr,
-      s.flock.status,
+    const rows = flockPeriodList.map((p) => [
+      p.flock.coop_name,
+      `"${p.flock.name}"`,
+      p.flock.strain,
+      p.flock.age_weeks,
+      p.flock.current_population,
+      p.flock.initial_population,
+      p.period_avg_hdp,
+      p.period_egg_good_pcs,
+      p.period_egg_good_kg,
+      p.period_mortality_pcs,
+      p.summary?.totals.overall_hdp_percent || p.summary?.totals.overall_hd_percent || 0,
+      p.summary?.totals.total_egg_good_pcs || 0,
+      p.summary?.totals.total_egg_good_kg || 0,
+      p.summary?.totals.total_mortality || 0,
+      p.summary?.totals.mortality_rate_percent || 0,
+      p.summary?.totals.total_feed_kg || 0,
+      p.summary?.totals.overall_fcr || 0,
+      p.flock.status,
     ]);
 
     // Add aggregate total row
@@ -384,12 +508,10 @@ export default function ReportsPage() {
       '-',
       farmAggregates.totalActivePop,
       farmAggregates.totalInitialPop,
-      farmAggregates.todayFarmHdp,
-      farmAggregates.todayFarmHhp,
-      farmAggregates.todayEggPcs,
-      farmAggregates.todayEggKg,
-      farmAggregates.todayEggBadPcs,
-      farmAggregates.todayMortality,
+      farmAggregates.periodFarmAvgHdp,
+      farmAggregates.periodEggPcs,
+      farmAggregates.periodEggKg,
+      farmAggregates.periodMortality,
       '-',
       farmAggregates.cumEggPcs,
       farmAggregates.cumEggKg,
@@ -408,7 +530,7 @@ export default function ReportsPage() {
     link.setAttribute('href', encodedUri);
     link.setAttribute(
       'download',
-      `Laporan_Komparasi_Semua_Kandang_${new Date().toISOString().split('T')[0]}.csv`
+      `Laporan_Komparasi_Kandang_${periodLabel.replace(/\s+/g, '_')}_${todayStr}.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -445,17 +567,79 @@ export default function ReportsPage() {
           </button>
         </div>
 
-        {/* 1. AGGREGATE TOTALS (RINGKASAN FARM SELURUHNYA) */}
+        {/* GLOBAL TIMEFRAME SELECTOR BAR FOR ANALYTICS */}
+        <div className="bg-white p-3 border border-slate-200/80 rounded-2xl sm:rounded-3xl shadow-sm space-y-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#00684a]" />
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Time Frame Periode
+                </h3>
+                <span className="bg-emerald-50 text-[#00684a] border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-full">
+                  {periodLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Timeframe Selector Pills */}
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              {(['7', '14', '30', 'all', 'custom'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setTimeMode(mode)}
+                  className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all ${
+                    timeMode === mode
+                      ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  {mode === 'all' ? 'Semua' : mode === 'custom' ? 'Kustom' : `${mode} Hari`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date Range Picker if Custom Mode */}
+          {timeMode === 'custom' && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-xs font-bold animate-in fade-in duration-200 flex-wrap sm:flex-nowrap">
+              <div className="flex items-center gap-1.5 text-slate-700">
+                <Calendar className="w-3.5 h-3.5 text-[#00684a]" />
+                <span>Rentang Tanggal Kustom:</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-white border border-slate-300 text-slate-900 text-[11px] font-bold rounded-lg px-2 py-1 outline-none focus:border-[#00684a]"
+                />
+                <span className="text-slate-400 font-black">-</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-white border border-slate-300 text-slate-900 text-[11px] font-bold rounded-lg px-2 py-1 outline-none focus:border-[#00684a]"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 1. AGGREGATE TOTALS (RINGKASAN FARM MENYESUAIKAN TIMEFRAME) */}
         <div className="bg-gradient-to-br from-[#00684a] via-[#03593f] to-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-lg space-y-3.5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-400/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
-          <div className="flex items-center justify-between border-b border-white/15 pb-2.5 relative z-10">
+          <div className="flex items-center justify-between border-b border-white/15 pb-2.5 relative z-10 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <span className="bg-white/20 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-white/20">
                 Agregat Farm
               </span>
               <span className="text-xs font-bold text-emerald-100">
                 {flocks.length} Kandang Terdaftar
+              </span>
+              <span className="text-[10px] bg-emerald-500/30 text-emerald-200 font-bold px-2 py-0.5 rounded-md border border-emerald-400/20">
+                Periode: {periodLabel}
               </span>
             </div>
             <span className="text-[11px] font-extrabold text-emerald-200">
@@ -469,40 +653,40 @@ export default function ReportsPage() {
             <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15">
               <div className="flex items-center gap-1.5 text-emerald-200 text-[10px] font-black uppercase tracking-wider">
                 <TrendingUp className="w-3.5 h-3.5" />
-                <span>Rata2 HDP Hari Ini</span>
+                <span>Rata2 HDP ({periodLabel})</span>
               </div>
               <div className="text-xl sm:text-2xl font-black mt-1 text-white">
-                {farmAggregates.todayFarmHdp}%
+                {farmAggregates.periodFarmAvgHdp}%
               </div>
               <span className="text-[10px] text-emerald-100/80 font-semibold">
-                HHP: {farmAggregates.todayFarmHhp}%
+                HHP: {farmAggregates.periodFarmAvgHhp}%
               </span>
             </div>
 
             <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15">
               <div className="flex items-center gap-1.5 text-amber-200 text-[10px] font-black uppercase tracking-wider">
                 <Egg className="w-3.5 h-3.5" />
-                <span>Telur Utuh Hari Ini</span>
+                <span>Telur Utuh ({periodLabel})</span>
               </div>
               <div className="text-xl sm:text-2xl font-black mt-1 text-white">
-                {farmAggregates.todayEggPcs.toLocaleString('id-ID')}{' '}
+                {farmAggregates.periodEggPcs.toLocaleString('id-ID')}{' '}
                 <span className="text-xs text-amber-200">btr</span>
               </div>
               <span className="text-[10px] text-amber-100/80 font-semibold">
-                {farmAggregates.todayEggKg} kg total
+                {farmAggregates.periodEggKg} kg total
               </span>
             </div>
 
             <div className="bg-white/10 backdrop-blur-xs p-3 rounded-2xl border border-white/15">
               <div className="flex items-center gap-1.5 text-rose-200 text-[10px] font-black uppercase tracking-wider">
                 <Skull className="w-3.5 h-3.5" />
-                <span>Kematian Farm</span>
+                <span>Kematian ({periodLabel})</span>
               </div>
               <div className="text-xl sm:text-2xl font-black mt-1 text-white">
-                {farmAggregates.todayMortality} <span className="text-xs text-rose-200">hari ini</span>
+                {farmAggregates.periodMortality} <span className="text-xs text-rose-200">ekor</span>
               </div>
               <span className="text-[10px] text-rose-100/80 font-semibold">
-                Total: {farmAggregates.cumMortality} ({farmAggregates.farmMortRate}%)
+                Total Farm: {farmAggregates.cumMortality} ({farmAggregates.farmMortRate}%)
               </span>
             </div>
 
@@ -522,59 +706,59 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* 2. LEADERBOARDS & BEST PERFORMERS */}
-        {summaries.length > 0 && (
+        {/* 2. LEADERBOARDS & BEST PERFORMERS (ADAPTS TO TIMEFRAME) */}
+        {flockPeriodList.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Best HDP */}
+            {/* Best HDP in Period */}
             <div className="bg-white p-3.5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#00684a] border border-emerald-200 flex items-center justify-center shrink-0">
                 <Award className="w-6 h-6" />
               </div>
               <div>
                 <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                  HDP Tertinggi Hari Ini
+                  HDP Tertinggi ({periodLabel})
                 </span>
                 <span className="text-xs font-black text-slate-900 block">
                   {bestHdpFlock?.flock.coop_name} ({bestHdpFlock?.flock.name})
                 </span>
                 <span className="text-xs font-extrabold text-[#00684a]">
-                  {bestHdpFlock?.today.hdp_percent || bestHdpFlock?.today.hd_percent || 0}% HDP
+                  {bestHdpFlock?.period_avg_hdp || 0}% HDP
                 </span>
               </div>
             </div>
 
-            {/* Highest Production */}
+            {/* Highest Production in Period */}
             <div className="bg-white p-3.5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
                 <Egg className="w-6 h-6" />
               </div>
               <div>
                 <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                  Produksi Telur Terbanyak
+                  Produksi Terbanyak ({periodLabel})
                 </span>
                 <span className="text-xs font-black text-slate-900 block">
                   {highestProductionFlock?.flock.coop_name} ({highestProductionFlock?.flock.name})
                 </span>
                 <span className="text-xs font-extrabold text-amber-600">
-                  {highestProductionFlock?.totals.total_egg_good_pcs.toLocaleString('id-ID')} butir
+                  {highestProductionFlock?.period_egg_good_pcs.toLocaleString('id-ID') || 0} butir
                 </span>
               </div>
             </div>
 
-            {/* Healthiest / Lowest Mortality */}
+            {/* Healthiest / Lowest Mortality in Period */}
             <div className="bg-white p-3.5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
                 <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                  Kandang Tersehat
+                  Kandang Tersehat ({periodLabel})
                 </span>
                 <span className="text-xs font-black text-slate-900 block">
                   {lowestMortalityFlock?.flock.coop_name} ({lowestMortalityFlock?.flock.name})
                 </span>
                 <span className="text-xs font-extrabold text-purple-600">
-                  Mortalitas {lowestMortalityFlock?.totals.mortality_rate_percent || 0}%
+                  Mati: {lowestMortalityFlock?.period_mortality_pcs || 0} ekor
                 </span>
               </div>
             </div>
@@ -606,7 +790,7 @@ export default function ReportsPage() {
               </p>
             </div>
 
-            {/* View Selector Pills: Semua Kandang vs Kandang W vs Kandang 1 */}
+            {/* View Selector Pills: Semua Kandang vs Kandang A vs Kandang B */}
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar bg-slate-100 p-1 rounded-xl border border-slate-200">
               <button
                 onClick={() => setViewFlockId('all')}
@@ -635,9 +819,12 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Performance Chart for Selected View */}
+          {/* Performance Chart for Selected View and Timeframe */}
           <PerformanceChart
             records={displayedRecords}
+            timeMode={timeMode}
+            startDate={startDate}
+            endDate={endDate}
             weeklyMortality={displayedWeeklyMort}
             monthlyMortality={displayedMonthlyMort}
             totalMortality={displayedTotalMort}
@@ -652,8 +839,8 @@ export default function ReportsPage() {
                   ? 'Catatan Harian Terpadu (Gabungan Seluruh Kandang)'
                   : `Riwayat Catatan Harian ${activeFlockSummary?.flock.coop_name}`}
               </h4>
-              <span className="text-[10px] font-bold text-slate-400">
-                {displayedRecords.length} Hari Catatan
+              <span className="text-[10px] font-bold text-slate-500">
+                {displayedRecords.length} Hari Catatan ({periodLabel})
               </span>
             </div>
 
@@ -687,7 +874,7 @@ export default function ReportsPage() {
                       <tr key={r.record_date} className="hover:bg-slate-50 transition-colors">
                         <td className="py-3 px-2">
                           <div className="font-black text-slate-900">{r.record_date}</div>
-                          {/* If viewing All Coops: show breakdown badges for each coop on that day! */}
+                          {/* If viewing All Coops: show breakdown badges for each coop on that day */}
                           {isAllView && farmRec.coops && farmRec.coops.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                               {farmRec.coops.map((c) => (
@@ -740,7 +927,7 @@ export default function ReportsPage() {
                   {displayedRecords.length === 0 && (
                     <tr>
                       <td colSpan={6} className="text-center py-6 text-slate-400 text-xs font-semibold">
-                        Belum ada catatan harian untuk ditampilkan.
+                        Belum ada catatan harian untuk rentang waktu ini.
                       </td>
                     </tr>
                   )}
@@ -758,56 +945,64 @@ export default function ReportsPage() {
           onOpenQuickInput={() => setIsQuickInputOpen(true)}
         />
 
-        {/* 5. TABEL KOMPARASI LENGKAP HEAD-TO-HEAD SEMUA KANDANG */}
+        {/* 5. TABEL KOMPARASI LENGKAP HEAD-TO-HEAD (MENYESUAIKAN TIMEFRAME SECARA DINAMIS) */}
         <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-3 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2 flex-wrap gap-2">
             <div>
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                Tabel Komparasi Lengkap Semua Kandang
-              </h3>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">
-                Detail komparatif akurat per kandang & agregat farm
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                  Tabel Komparasi Lengkap Semua Kandang
+                </h3>
+                <span className="bg-[#00684a] text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                  {periodLabel}
+                </span>
+              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-0.5">
+                Kolom produksi & HDP menyesuaikan otomatis dengan time frame yang dipilih
               </p>
             </div>
             <span className="text-[10px] font-black bg-emerald-50 text-[#00684a] px-2.5 py-1 rounded-lg border border-emerald-200">
-              {summaries.length} Kandang
+              {flockPeriodList.length} Kandang
             </span>
           </div>
 
           <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-            <table className="w-full text-left border-collapse min-w-[720px]">
+            <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase bg-slate-50/70">
                   <th className="py-2.5 px-2">Kandang</th>
                   <th className="py-2.5 px-2">Strain / Umur</th>
                   <th className="py-2.5 px-2 text-center">Populasi (Aktif/Awal)</th>
-                  <th className="py-2.5 px-2 text-center">HDP Hari Ini</th>
-                  <th className="py-2.5 px-2 text-center">Telur Hari Ini</th>
+                  <th className="py-2.5 px-2 text-center bg-emerald-50/50 text-[#00684a]">
+                    HDP ({periodLabel})
+                  </th>
+                  <th className="py-2.5 px-2 text-center bg-amber-50/50 text-amber-900">
+                    Telur ({periodLabel})
+                  </th>
                   <th className="py-2.5 px-2 text-center">Retak</th>
                   <th className="py-2.5 px-2 text-center">Rata2 HDP Kum.</th>
                   <th className="py-2.5 px-2 text-center">Kumulatif Telur</th>
-                  <th className="py-2.5 px-2 text-right">Kematian (Rate %)</th>
+                  <th className="py-2.5 px-2 text-right">Mati ({periodLabel}) / Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                {summaries.map((s) => {
-                  const hdpToday = s.today.hdp_percent || s.today.hd_percent || 0;
-                  const isGoodHdp = hdpToday >= 80;
-                  const isSelected = s.flock.id === viewFlockId;
+                {flockPeriodList.map((item) => {
+                  const isGoodHdp = item.period_avg_hdp >= 80;
+                  const isSelected = item.flock.id === viewFlockId;
 
                   return (
                     <tr
-                      key={s.flock.id}
-                      onClick={() => setViewFlockId(s.flock.id)}
+                      key={item.flock.id}
+                      onClick={() => setViewFlockId(item.flock.id)}
                       className={`cursor-pointer transition-colors ${
                         isSelected ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-slate-50'
                       }`}
                     >
                       <td className="py-3 px-2">
                         <div className="font-black text-slate-900 flex items-center gap-1.5">
-                          <span>{s.flock.coop_name}</span>
+                          <span>{item.flock.coop_name}</span>
                           <span className="text-[10px] font-bold text-slate-400">
-                            ({s.flock.name})
+                            ({item.flock.name})
                           </span>
                           {isSelected && (
                             <span className="w-1.5 h-1.5 rounded-full bg-[#00684a]" />
@@ -815,18 +1010,18 @@ export default function ReportsPage() {
                         </div>
                       </td>
                       <td className="py-3 px-2 text-[11px] text-slate-600">
-                        <div>{s.flock.strain}</div>
-                        <div className="text-[10px] text-slate-400">{s.flock.age_weeks} Mgg</div>
+                        <div>{item.flock.strain}</div>
+                        <div className="text-[10px] text-slate-400">{item.flock.age_weeks} Mgg</div>
                       </td>
                       <td className="py-3 px-2 text-center">
                         <div className="font-black text-slate-900">
-                          {s.flock.current_population}{' '}
+                          {item.flock.current_population}{' '}
                           <span className="text-[10px] text-slate-400">
-                            / {s.flock.initial_population}
+                            / {item.flock.initial_population}
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-2 text-center">
+                      <td className="py-3 px-2 text-center bg-emerald-50/30">
                         <span
                           className={`inline-block px-2 py-0.5 rounded-md font-black text-[11px] border ${
                             isGoodHdp
@@ -834,47 +1029,51 @@ export default function ReportsPage() {
                               : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}
                         >
-                          {hdpToday}%
+                          {item.period_avg_hdp}%
                         </span>
                         <span className="block text-[9px] text-slate-400 font-semibold mt-0.5">
-                          HHP: {s.today.hhp_percent || 0}%
+                          HHP: {item.period_avg_hhp}%
                         </span>
                       </td>
-                      <td className="py-3 px-2 text-center">
+                      <td className="py-3 px-2 text-center bg-amber-50/20">
                         <div className="font-extrabold text-slate-900">
-                          {s.today.egg_good_pcs} btr
+                          {item.period_egg_good_pcs.toLocaleString('id-ID')} btr
                         </div>
                         <div className="text-[10px] text-emerald-700 font-bold">
-                          {s.today.egg_good_kg} kg
+                          {item.period_egg_good_kg} kg
                         </div>
                       </td>
                       <td className="py-3 px-2 text-center font-bold text-amber-700">
-                        {s.today.egg_bad_pcs} btr
+                        {item.period_egg_bad_pcs} btr
                       </td>
                       <td className="py-3 px-2 text-center font-extrabold text-[#00684a]">
-                        {s.totals.overall_hdp_percent || s.totals.overall_hd_percent || 0}%
+                        {item.summary?.totals.overall_hdp_percent ||
+                          item.summary?.totals.overall_hd_percent ||
+                          0}
+                        %
                       </td>
                       <td className="py-3 px-2 text-center">
                         <div className="font-black text-slate-900">
-                          {s.totals.total_egg_good_pcs.toLocaleString('id-ID')} btr
+                          {(item.summary?.totals.total_egg_good_pcs || 0).toLocaleString('id-ID')} btr
                         </div>
                         <div className="text-[10px] text-slate-500 font-bold">
-                          {s.totals.total_egg_good_kg.toLocaleString('id-ID')} kg
+                          {(item.summary?.totals.total_egg_good_kg || 0).toLocaleString('id-ID')} kg
                         </div>
                       </td>
                       <td className="py-3 px-2 text-right">
                         <div className="font-black text-rose-600">
-                          {s.totals.total_mortality} ekor
+                          {item.period_mortality_pcs} ekor
                         </div>
-                        <div className="text-[10px] font-bold text-rose-500">
-                          {s.totals.mortality_rate_percent || 0}%
+                        <div className="text-[10px] font-bold text-rose-400">
+                          Total: {item.summary?.totals.total_mortality || 0} (
+                          {item.summary?.totals.mortality_rate_percent || 0}%)
                         </div>
                       </td>
                     </tr>
                   );
                 })}
 
-                {/* TOTAL / AGGREGATE ROW */}
+                {/* TOTAL / AGGREGATE ROW FOR THE TIMEFRAME */}
                 <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-300">
                   <td className="py-3 px-2 uppercase tracking-wider text-[11px] text-[#00684a]">
                     Total Farm
@@ -888,21 +1087,21 @@ export default function ReportsPage() {
                       / {farmAggregates.totalInitialPop.toLocaleString('id-ID')}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-center">
+                  <td className="py-3 px-2 text-center bg-emerald-100/60">
                     <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[11px] font-black">
-                      {farmAggregates.todayFarmHdp}%
+                      {farmAggregates.periodFarmAvgHdp}%
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-center">
-                    <div className="font-black">
-                      {farmAggregates.todayEggPcs.toLocaleString('id-ID')} btr
+                  <td className="py-3 px-2 text-center bg-amber-100/50">
+                    <div className="font-black text-slate-900">
+                      {farmAggregates.periodEggPcs.toLocaleString('id-ID')} btr
                     </div>
                     <div className="text-[10px] text-emerald-700 font-bold">
-                      {farmAggregates.todayEggKg} kg
+                      {farmAggregates.periodEggKg} kg
                     </div>
                   </td>
                   <td className="py-3 px-2 text-center text-amber-700 font-black">
-                    {farmAggregates.todayEggBadPcs} btr
+                    {farmAggregates.periodEggBadPcs} btr
                   </td>
                   <td className="py-3 px-2 text-center text-slate-500 font-bold">-</td>
                   <td className="py-3 px-2 text-center">
@@ -915,10 +1114,10 @@ export default function ReportsPage() {
                   </td>
                   <td className="py-3 px-2 text-right">
                     <div className="font-black text-rose-600">
-                      {farmAggregates.cumMortality} ekor
+                      {farmAggregates.periodMortality} ekor
                     </div>
                     <div className="text-[10px] text-rose-500 font-bold">
-                      {farmAggregates.farmMortRate}%
+                      Total: {farmAggregates.cumMortality} ({farmAggregates.farmMortRate}%)
                     </div>
                   </td>
                 </tr>

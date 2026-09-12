@@ -267,6 +267,7 @@ export async function saveHealthRecord(record: HealthRecord): Promise<void> {
 }
 
 export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
+  const initAge = flock.initial_age_weeks || 1;
   if (!isConfigured) {
     const flocks = getLocalFlocks();
     const newFlock: Flock = {
@@ -279,9 +280,10 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
       chick_out_date: flock.chick_out_date || null,
       initial_population: flock.initial_population || 0,
       current_population: flock.initial_population || 0,
+      initial_age_weeks: initAge,
       total_mortality: 0,
       total_culling: 0,
-      age_weeks: 1,
+      age_weeks: initAge,
       status: flock.status || 'active',
       created_at: new Date().toISOString()
     };
@@ -290,21 +292,38 @@ export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
     return newFlock;
   }
 
-  const { data, error } = await supabase.rpc('create_flock', {
-    p_name: flock.name,
-    p_coop_name: flock.coop_name,
-    p_strain: flock.strain || '-',
-    p_capacity: flock.capacity || flock.initial_population || 0,
-    p_chick_in_date: flock.chick_in_date,
-    p_initial_population: flock.initial_population,
-    p_chick_out_date: flock.chick_out_date || null,
-    p_status: flock.status || 'active'
-  });
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase.rpc('create_flock', {
+      p_name: flock.name,
+      p_coop_name: flock.coop_name,
+      p_strain: flock.strain || '-',
+      p_capacity: flock.capacity || flock.initial_population || 0,
+      p_chick_in_date: flock.chick_in_date,
+      p_initial_population: flock.initial_population,
+      p_chick_out_date: flock.chick_out_date || null,
+      p_status: flock.status || 'active',
+      p_initial_age_weeks: initAge
+    });
+    if (!error && data) return data;
+    throw error;
+  } catch (err) {
+    const { data, error } = await supabase.rpc('create_flock', {
+      p_name: flock.name,
+      p_coop_name: flock.coop_name,
+      p_strain: flock.strain || '-',
+      p_capacity: flock.capacity || flock.initial_population || 0,
+      p_chick_in_date: flock.chick_in_date,
+      p_initial_population: flock.initial_population,
+      p_chick_out_date: flock.chick_out_date || null,
+      p_status: flock.status || 'active'
+    });
+    if (error) throw error;
+    return data;
+  }
 }
 
 export async function updateFlock(id: string, flock: Partial<Flock>): Promise<Flock> {
+  const initAge = flock.initial_age_weeks || 1;
   if (!isConfigured) {
     const flocks = getLocalFlocks();
     const index = flocks.findIndex((f) => f.id === id);
@@ -312,6 +331,7 @@ export async function updateFlock(id: string, flock: Partial<Flock>): Promise<Fl
     const updated: Flock = {
       ...flocks[index],
       ...flock,
+      initial_age_weeks: initAge,
       capacity: flock.capacity !== undefined ? flock.capacity : flocks[index].capacity,
       initial_population: flock.initial_population !== undefined ? flock.initial_population : flocks[index].initial_population,
       chick_out_date: flock.chick_out_date !== undefined ? flock.chick_out_date : flocks[index].chick_out_date,
@@ -322,19 +342,36 @@ export async function updateFlock(id: string, flock: Partial<Flock>): Promise<Fl
     return updated;
   }
 
-  const { data, error } = await supabase.rpc('update_flock', {
-    p_id: id,
-    p_name: flock.name,
-    p_coop_name: flock.coop_name,
-    p_strain: flock.strain || '-',
-    p_capacity: flock.capacity || 0,
-    p_chick_in_date: flock.chick_in_date,
-    p_initial_population: flock.initial_population || 0,
-    p_chick_out_date: flock.chick_out_date || null,
-    p_status: flock.status || 'active'
-  });
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase.rpc('update_flock', {
+      p_id: id,
+      p_name: flock.name,
+      p_coop_name: flock.coop_name,
+      p_strain: flock.strain || '-',
+      p_capacity: flock.capacity || 0,
+      p_chick_in_date: flock.chick_in_date,
+      p_initial_population: flock.initial_population || 0,
+      p_chick_out_date: flock.chick_out_date || null,
+      p_status: flock.status || 'active',
+      p_initial_age_weeks: initAge
+    });
+    if (!error && data) return data;
+    throw error;
+  } catch (err) {
+    const { data, error } = await supabase.rpc('update_flock', {
+      p_id: id,
+      p_name: flock.name,
+      p_coop_name: flock.coop_name,
+      p_strain: flock.strain || '-',
+      p_capacity: flock.capacity || 0,
+      p_chick_in_date: flock.chick_in_date,
+      p_initial_population: flock.initial_population || 0,
+      p_chick_out_date: flock.chick_out_date || null,
+      p_status: flock.status || 'active'
+    });
+    if (error) throw error;
+    return data;
+  }
 }
 
 export async function deleteFlock(id: string): Promise<void> {

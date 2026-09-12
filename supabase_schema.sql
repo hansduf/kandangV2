@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.flocks (
     chick_in_date DATE NOT NULL DEFAULT CURRENT_DATE,
     chick_out_date DATE,
     initial_population INT NOT NULL DEFAULT 0,
+    initial_age_weeks INT NOT NULL DEFAULT 1,
     status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'archived' | 'checked_out'
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -99,7 +100,8 @@ CREATE OR REPLACE FUNCTION public.create_flock(
     p_chick_in_date DATE,
     p_initial_population INT,
     p_chick_out_date DATE DEFAULT NULL,
-    p_status TEXT DEFAULT 'active'
+    p_status TEXT DEFAULT 'active',
+    p_initial_age_weeks INT DEFAULT 1
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -107,8 +109,8 @@ AS $$
 DECLARE
     v_flock public.flocks%ROWTYPE;
 BEGIN
-    INSERT INTO public.flocks (name, coop_name, strain, capacity, chick_in_date, chick_out_date, initial_population, status)
-    VALUES (p_name, p_coop_name, COALESCE(p_strain, '-'), COALESCE(p_capacity, p_initial_population, 0), p_chick_in_date, p_chick_out_date, p_initial_population, COALESCE(p_status, 'active'))
+    INSERT INTO public.flocks (name, coop_name, strain, capacity, chick_in_date, chick_out_date, initial_population, status, initial_age_weeks)
+    VALUES (p_name, p_coop_name, COALESCE(p_strain, '-'), COALESCE(p_capacity, p_initial_population, 0), p_chick_in_date, p_chick_out_date, p_initial_population, COALESCE(p_status, 'active'), COALESCE(p_initial_age_weeks, 1))
     RETURNING * INTO v_flock;
 
     RETURN to_jsonb(v_flock);
@@ -128,6 +130,7 @@ RETURNS TABLE (
     chick_out_date DATE,
     initial_population INT,
     current_population INT,
+    initial_age_weeks INT,
     total_mortality INT,
     total_culling INT,
     age_weeks INT,
@@ -148,9 +151,10 @@ BEGIN
         f.chick_out_date,
         f.initial_population,
         (f.initial_population - COALESCE(SUM(d.mortality_pcs), 0)::INT - COALESCE(SUM(d.culling_pcs), 0)::INT) AS current_population,
+        COALESCE(f.initial_age_weeks, 1)::INT AS initial_age_weeks,
         COALESCE(SUM(d.mortality_pcs), 0)::INT AS total_mortality,
         COALESCE(SUM(d.culling_pcs), 0)::INT AS total_culling,
-        GREATEST(1, FLOOR((COALESCE(f.chick_out_date, CURRENT_DATE) - f.chick_in_date) / 7.0))::INT AS age_weeks,
+        (COALESCE(f.initial_age_weeks, 1) + GREATEST(0, FLOOR((COALESCE(f.chick_out_date, CURRENT_DATE) - f.chick_in_date) / 7.0)))::INT AS age_weeks,
         f.status,
         f.created_at
     FROM public.flocks f

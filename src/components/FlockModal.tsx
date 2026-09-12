@@ -27,6 +27,7 @@ export const FlockModal: React.FC<FlockModalProps> = ({
   const [chickInDate, setChickInDate] = useState(today);
   const [chickOutDate, setChickOutDate] = useState('');
   const [initialPop, setInitialPop] = useState<number | ''>('');
+  const [initialAgeWeeks, setInitialAgeWeeks] = useState<number | ''>(1);
   const [status, setStatus] = useState<'active' | 'archived' | 'checked_out'>('active');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -39,6 +40,7 @@ export const FlockModal: React.FC<FlockModalProps> = ({
       setChickInDate(flockToEdit.chick_in_date || today);
       setChickOutDate(flockToEdit.chick_out_date || '');
       setInitialPop(flockToEdit.initial_population || '');
+      setInitialAgeWeeks(flockToEdit.initial_age_weeks ?? flockToEdit.age_weeks ?? 1);
       setStatus(flockToEdit.status || 'active');
     } else {
       setName('');
@@ -48,6 +50,7 @@ export const FlockModal: React.FC<FlockModalProps> = ({
       setChickInDate(today);
       setChickOutDate('');
       setInitialPop('');
+      setInitialAgeWeeks(1);
       setStatus('active');
     }
   }, [flockToEdit, isOpen]);
@@ -68,6 +71,7 @@ export const FlockModal: React.FC<FlockModalProps> = ({
         chick_in_date: chickInDate,
         chick_out_date: chickOutDate.trim() || null,
         initial_population: Number(initialPop) || 0,
+        initial_age_weeks: Number(initialAgeWeeks) || 1,
         status: status,
       };
 
@@ -171,6 +175,53 @@ export const FlockModal: React.FC<FlockModalProps> = ({
                 required
               />
             </div>
+          </div>
+
+          {/* Umur Masuk Kandang (Custom Age Weeks) */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-[10px] font-black text-slate-700 uppercase">
+                Umur Masuk Kandang (Minggu)
+              </label>
+              <span className="text-[10px] font-bold text-[#00684a] bg-emerald-100 px-2 py-0.5 rounded-md">
+                {initialAgeWeeks || 1} Minggu
+              </span>
+            </div>
+            <input
+              type="number"
+              min="1"
+              max="150"
+              value={initialAgeWeeks}
+              onChange={(e) => setInitialAgeWeeks(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="e.g. 8 minggu (remaja)"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-black text-slate-900 outline-none focus:border-[#00684a]"
+              required
+            />
+            {/* Quick preset chips */}
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {[
+                { label: 'DOC (1 mgg)', weeks: 1 },
+                { label: 'Remaja / Dara (8 mgg)', weeks: 8 },
+                { label: 'Pullet (16 mgg)', weeks: 16 },
+                { label: 'Siap Telur (18 mgg)', weeks: 18 },
+              ].map((preset) => (
+                <button
+                  key={preset.weeks}
+                  type="button"
+                  onClick={() => setInitialAgeWeeks(preset.weeks)}
+                  className={`px-2 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                    initialAgeWeeks === preset.weeks
+                      ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[9.5px] text-slate-500 leading-tight">
+              Jika ayam masuk saat remaja/pullet (bukan DOC 1 hari), pilih atau ketik umurnya di sini. Umur ayam di dashboard & analisis akan otomatis meneruskan dari umur ini.
+            </p>
           </div>
 
           <div className={`grid ${isEdit ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>

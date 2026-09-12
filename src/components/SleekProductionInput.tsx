@@ -18,6 +18,7 @@ interface SleekProductionInputProps {
   onSave: (record: DailyRecord) => Promise<void>;
   onSuccessClose?: () => void;
   previousEggPcs?: number;
+  existingRecords?: DailyRecord[];
 }
 
 export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
@@ -26,6 +27,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   onSave,
   onSuccessClose,
   previousEggPcs = 0,
+  existingRecords = [],
 }) => {
   const activeFlock = flocks.find((f) => f.id === activeFlockId) || flocks[0];
   const currentPopulation = activeFlock?.current_population || 1000;
@@ -45,6 +47,26 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState('');
+
+  // Auto pre-populate if today already has a record
+  useEffect(() => {
+    const existing = existingRecords.find(
+      (r) => r.record_date === recordDate && (r.flock_id === activeFlockId || !r.flock_id)
+    );
+    if (existing && existing.egg_good_pcs > 0 && eggGoodPcs === '') {
+      setEggGoodPcs(existing.egg_good_pcs);
+      if (existing.egg_good_kg > 0) {
+        setManualKg(existing.egg_good_kg);
+        setLastEdited('kg');
+      }
+      if (existing.egg_bad_pcs > 0) {
+        setEggBadPcs(existing.egg_bad_pcs);
+      }
+      if (existing.notes) {
+        setNotes(existing.notes);
+      }
+    }
+  }, [recordDate, activeFlockId, existingRecords]);
 
   const goodPcsNum = Number(eggGoodPcs) || 0;
 
@@ -97,6 +119,10 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
     setSuccessToast('');
 
     try {
+      const existing = existingRecords.find(
+        (r) => r.record_date === recordDate && (r.flock_id === activeFlock?.id || !r.flock_id)
+      );
+
       await onSave({
         flock_id: activeFlock.id,
         record_date: recordDate,
@@ -104,9 +130,9 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         egg_good_kg: finalKg,
         egg_bad_pcs: Number(eggBadPcs) || 0,
         egg_bad_kg: Number(((Number(eggBadPcs) || 0) * (finalRatio > 0 ? 1 / finalRatio : 1 / 16)).toFixed(2)),
-        mortality_pcs: 0,
-        culling_pcs: 0,
-        feed_kg: 0,
+        mortality_pcs: existing?.mortality_pcs || 0,
+        culling_pcs: existing?.culling_pcs || 0,
+        feed_kg: existing?.feed_kg || 0,
         notes: notes.trim(),
       });
 

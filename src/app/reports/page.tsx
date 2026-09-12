@@ -6,10 +6,12 @@ import { BottomNav } from '@/components/BottomNav';
 import { FlockModal } from '@/components/FlockModal';
 import { QuickInputModal } from '@/components/QuickInputModal';
 import { PerformanceChart } from '@/components/PerformanceChart';
+import { DailyCalendarCard } from '@/components/DailyCalendarCard';
 import {
   fetchFlocks,
   fetchDashboardSummary,
   fetchDailyHistory,
+  fetchHealthRecords,
   createFlock,
   saveDailyRecord,
   saveHealthRecord,
@@ -24,19 +26,8 @@ import {
   Award,
   ShieldCheck,
   Layers,
-  Activity,
   Calendar,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Cell,
-} from 'recharts';
 
 interface FlockHistoryItem {
   flock: Flock;
@@ -47,9 +38,9 @@ export default function ReportsPage() {
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [summaries, setSummaries] = useState<DashboardSummary[]>([]);
   const [allHistories, setAllHistories] = useState<FlockHistoryItem[]>([]);
+  const [allHealthRecords, setAllHealthRecords] = useState<HealthRecord[]>([]);
   const [viewFlockId, setViewFlockId] = useState<string>('all'); // 'all' or flock.id
   const [loading, setLoading] = useState(true);
-  const [chartMetric, setChartMetric] = useState<'hdp' | 'eggs_today' | 'pop' | 'mortality'>('hdp');
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -66,8 +57,8 @@ export default function ReportsPage() {
       setFlocks(flockList);
 
       if (flockList.length > 0) {
-        // Concurrently fetch summaries and 60-day daily histories for all coops
-        const [sumList, histList] = await Promise.all([
+        // Concurrently fetch summaries, histories, and health records for all coops
+        const [sumList, histList, healthList] = await Promise.all([
           Promise.all(
             flockList.map(async (f) => {
               try {
@@ -89,11 +80,27 @@ export default function ReportsPage() {
               }
             })
           ),
+          Promise.all(
+            flockList.map(async (f) => {
+              try {
+                const recs = await fetchHealthRecords(f.id);
+                return recs.map((r) => ({
+                  ...r,
+                  coop_name: f.coop_name,
+                  flock_name: f.name,
+                }));
+              } catch (err) {
+                console.error(`Error loading health for flock ${f.id}:`, err);
+                return [];
+              }
+            })
+          ),
         ]);
 
         const validSummaries = sumList.filter(Boolean) as DashboardSummary[];
         setSummaries(validSummaries);
         setAllHistories(histList);
+        setAllHealthRecords(healthList.flat());
       }
     } catch (err) {
       console.error('Error loading reports data:', err);
@@ -149,9 +156,12 @@ export default function ReportsPage() {
       cumFeedKg += s.totals.total_feed_kg || 0;
     });
 
-    const todayFarmHdp = totalActivePop > 0 ? Number(((todayEggPcs / totalActivePop) * 100).toFixed(2)) : 0;
-    const todayFarmHhp = totalInitialPop > 0 ? Number(((todayEggPcs / totalInitialPop) * 100).toFixed(2)) : 0;
-    const farmMortRate = totalInitialPop > 0 ? Number(((cumMortality / totalInitialPop) * 100).toFixed(2)) : 0;
+    const todayFarmHdp =
+      totalActivePop > 0 ? Number(((todayEggPcs / totalActivePop) * 100).toFixed(2)) : 0;
+    const todayFarmHhp =
+      totalInitialPop > 0 ? Number(((todayEggPcs / totalInitialPop) * 100).toFixed(2)) : 0;
+    const farmMortRate =
+      totalInitialPop > 0 ? Number(((cumMortality / totalInitialPop) * 100).toFixed(2)) : 0;
     const farmFCR = cumEggKg > 0 ? Number((cumFeedKg / cumEggKg).toFixed(2)) : 0;
 
     return {
@@ -198,20 +208,7 @@ export default function ReportsPage() {
     )[0];
   }, [summaries]);
 
-  // 3. COMPARISON BAR CHART DATA
-  const comparisonChartData = useMemo(() => {
-    return summaries.map((s) => ({
-      name: `${s.flock.coop_name} (${s.flock.name})`,
-      shortName: s.flock.coop_name,
-      hdp: s.today.hdp_percent || s.today.hd_percent || 0,
-      eggs_today: s.today.egg_good_pcs || 0,
-      pop: s.flock.current_population || 0,
-      mortality: s.totals.total_mortality || 0,
-      cumEggs: s.totals.total_egg_good_pcs || 0,
-    }));
-  }, [summaries]);
-
-  // 4. UNIFIED FARM DAILY HISTORY (ALL FLOCKS COMBINED BY DATE)
+  // 3. UNIFIED FARM DAILY HISTORY (ALL FLOCKS COMBINED BY DATE)
   const farmDailyHistory = useMemo(() => {
     const dateMap = new Map<
       string,
@@ -462,7 +459,8 @@ export default function ReportsPage() {
               </span>
             </div>
             <span className="text-[11px] font-extrabold text-emerald-200">
-              Populasi Total: {farmAggregates.totalActivePop.toLocaleString('id-ID')} / {farmAggregates.totalInitialPop.toLocaleString('id-ID')} ekor
+              Populasi Total: {farmAggregates.totalActivePop.toLocaleString('id-ID')} /{' '}
+              {farmAggregates.totalInitialPop.toLocaleString('id-ID')} ekor
             </span>
           </div>
 
@@ -583,283 +581,7 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* 3. VISUAL COMPARISON BAR CHART */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap border-b border-slate-100 pb-2.5">
-            <div>
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                Grafik Komparasi Antar Kandang
-              </h3>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">
-                Visualisasi perbandingan metrik kunci seluruh kandang secara berdampingan
-              </p>
-            </div>
-
-            {/* Metric Selector Pills */}
-            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-              {(
-                [
-                  { key: 'hdp' as const, label: 'HDP % Hari Ini' },
-                  { key: 'eggs_today' as const, label: 'Telur Hari Ini (Btr)' },
-                  { key: 'pop' as const, label: 'Populasi' },
-                  { key: 'mortality' as const, label: 'Total Mati' },
-                ] as const
-              ).map((m) => (
-                <button
-                  key={m.key}
-                  onClick={() => setChartMetric(m.key)}
-                  className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all ${
-                    chartMetric === m.key
-                      ? 'bg-[#00684a] text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="h-60 w-full pt-2">
-            {comparisonChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={comparisonChartData} margin={{ top: 10, right: 10, left: -15, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis
-                    dataKey="shortName"
-                    tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }}
-                    axisLine={{ stroke: '#cbd5e1' }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }}
-                    axisLine={false}
-                    tickLine={false}
-                    unit={chartMetric === 'hdp' ? '%' : ''}
-                  />
-                  <Tooltip
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-slate-900 text-white p-2.5 rounded-xl text-xs font-bold shadow-xl border border-slate-800 space-y-1">
-                            <div className="font-black text-emerald-300">{data.name}</div>
-                            <div>
-                              HDP Hari Ini: <strong className="text-white">{data.hdp}%</strong>
-                            </div>
-                            <div>
-                              Telur Hari Ini:{' '}
-                              <strong className="text-white">{data.eggs_today} btr</strong>
-                            </div>
-                            <div>
-                              Populasi: <strong className="text-white">{data.pop} ekor</strong>
-                            </div>
-                            <div>
-                              Total Mati:{' '}
-                              <strong className="text-rose-400">{data.mortality} ekor</strong>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Bar dataKey={chartMetric} radius={[8, 8, 0, 0]} fill="#00684a">
-                    {comparisonChartData.map((_, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={
-                          chartMetric === 'hdp'
-                            ? '#00684a'
-                            : chartMetric === 'eggs_today'
-                            ? '#d97706'
-                            : chartMetric === 'pop'
-                            ? '#2563eb'
-                            : '#e11d48'
-                        }
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 text-xs font-semibold">
-                Belum ada data kandang untuk dikomparasi.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 4. TABEL KOMPARASI LENGKAP HEAD-TO-HEAD SEMUA KANDANG */}
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-3 overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div>
-              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                Tabel Komparasi Lengkap Semua Kandang
-              </h3>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">
-                Detail komparatif akurat per kandang & agregat farm
-              </p>
-            </div>
-            <span className="text-[10px] font-black bg-emerald-50 text-[#00684a] px-2.5 py-1 rounded-lg border border-emerald-200">
-              {summaries.length} Kandang
-            </span>
-          </div>
-
-          <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-            <table className="w-full text-left border-collapse min-w-[720px]">
-              <thead>
-                <tr className="border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase bg-slate-50/70">
-                  <th className="py-2.5 px-2">Kandang</th>
-                  <th className="py-2.5 px-2">Strain / Umur</th>
-                  <th className="py-2.5 px-2 text-center">Populasi (Aktif/Awal)</th>
-                  <th className="py-2.5 px-2 text-center">HDP Hari Ini</th>
-                  <th className="py-2.5 px-2 text-center">Telur Hari Ini</th>
-                  <th className="py-2.5 px-2 text-center">Retak</th>
-                  <th className="py-2.5 px-2 text-center">Rata2 HDP Kum.</th>
-                  <th className="py-2.5 px-2 text-center">Kumulatif Telur</th>
-                  <th className="py-2.5 px-2 text-right">Kematian (Rate %)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                {summaries.map((s) => {
-                  const hdpToday = s.today.hdp_percent || s.today.hd_percent || 0;
-                  const isGoodHdp = hdpToday >= 80;
-                  const isSelected = s.flock.id === viewFlockId;
-
-                  return (
-                    <tr
-                      key={s.flock.id}
-                      onClick={() => setViewFlockId(s.flock.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <td className="py-3 px-2">
-                        <div className="font-black text-slate-900 flex items-center gap-1.5">
-                          <span>{s.flock.coop_name}</span>
-                          <span className="text-[10px] font-bold text-slate-400">
-                            ({s.flock.name})
-                          </span>
-                          {isSelected && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00684a]" />
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-[11px] text-slate-600">
-                        <div>{s.flock.strain}</div>
-                        <div className="text-[10px] text-slate-400">{s.flock.age_weeks} Mgg</div>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <div className="font-black text-slate-900">
-                          {s.flock.current_population}{' '}
-                          <span className="text-[10px] text-slate-400">
-                            / {s.flock.initial_population}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-md font-black text-[11px] border ${
-                            isGoodHdp
-                              ? 'bg-emerald-50 text-[#00684a] border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}
-                        >
-                          {hdpToday}%
-                        </span>
-                        <span className="block text-[9px] text-slate-400 font-semibold mt-0.5">
-                          HHP: {s.today.hhp_percent || 0}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <div className="font-extrabold text-slate-900">
-                          {s.today.egg_good_pcs} btr
-                        </div>
-                        <div className="text-[10px] text-emerald-700 font-bold">
-                          {s.today.egg_good_kg} kg
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-center font-bold text-amber-700">
-                        {s.today.egg_bad_pcs} btr
-                      </td>
-                      <td className="py-3 px-2 text-center font-extrabold text-[#00684a]">
-                        {s.totals.overall_hdp_percent || s.totals.overall_hd_percent || 0}%
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        <div className="font-black text-slate-900">
-                          {s.totals.total_egg_good_pcs.toLocaleString('id-ID')} btr
-                        </div>
-                        <div className="text-[10px] text-slate-500 font-bold">
-                          {s.totals.total_egg_good_kg.toLocaleString('id-ID')} kg
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-right">
-                        <div className="font-black text-rose-600">
-                          {s.totals.total_mortality} ekor
-                        </div>
-                        <div className="text-[10px] font-bold text-rose-500">
-                          {s.totals.mortality_rate_percent || 0}%
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {/* TOTAL / AGGREGATE ROW */}
-                <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-300">
-                  <td className="py-3 px-2 uppercase tracking-wider text-[11px] text-[#00684a]">
-                    Total Farm
-                  </td>
-                  <td className="py-3 px-2 text-[10px] text-slate-500">
-                    {flocks.length} Kandang
-                  </td>
-                  <td className="py-3 px-2 text-center font-black">
-                    {farmAggregates.totalActivePop.toLocaleString('id-ID')}{' '}
-                    <span className="text-[10px] text-slate-500">
-                      / {farmAggregates.totalInitialPop.toLocaleString('id-ID')}
-                    </span>
-                  </td>
-                  <td className="py-3 px-2 text-center">
-                    <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[11px] font-black">
-                      {farmAggregates.todayFarmHdp}%
-                    </span>
-                  </td>
-                  <td className="py-3 px-2 text-center">
-                    <div className="font-black">
-                      {farmAggregates.todayEggPcs.toLocaleString('id-ID')} btr
-                    </div>
-                    <div className="text-[10px] text-emerald-700 font-bold">
-                      {farmAggregates.todayEggKg} kg
-                    </div>
-                  </td>
-                  <td className="py-3 px-2 text-center text-amber-700 font-black">
-                    {farmAggregates.todayEggBadPcs} btr
-                  </td>
-                  <td className="py-3 px-2 text-center text-slate-500 font-bold">-</td>
-                  <td className="py-3 px-2 text-center">
-                    <div className="font-black">
-                      {farmAggregates.cumEggPcs.toLocaleString('id-ID')} btr
-                    </div>
-                    <div className="text-[10px] text-slate-600 font-bold">
-                      {farmAggregates.cumEggKg.toLocaleString('id-ID')} kg
-                    </div>
-                  </td>
-                  <td className="py-3 px-2 text-right">
-                    <div className="font-black text-rose-600">
-                      {farmAggregates.cumMortality} ekor
-                    </div>
-                    <div className="text-[10px] text-rose-500 font-bold">
-                      {farmAggregates.farmMortRate}%
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 5. DETAIL & TREN PERFORMA TERPADU: SEMUA KANDANG ATAU PER KANDANG */}
+        {/* 3. DETAIL & TREN PERFORMA TERPADU (DINAIKKAN KE ATAS TABEL KOMPARASI) */}
         <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-3.5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
             <div>
@@ -1027,6 +749,183 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
+
+        {/* 4. CARD KALENDER VERSI SEMUA KANDANG (FARM CALENDAR) */}
+        <DailyCalendarCard
+          flockName="Semua Kandang (Farm)"
+          dailyRecords={farmDailyHistory}
+          healthRecords={allHealthRecords}
+          onOpenQuickInput={() => setIsQuickInputOpen(true)}
+        />
+
+        {/* 5. TABEL KOMPARASI LENGKAP HEAD-TO-HEAD SEMUA KANDANG */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-3 overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div>
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                Tabel Komparasi Lengkap Semua Kandang
+              </h3>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">
+                Detail komparatif akurat per kandang & agregat farm
+              </p>
+            </div>
+            <span className="text-[10px] font-black bg-emerald-50 text-[#00684a] px-2.5 py-1 rounded-lg border border-emerald-200">
+              {summaries.length} Kandang
+            </span>
+          </div>
+
+          <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+            <table className="w-full text-left border-collapse min-w-[720px]">
+              <thead>
+                <tr className="border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase bg-slate-50/70">
+                  <th className="py-2.5 px-2">Kandang</th>
+                  <th className="py-2.5 px-2">Strain / Umur</th>
+                  <th className="py-2.5 px-2 text-center">Populasi (Aktif/Awal)</th>
+                  <th className="py-2.5 px-2 text-center">HDP Hari Ini</th>
+                  <th className="py-2.5 px-2 text-center">Telur Hari Ini</th>
+                  <th className="py-2.5 px-2 text-center">Retak</th>
+                  <th className="py-2.5 px-2 text-center">Rata2 HDP Kum.</th>
+                  <th className="py-2.5 px-2 text-center">Kumulatif Telur</th>
+                  <th className="py-2.5 px-2 text-right">Kematian (Rate %)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
+                {summaries.map((s) => {
+                  const hdpToday = s.today.hdp_percent || s.today.hd_percent || 0;
+                  const isGoodHdp = hdpToday >= 80;
+                  const isSelected = s.flock.id === viewFlockId;
+
+                  return (
+                    <tr
+                      key={s.flock.id}
+                      onClick={() => setViewFlockId(s.flock.id)}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <td className="py-3 px-2">
+                        <div className="font-black text-slate-900 flex items-center gap-1.5">
+                          <span>{s.flock.coop_name}</span>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            ({s.flock.name})
+                          </span>
+                          {isSelected && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00684a]" />
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-[11px] text-slate-600">
+                        <div>{s.flock.strain}</div>
+                        <div className="text-[10px] text-slate-400">{s.flock.age_weeks} Mgg</div>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <div className="font-black text-slate-900">
+                          {s.flock.current_population}{' '}
+                          <span className="text-[10px] text-slate-400">
+                            / {s.flock.initial_population}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <span
+                          className={`inline-block px-2 py-0.5 rounded-md font-black text-[11px] border ${
+                            isGoodHdp
+                              ? 'bg-emerald-50 text-[#00684a] border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}
+                        >
+                          {hdpToday}%
+                        </span>
+                        <span className="block text-[9px] text-slate-400 font-semibold mt-0.5">
+                          HHP: {s.today.hhp_percent || 0}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <div className="font-extrabold text-slate-900">
+                          {s.today.egg_good_pcs} btr
+                        </div>
+                        <div className="text-[10px] text-emerald-700 font-bold">
+                          {s.today.egg_good_kg} kg
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-center font-bold text-amber-700">
+                        {s.today.egg_bad_pcs} btr
+                      </td>
+                      <td className="py-3 px-2 text-center font-extrabold text-[#00684a]">
+                        {s.totals.overall_hdp_percent || s.totals.overall_hd_percent || 0}%
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        <div className="font-black text-slate-900">
+                          {s.totals.total_egg_good_pcs.toLocaleString('id-ID')} btr
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-bold">
+                          {s.totals.total_egg_good_kg.toLocaleString('id-ID')} kg
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <div className="font-black text-rose-600">
+                          {s.totals.total_mortality} ekor
+                        </div>
+                        <div className="text-[10px] font-bold text-rose-500">
+                          {s.totals.mortality_rate_percent || 0}%
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* TOTAL / AGGREGATE ROW */}
+                <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-300">
+                  <td className="py-3 px-2 uppercase tracking-wider text-[11px] text-[#00684a]">
+                    Total Farm
+                  </td>
+                  <td className="py-3 px-2 text-[10px] text-slate-500">
+                    {flocks.length} Kandang
+                  </td>
+                  <td className="py-3 px-2 text-center font-black">
+                    {farmAggregates.totalActivePop.toLocaleString('id-ID')}{' '}
+                    <span className="text-[10px] text-slate-500">
+                      / {farmAggregates.totalInitialPop.toLocaleString('id-ID')}
+                    </span>
+                  </td>
+                  <td className="py-3 px-2 text-center">
+                    <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[11px] font-black">
+                      {farmAggregates.todayFarmHdp}%
+                    </span>
+                  </td>
+                  <td className="py-3 px-2 text-center">
+                    <div className="font-black">
+                      {farmAggregates.todayEggPcs.toLocaleString('id-ID')} btr
+                    </div>
+                    <div className="text-[10px] text-emerald-700 font-bold">
+                      {farmAggregates.todayEggKg} kg
+                    </div>
+                  </td>
+                  <td className="py-3 px-2 text-center text-amber-700 font-black">
+                    {farmAggregates.todayEggBadPcs} btr
+                  </td>
+                  <td className="py-3 px-2 text-center text-slate-500 font-bold">-</td>
+                  <td className="py-3 px-2 text-center">
+                    <div className="font-black">
+                      {farmAggregates.cumEggPcs.toLocaleString('id-ID')} btr
+                    </div>
+                    <div className="text-[10px] text-slate-600 font-bold">
+                      {farmAggregates.cumEggKg.toLocaleString('id-ID')} kg
+                    </div>
+                  </td>
+                  <td className="py-3 px-2 text-right">
+                    <div className="font-black text-rose-600">
+                      {farmAggregates.cumMortality} ekor
+                    </div>
+                    <div className="text-[10px] text-rose-500 font-bold">
+                      {farmAggregates.farmMortRate}%
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </main>
 
       <BottomNav onOpenQuickInput={() => setIsQuickInputOpen(true)} />
@@ -1039,6 +938,7 @@ export default function ReportsPage() {
         onSelectFlock={(id) => setViewFlockId(id)}
         onSaveDaily={handleSaveDaily}
         onSaveHealth={handleSaveHealth}
+        existingRecords={displayedRecords}
       />
 
       <FlockModal

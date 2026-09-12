@@ -322,45 +322,77 @@ export const DailyCalendarCard: React.FC<DailyCalendarCardProps> = ({
           </div>
 
           {selectedDaily ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-slate-700">
-              <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                <span className="block text-[9px] font-bold text-slate-400 uppercase">Telur Utuh</span>
-                <span className="text-xs font-black text-slate-900">
-                  {selectedDaily.egg_good_pcs.toLocaleString('id-ID')} btr
-                </span>
-                <span className="block text-[9px] font-semibold text-emerald-700">
-                  {selectedDaily.egg_good_kg} kg
-                </span>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-slate-700">
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase">Telur Utuh</span>
+                  <span className="text-xs font-black text-slate-900">
+                    {selectedDaily.egg_good_pcs.toLocaleString('id-ID')} btr
+                  </span>
+                  <span className="block text-[9px] font-semibold text-emerald-700">
+                    {selectedDaily.egg_good_kg} kg
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase">Telur Retak</span>
+                  <span className="text-xs font-black text-amber-700">
+                    {selectedDaily.egg_bad_pcs} btr
+                  </span>
+                  <span className="block text-[9px] font-semibold text-slate-500">
+                    {selectedDaily.egg_bad_kg} kg
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase">HHP %</span>
+                  <span className="text-xs font-black text-amber-600">
+                    {selectedDaily.hhp_percent || 0}%
+                  </span>
+                  <span className="block text-[9px] font-semibold text-slate-400">Pop. Awal</span>
+                </div>
+
+                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <span className="block text-[9px] font-bold text-slate-400 uppercase">Mati & Afkir</span>
+                  <span className="text-xs font-black text-rose-600">
+                    {selectedDaily.mortality_pcs} mati
+                  </span>
+                  <span className="block text-[9px] font-semibold text-slate-500">
+                    {selectedDaily.culling_pcs} afkir
+                  </span>
+                </div>
               </div>
 
-              <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                <span className="block text-[9px] font-bold text-slate-400 uppercase">Telur Retak</span>
-                <span className="text-xs font-black text-amber-700">
-                  {selectedDaily.egg_bad_pcs} btr
-                </span>
-                <span className="block text-[9px] font-semibold text-slate-500">
-                  {selectedDaily.egg_bad_kg} kg
-                </span>
-              </div>
-
-              <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                <span className="block text-[9px] font-bold text-slate-400 uppercase">HHP %</span>
-                <span className="text-xs font-black text-amber-600">
-                  {selectedDaily.hhp_percent || 0}%
-                </span>
-                <span className="block text-[9px] font-semibold text-slate-400">Pop. Awal</span>
-              </div>
-
-              <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                <span className="block text-[9px] font-bold text-slate-400 uppercase">Mati & Afkir</span>
-                <span className="text-xs font-black text-rose-600">
-                  {selectedDaily.mortality_pcs} mati
-                </span>
-                <span className="block text-[9px] font-semibold text-slate-500">
-                  {selectedDaily.culling_pcs} afkir
-                </span>
-              </div>
-            </div>
+              {/* Multi-Coop Breakdown (if available) */}
+              {(selectedDaily as any).coops && (selectedDaily as any).coops.length > 0 && (
+                <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                  <span className="block text-[9px] font-black text-slate-400 uppercase tracking-wider">
+                    Kontribusi Per-Kandang Hari Ini:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {(selectedDaily as any).coops.map((c: any) => (
+                      <div
+                        key={c.coop_name}
+                        className="bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 rounded-xl flex items-center justify-between text-[11px]"
+                      >
+                        <div className="font-black text-slate-800 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-[#00684a]" />
+                          <span>{c.coop_name}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">({c.flock_name})</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-extrabold text-[#00684a]">{c.egg_good_pcs} btr</span>
+                          <span className="text-[10px] text-slate-500 font-semibold ml-1">({c.hdp_percent}% HDP)</span>
+                          {c.mortality_pcs > 0 && (
+                            <span className="text-rose-600 font-black ml-1.5">+{c.mortality_pcs} mati</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <div className="py-2 text-center text-slate-400 text-xs font-semibold">
               Belum ada pencatatan produksi telur pada tanggal ini.
@@ -396,6 +428,11 @@ export const DailyCalendarCard: React.FC<DailyCalendarCardProps> = ({
                           <span>{item.category}</span>
                         </span>
                         <span className="text-xs font-black text-slate-900">{item.item_name}</span>
+                        {(item as any).coop_name && (
+                          <span className="text-[9px] font-black bg-emerald-50 text-[#00684a] px-1.5 py-0.5 rounded border border-emerald-200">
+                            {(item as any).coop_name}
+                          </span>
+                        )}
                       </div>
                       {item.dosage && (
                         <span className="text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200">

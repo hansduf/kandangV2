@@ -413,14 +413,43 @@ BEGIN
     )
     ON CONFLICT (flock_id, record_date)
     DO UPDATE SET
-        egg_good_pcs = EXCLUDED.egg_good_pcs,
-        egg_good_kg = EXCLUDED.egg_good_kg,
-        egg_bad_pcs = EXCLUDED.egg_bad_pcs,
-        egg_bad_kg = EXCLUDED.egg_bad_kg,
-        mortality_pcs = EXCLUDED.mortality_pcs,
-        culling_pcs = EXCLUDED.culling_pcs,
-        feed_kg = EXCLUDED.feed_kg,
-        notes = EXCLUDED.notes
+        egg_good_pcs = CASE 
+            WHEN EXCLUDED.egg_good_pcs > 0 THEN EXCLUDED.egg_good_pcs 
+            ELSE daily_records.egg_good_pcs 
+        END,
+        egg_good_kg = CASE 
+            WHEN EXCLUDED.egg_good_kg > 0 THEN EXCLUDED.egg_good_kg 
+            ELSE daily_records.egg_good_kg 
+        END,
+        egg_bad_pcs = CASE 
+            WHEN EXCLUDED.egg_bad_pcs > 0 THEN EXCLUDED.egg_bad_pcs 
+            ELSE daily_records.egg_bad_pcs 
+        END,
+        egg_bad_kg = CASE 
+            WHEN EXCLUDED.egg_bad_kg > 0 THEN EXCLUDED.egg_bad_kg 
+            ELSE daily_records.egg_bad_kg 
+        END,
+        mortality_pcs = CASE 
+            WHEN EXCLUDED.mortality_pcs > 0 THEN EXCLUDED.mortality_pcs 
+            ELSE daily_records.mortality_pcs 
+        END,
+        culling_pcs = CASE 
+            WHEN EXCLUDED.culling_pcs > 0 THEN EXCLUDED.culling_pcs 
+            ELSE daily_records.culling_pcs 
+        END,
+        feed_kg = CASE 
+            WHEN EXCLUDED.feed_kg > 0 THEN EXCLUDED.feed_kg 
+            ELSE daily_records.feed_kg 
+        END,
+        notes = CASE 
+            WHEN EXCLUDED.notes IS NOT NULL AND EXCLUDED.notes <> '' THEN 
+                CASE 
+                    WHEN daily_records.notes IS NOT NULL AND daily_records.notes <> '' AND daily_records.notes <> EXCLUDED.notes 
+                    THEN daily_records.notes || '; ' || EXCLUDED.notes 
+                    ELSE EXCLUDED.notes 
+                END
+            ELSE daily_records.notes 
+        END
     RETURNING * INTO v_record;
 
     RETURN to_jsonb(v_record);

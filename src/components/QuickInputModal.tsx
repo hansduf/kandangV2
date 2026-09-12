@@ -27,6 +27,7 @@ interface QuickInputModalProps {
   onSaveDaily: (record: DailyRecord) => Promise<void>;
   onSaveHealth: (record: HealthRecord) => Promise<void>;
   previousEggPcs?: number;
+  existingRecords?: DailyRecord[];
 }
 
 export const QuickInputModal: React.FC<QuickInputModalProps> = ({
@@ -38,6 +39,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   onSaveDaily,
   onSaveHealth,
   previousEggPcs = 0,
+  existingRecords = [],
 }) => {
   const activeFlock = flocks.find((f) => f.id === activeFlockId) || flocks[0];
   const todayStr = new Date().toISOString().split('T')[0];
@@ -59,6 +61,21 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // Auto pre-populate mortality if record exists
+  React.useEffect(() => {
+    const existing = existingRecords.find(
+      (r) => r.record_date === recordDate && (r.flock_id === activeFlock?.id || !r.flock_id)
+    );
+    if (existing) {
+      if (existing.mortality_pcs > 0 && mortalityPcs === '') {
+        setMortalityPcs(existing.mortality_pcs);
+      }
+      if (existing.culling_pcs > 0 && cullingPcs === '') {
+        setCullingPcs(existing.culling_pcs);
+      }
+    }
+  }, [recordDate, activeFlock?.id, existingRecords, activeTab]);
 
   if (!isOpen) return null;
 
@@ -102,17 +119,21 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
     setIsSubmitting(true);
     try {
+      const existing = existingRecords.find(
+        (r) => r.record_date === recordDate && (r.flock_id === activeFlock?.id || !r.flock_id)
+      );
+
       await onSaveDaily({
         flock_id: activeFlock.id,
         record_date: recordDate,
-        egg_good_pcs: 0,
-        egg_good_kg: 0,
-        egg_bad_pcs: 0,
-        egg_bad_kg: 0,
+        egg_good_pcs: existing?.egg_good_pcs || 0,
+        egg_good_kg: existing?.egg_good_kg || 0,
+        egg_bad_pcs: existing?.egg_bad_pcs || 0,
+        egg_bad_kg: existing?.egg_bad_kg || 0,
         mortality_pcs: Number(mortalityPcs) || 0,
         culling_pcs: Number(cullingPcs) || 0,
-        feed_kg: 0,
-        notes: 'Kematian/Afkir',
+        feed_kg: existing?.feed_kg || 0,
+        notes: existing?.notes ? `${existing.notes}; Kematian` : 'Kematian/Afkir',
       });
       setToastMessage('✅ KEMATIAN BERHASIL DISIMPAN!');
       setTimeout(() => {
@@ -218,6 +239,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
             onSave={onSaveDaily}
             onSuccessClose={onClose}
             previousEggPcs={previousEggPcs}
+            existingRecords={existingRecords}
           />
         )}
 

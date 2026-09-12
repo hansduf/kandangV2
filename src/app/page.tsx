@@ -411,6 +411,7 @@ export default function DashboardHomePage() {
         onSaveDaily={handleSaveDaily}
         onSaveHealth={handleSaveHealth}
         previousEggPcs={previousEggPcs}
+        existingRecords={history}
       />
 
       {/* FLOCK ADD / EDIT MODAL */}

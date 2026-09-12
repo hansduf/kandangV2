@@ -208,11 +208,27 @@ export default function TasksPage() {
     await loadData();
   };
 
-  const handleDeleteTask = async (id: string) => {
-    if (confirm('Hapus tugas ini?')) {
-      await deleteTask(id);
-      await loadData();
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const handleDeleteTask = async (id: string, asOfDate?: string) => {
+    const cutoff = asOfDate || todayStr;
+    const taskToDelete = tasks.find((t) => t.id === id);
+
+    if (taskToDelete && taskToDelete.start_date <= cutoff && taskToDelete.recurrence_type !== 'once') {
+      const ok = confirm(
+        `Cabut tugas "${taskToDelete.title}"?\n\n` +
+        `Tugas ini berjalan mulai ${taskToDelete.start_date}.\n` +
+        `Riwayat pada tanggal lampau s/d tanggal ${cutoff} TETAP TERSIMPAN di kalender, ` +
+        `sedangkan jadwal hari esok ke depan akan dihentikan.`
+      );
+      if (!ok) return;
+    } else {
+      const ok = confirm(`Hapus tugas "${taskToDelete?.title || 'ini'}"? Tugas ini akan dihapus dari daftar.`);
+      if (!ok) return;
     }
+
+    await deleteTask(id, cutoff);
+    await loadData();
   };
 
   const handleOpenEditName = (profile: AppProfile) => {
@@ -383,15 +399,21 @@ export default function TasksPage() {
                           />
                           <span className="text-xs font-black text-slate-900 truncate">{t.title}</span>
                         </div>
-                        <span className="text-[9.5px] font-extrabold bg-emerald-50 text-[#00684a] px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                          {t.recurrence_type === 'daily'
-                            ? 'Setiap Hari'
-                            : t.recurrence_type === 'interval'
-                            ? `Tiap ${t.recurrence_interval} Hari`
-                            : t.recurrence_type === 'days_of_week'
-                            ? 'Hari Pilihan'
-                            : 'Sekali Saja'}
-                        </span>
+                        {Boolean(t.end_date && t.end_date < todayStr) ? (
+                          <span className="text-[9.5px] font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-300 shrink-0">
+                            🛑 Selesai / Dicabut
+                          </span>
+                        ) : (
+                          <span className="text-[9.5px] font-extrabold bg-emerald-50 text-[#00684a] px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                            {t.recurrence_type === 'daily'
+                              ? 'Setiap Hari'
+                              : t.recurrence_type === 'interval'
+                              ? `Tiap ${t.recurrence_interval} Hari`
+                              : t.recurrence_type === 'days_of_week'
+                              ? 'Hari Pilihan'
+                              : 'Sekali Saja'}
+                          </span>
+                        )}
                       </div>
 
                       {t.description && (
@@ -905,29 +927,23 @@ export default function TasksPage() {
                 />
               </div>
 
-              {/* Unique Task Color Picker */}
+              {/* Task Color Picker */}
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  Warna Indikator Kalender (Khusus Tugas Ini)
+                  Warna Indikator Kalender
                 </label>
                 <div className="grid grid-cols-5 gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-2xl">
                   {TASK_COLOR_PALETTE.map((pal) => {
-                    const usedBy = tasks.find(
-                      (t) => t.id !== editingTask?.id && (t.color || '').toLowerCase() === pal.hex.toLowerCase()
-                    );
                     const isSelected = taskColor.toLowerCase() === pal.hex.toLowerCase();
 
                     return (
                       <button
                         key={pal.hex}
                         type="button"
-                        disabled={Boolean(usedBy)}
                         onClick={() => setTaskColor(pal.hex)}
-                        title={usedBy ? `${pal.label} (Sudah dipakai: ${usedBy.title})` : pal.label}
+                        title={pal.label}
                         className={`h-9 rounded-xl flex items-center justify-center transition-all relative ${
-                          usedBy
-                            ? 'opacity-25 cursor-not-allowed border border-slate-200'
-                            : isSelected
+                          isSelected
                             ? 'ring-2 ring-slate-900 scale-105 shadow-sm'
                             : 'hover:scale-105 border border-transparent'
                         }`}
@@ -939,7 +955,7 @@ export default function TasksPage() {
                   })}
                 </div>
                 <span className="text-[9.5px] text-slate-400 font-semibold mt-1 block">
-                  *Pilih warna unik agar pekerja tidak bingung. Warna merah khusus untuk tugas belum dikerjakan/terlewat.
+                  *Warna bintik indikator di kalender. Boleh memilih warna yang sama atau berbeda untuk setiap tugas.
                 </span>
               </div>
 

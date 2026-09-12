@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { DailyTaskView } from '@/types/database';
 import { fetchTasksForDate, toggleTaskCompletion } from '@/lib/supabase';
 import { useProfile } from '@/context/ProfileContext';
+import { SaveConfirmationModal } from '@/components/SaveConfirmationModal';
 import {
   Egg,
   CheckCircle2,
@@ -59,6 +60,12 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
   // If there are no tasks at all today
   if (tasks.length === 0) return null;
 
+  const [confirmTaskModal, setConfirmTaskModal] = useState<{
+    isOpen: boolean;
+    task: DailyTaskView | null;
+  }>({ isOpen: false, task: null });
+  const [isSubmittingConfirm, setIsSubmittingConfirm] = useState(false);
+
   const handleTaskClick = async (task: DailyTaskView, specificFlockId?: string) => {
     // Find uncompleted flock if any
     const pendingFlock = task.flocks_status?.find((f) => !f.is_done);
@@ -73,8 +80,22 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
     } else if (task.task_type === 'vitamin') {
       onOpenQuickInput(targetFlockId, 'health', 'Vitamin');
     } else {
-      await toggleTaskCompletion(task.task_id, todayStr, activeProfile?.id);
+      // For checklist / cleaning / other tasks, show confirmation modal!
+      setConfirmTaskModal({ isOpen: true, task });
+    }
+  };
+
+  const handleConfirmTaskCompletion = async () => {
+    if (!confirmTaskModal.task) return;
+    setIsSubmittingConfirm(true);
+    try {
+      await toggleTaskCompletion(confirmTaskModal.task.task_id, todayStr, activeProfile?.id);
       await loadTodayTasks();
+      setConfirmTaskModal({ isOpen: false, task: null });
+    } catch (err) {
+      console.error('Failed to toggle task completion:', err);
+    } finally {
+      setIsSubmittingConfirm(false);
     }
   };
 
@@ -297,6 +318,64 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Confirmation Modal when Marking Checklist/Other Tasks Completed */}
+      {confirmTaskModal.task && (
+        <SaveConfirmationModal
+          isOpen={confirmTaskModal.isOpen}
+          onClose={() => setConfirmTaskModal({ isOpen: false, task: null })}
+          onConfirm={handleConfirmTaskCompletion}
+          isSubmitting={isSubmittingConfirm}
+          title={
+            confirmTaskModal.task.is_completed
+              ? 'Konfirmasi Batalkan Status Selesai'
+              : 'Konfirmasi Selesaikan Tugas'
+          }
+          coopName={
+            confirmTaskModal.task.coop_name ||
+            (confirmTaskModal.task.flock_ids && confirmTaskModal.task.flock_ids.length > 0
+              ? `${confirmTaskModal.task.flock_ids.length} Kandang Terpilih`
+              : 'Semua Kandang')
+          }
+          flockName={confirmTaskModal.task.flock_name || undefined}
+          recordDate={todayStr}
+          categoryBadge={
+            confirmTaskModal.task.task_type === 'cleaning'
+              ? 'Kebersihan'
+              : confirmTaskModal.task.task_type === 'feed'
+              ? 'Pakan'
+              : 'Tugas Mandiri'
+          }
+          items={[
+            {
+              label: 'Nama Tugas',
+              value: confirmTaskModal.task.title,
+              highlight: true,
+              color: 'text-slate-900',
+            },
+            {
+              label: 'Status Saat Ini',
+              value: confirmTaskModal.task.is_completed ? 'Sudah Selesai' : 'Belum Selesai',
+              color: confirmTaskModal.task.is_completed ? 'text-emerald-700' : 'text-amber-700',
+            },
+            {
+              label: 'Target Waktu',
+              value: confirmTaskModal.task.due_time
+                ? `${confirmTaskModal.task.due_time.substring(0, 5)} WIB`
+                : 'Fleksibel',
+            },
+            {
+              label: 'Petugas',
+              value: activeProfile?.name || 'Petugas',
+            },
+          ]}
+          warningMessage={
+            confirmTaskModal.task.is_completed
+              ? 'Apakah Anda yakin ingin membatalkan tanda selesai pada tugas ini?'
+              : 'Pastikan pekerjaan kandang ini telah selesai dikerjakan sebelum mengonfirmasi status selesai.'
+          }
+        />
+      )}
     </div>
   );
 };

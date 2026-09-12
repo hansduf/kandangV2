@@ -1099,25 +1099,62 @@ export async function fetchMonthTaskStatus(
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const result: Record<string, MonthDayTaskStatus> = {};
 
-  const allTasks = await fetchAllTasks();
+  const [allTasks, allFlocks] = await Promise.all([fetchAllTasks(), fetchFlocks()]);
   if (allTasks.length === 0) return result;
 
   const startStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const endStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
   let completions: TaskCompletion[] = [];
+  const recordedEggFlocksByDate = new Map<string, Set<string>>(); // date -> Set<flockId>
+  const recordedHealthByDate = new Map<string, Map<string, Set<string>>>(); // date -> flockId -> Set<catLower>
+
   if (isConfigured) {
     try {
-      const { data, error } = await supabase
-        .from('task_completions')
-        .select('*')
-        .gte('task_date', startStr)
-        .lte('task_date', endStr);
-      if (!error && data) completions = data;
+      const [compRes, dailyRes, healthRes] = await Promise.all([
+        supabase
+          .from('task_completions')
+          .select('*')
+          .gte('task_date', startStr)
+          .lte('task_date', endStr),
+        supabase
+          .from('daily_records')
+          .select('flock_id, record_date')
+          .gte('record_date', startStr)
+          .lte('record_date', endStr),
+        supabase
+          .from('health_records')
+          .select('flock_id, record_date, category')
+          .gte('record_date', startStr)
+          .lte('record_date', endStr),
+      ]);
+
+      if (!compRes.error && compRes.data) completions = compRes.data;
+      if (!dailyRes.error && dailyRes.data) {
+        dailyRes.data.forEach((r: any) => {
+          if (!recordedEggFlocksByDate.has(r.record_date)) {
+            recordedEggFlocksByDate.set(r.record_date, new Set());
+          }
+          recordedEggFlocksByDate.get(r.record_date)!.add(r.flock_id);
+        });
+      }
+      if (!healthRes.error && healthRes.data) {
+        healthRes.data.forEach((r: any) => {
+          if (!recordedHealthByDate.has(r.record_date)) {
+            recordedHealthByDate.set(r.record_date, new Map());
+          }
+          const fMap = recordedHealthByDate.get(r.record_date)!;
+          if (!fMap.has(r.flock_id)) {
+            fMap.set(r.flock_id, new Set());
+          }
+          fMap.get(r.flock_id)!.add((r.category || '').toLowerCase());
+        });
+      }
     } catch (err) {
-      console.warn('Failed to fetch completions from supabase, fallback to local:', err);
+      console.warn('Failed to fetch month task data from supabase, fallback to local:', err);
     }
   }
+
   if (completions.length === 0 && typeof window !== 'undefined') {
     const stored = localStorage.getItem('kandang_task_completions');
     if (stored) {
@@ -1126,10 +1163,37 @@ export async function fetchMonthTaskStatus(
     }
   }
 
+  if (typeof window !== 'undefined' && recordedEggFlocksByDate.size === 0) {
+    allFlocks.forEach((f) => {
+      const hist = getLocalDailyRecords(f.id);
+      hist.forEach((r) => {
+        if (r.record_date >= startStr && r.record_date <= endStr) {
+          if (!recordedEggFlocksByDate.has(r.record_date)) {
+            recordedEggFlocksByDate.set(r.record_date, new Set());
+          }
+          recordedEggFlocksByDate.get(r.record_date)!.add(f.id);
+        }
+      });
+      const hHist = getLocalHealthRecords(f.id);
+      hHist.forEach((r) => {
+        if (r.record_date >= startStr && r.record_date <= endStr) {
+          if (!recordedHealthByDate.has(r.record_date)) {
+            recordedHealthByDate.set(r.record_date, new Map());
+          }
+          const fMap = recordedHealthByDate.get(r.record_date)!;
+          if (!fMap.has(f.id)) fMap.set(f.id, new Set());
+          fMap.get(f.id)!.add((r.category || '').toLowerCase());
+        }
+      });
+    });
+  }
+
   const compSet = new Set<string>();
   for (const c of completions) {
     compSet.add(`${c.task_id}_${c.task_date}`);
   }
+
+  const activeFlocks = allFlocks.filter((f) => f.status === 'active' || !f.status);
 
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -1142,7 +1206,16 @@ export async function fetchMonthTaskStatus(
       if (!t.is_active) continue;
       if (t.start_date > dateStr) continue;
       if (t.end_date && t.end_date < dateStr) continue;
-      if (workerId && t.assigned_to && t.assigned_to !== workerId) continue;
+
+      // Filter by worker (assigned_to or assigned_to_ids)
+      if (workerId) {
+        const hasSpecificWorker = t.assigned_to || (t.assigned_to_ids && t.assigned_to_ids.length > 0);
+        if (hasSpecificWorker) {
+          const isDirect = t.assigned_to === workerId;
+          const isInList = t.assigned_to_ids && t.assigned_to_ids.includes(workerId);
+          if (!isDirect && !isInList) continue;
+        }
+      }
 
       let isDue = false;
       if (t.recurrence_type === 'once') {
@@ -1160,7 +1233,38 @@ export async function fetchMonthTaskStatus(
       }
 
       if (isDue) {
-        const isDone = compSet.has(`${t.id}_${dateStr}`);
+        let isDone = compSet.has(`${t.id}_${dateStr}`);
+
+        // Also cross-verify with daily egg records
+        if (!isDone && t.task_type === 'daily_record') {
+          const eggDoneFlocks = recordedEggFlocksByDate.get(dateStr) || new Set<string>();
+          let targetFids: string[] = [];
+          if (t.flock_ids && t.flock_ids.length > 0) targetFids = t.flock_ids;
+          else if (t.flock_id) targetFids = [t.flock_id];
+          else targetFids = activeFlocks.map((f) => f.id);
+
+          if (targetFids.length > 0 && targetFids.every((fid) => eggDoneFlocks.has(fid))) {
+            isDone = true;
+          }
+        }
+
+        // Also cross-verify with health records
+        if (!isDone && (t.task_type === 'vaccine' || t.task_type === 'medicine' || (t.task_type as any) === 'obat' || t.task_type === 'vitamin')) {
+          const targetCat = t.task_type === 'vaccine' ? 'vaksin' : t.task_type === 'vitamin' ? 'vitamin' : 'obat';
+          const hMap = recordedHealthByDate.get(dateStr);
+          let targetFids: string[] = [];
+          if (t.flock_ids && t.flock_ids.length > 0) targetFids = t.flock_ids;
+          else if (t.flock_id) targetFids = [t.flock_id];
+          else targetFids = activeFlocks.map((f) => f.id);
+
+          if (targetFids.length > 0 && hMap && targetFids.every((fid) => {
+            const catSet = hMap.get(fid);
+            return catSet && Array.from(catSet).some((c) => c.includes(targetCat));
+          })) {
+            isDone = true;
+          }
+        }
+
         dayTasks.push({
           task_id: t.id,
           title: t.title,
@@ -1440,30 +1544,97 @@ export async function updateFarmTask(id: string, updates: Partial<FarmTask>): Pr
   return { id, title: updates.title || '', task_type: updates.task_type || 'custom', recurrence_type: updates.recurrence_type || 'daily', start_date: '', color: updates.color || '#06b6d4', is_active: true } as FarmTask;
 }
 
-export async function deleteTask(id: string): Promise<void> {
+export async function deleteTask(id: string, asOfDate?: string): Promise<{ preservedPast: boolean }> {
   const validUuid = toValidUuidOrNull(id);
+  const today = new Date().toISOString().split('T')[0];
+  const cutoff = asOfDate || today;
+  let preservedPast = false;
+
+  // 1. Find existing task to check start_date and recurrence_type
+  let existingTask: FarmTask | null = null;
   if (isConfigured && validUuid) {
     try {
-      const { error } = await supabase
-        .from('farm_tasks')
-        .update({ is_active: false })
-        .eq('id', validUuid);
-      if (error) {
-        console.error('Supabase soft-delete farm_tasks error:', error.message || error);
-      }
+      const { data } = await supabase.from('farm_tasks').select('*').eq('id', validUuid).maybeSingle();
+      if (data) existingTask = data;
     } catch (err) {
-      console.error('Failed soft-delete in supabase farm_tasks:', err);
+      console.warn('Failed to query farm_task before delete:', err);
     }
   }
 
-  if (typeof window !== 'undefined') {
+  if (!existingTask && typeof window !== 'undefined') {
     const stored = localStorage.getItem('kandang_tasks');
     if (stored) {
       const tasks: FarmTask[] = JSON.parse(stored);
-      const filtered = tasks.filter((t) => t.id !== id && (!validUuid || t.id !== validUuid));
-      localStorage.setItem('kandang_tasks', JSON.stringify(filtered));
+      existingTask = tasks.find((t) => t.id === id || (validUuid && t.id === validUuid)) || null;
     }
   }
+
+  const hasStarted = existingTask && existingTask.start_date && existingTask.start_date <= cutoff;
+  const isRecurring = existingTask ? existingTask.recurrence_type !== 'once' : true;
+  const isPastOnce = existingTask && existingTask.recurrence_type === 'once' && existingTask.start_date < cutoff;
+
+  // 2. If single task in the past, preserve it without deleting
+  if (isPastOnce) {
+    return { preservedPast: true };
+  }
+
+  // 3. If recurring task that has already started, clamp end_date to cutoff to preserve past calendar history!
+  if (hasStarted && isRecurring) {
+    preservedPast = true;
+    if (isConfigured && validUuid) {
+      try {
+        const { error } = await supabase
+          .from('farm_tasks')
+          .update({ end_date: cutoff, is_active: true })
+          .eq('id', validUuid);
+        if (error) {
+          console.error('Supabase update end_date error:', error.message || error);
+        }
+      } catch (err) {
+        console.error('Failed to update end_date in supabase:', err);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('kandang_tasks');
+      if (stored) {
+        const tasks: FarmTask[] = JSON.parse(stored);
+        const updated = tasks.map((t) => {
+          if (t.id === id || (validUuid && t.id === validUuid)) {
+            return { ...t, end_date: cutoff, is_active: true };
+          }
+          return t;
+        });
+        localStorage.setItem('kandang_tasks', JSON.stringify(updated));
+      }
+    }
+  } else {
+    // Hasn't started yet or future: soft delete
+    if (isConfigured && validUuid) {
+      try {
+        const { error } = await supabase
+          .from('farm_tasks')
+          .update({ is_active: false })
+          .eq('id', validUuid);
+        if (error) {
+          console.error('Supabase soft-delete farm_tasks error:', error.message || error);
+        }
+      } catch (err) {
+        console.error('Failed soft-delete in supabase farm_tasks:', err);
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('kandang_tasks');
+      if (stored) {
+        const tasks: FarmTask[] = JSON.parse(stored);
+        const filtered = tasks.filter((t) => t.id !== id && (!validUuid || t.id !== validUuid));
+        localStorage.setItem('kandang_tasks', JSON.stringify(filtered));
+      }
+    }
+  }
+
+  return { preservedPast };
 }
 
 

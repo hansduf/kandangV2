@@ -10,6 +10,7 @@ import {
   MonthDayTaskStatus,
 } from '@/lib/supabase';
 import { useProfile } from '@/context/ProfileContext';
+import { SaveConfirmationModal } from '@/components/SaveConfirmationModal';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -35,7 +36,7 @@ interface TaskCalendarCardProps {
   readOnly?: boolean;
   onOpenCreateTask?: (date?: string) => void;
   onOpenEditTask?: (task: FarmTask) => void;
-  onDeleteTask?: (taskId: string) => void;
+  onDeleteTask?: (taskId: string, asOfDate?: string) => void | Promise<void>;
   refreshTrigger?: any;
 }
 
@@ -135,15 +136,51 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
   // Monday-first offset (0 = Monday, ..., 6 = Sunday)
   const firstDayIndex = (new Date(currentYear, currentMonth, 1).getDay() + 6) % 7;
 
+  const [confirmTaskModal, setConfirmTaskModal] = useState<{
+    isOpen: boolean;
+    task: DailyTaskView | null;
+  }>({ isOpen: false, task: null });
+  const [isSubmittingConfirm, setIsSubmittingConfirm] = useState(false);
+
   const handleToggle = async (task: DailyTaskView) => {
     if (readOnly) return;
+    const pendingFlock = task.flocks_status?.find((f) => !f.is_done);
+    const targetFlockId = pendingFlock?.flock_id || task.flock_id || undefined;
+
     if (task.task_type === 'daily_record' && onOpenQuickInput) {
-      onOpenQuickInput();
+      onOpenQuickInput(targetFlockId, 'daily');
       return;
     }
-    await toggleTaskCompletion(task.task_id, selectedDate, activeProfile?.id);
-    await loadTasks(selectedDate);
-    await loadMonthStatus(currentYear, currentMonth);
+    if (task.task_type === 'vaccine' && onOpenQuickInput) {
+      onOpenQuickInput(targetFlockId, 'health', 'Vaksin');
+      return;
+    }
+    if ((task.task_type === 'medicine' || (task.task_type as any) === 'obat') && onOpenQuickInput) {
+      onOpenQuickInput(targetFlockId, 'health', 'Obat');
+      return;
+    }
+    if (task.task_type === 'vitamin' && onOpenQuickInput) {
+      onOpenQuickInput(targetFlockId, 'health', 'Vitamin');
+      return;
+    }
+
+    // For checklist / cleaning / other tasks, show confirmation modal to prevent accidental clicks!
+    setConfirmTaskModal({ isOpen: true, task });
+  };
+
+  const handleConfirmTaskCompletion = async () => {
+    if (!confirmTaskModal.task) return;
+    setIsSubmittingConfirm(true);
+    try {
+      await toggleTaskCompletion(confirmTaskModal.task.task_id, selectedDate, activeProfile?.id);
+      await loadTasks(selectedDate);
+      await loadMonthStatus(currentYear, currentMonth);
+      setConfirmTaskModal({ isOpen: false, task: null });
+    } catch (err) {
+      console.error('Failed to toggle task completion:', err);
+    } finally {
+      setIsSubmittingConfirm(false);
+    }
   };
 
   const formatIndoDate = (dateStr: string) => {
@@ -307,18 +344,20 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                 </div>
 
                 {/* Status Indicator Dots Under Date Number */}
-                <div className="flex items-center justify-center gap-0.5 mt-auto flex-wrap max-w-full px-0.5">
+                <div className="flex items-center justify-center gap-1 mt-auto flex-wrap max-w-full px-0.5 pb-0.5">
                   {status?.tasks && status.tasks.map((task) => {
                     const isDone = task.is_completed;
-                    // Red if overdue/due today and not completed; custom color when done or future
-                    const isOverdueOrDueToday = !isDone && dateStr <= todayStr;
-                    const dotColor = isOverdueOrDueToday ? '#ef4444' : task.color || '#10b981';
+                    const isOverdue = !isDone && dateStr < todayStr;
+                    // Red only if past and overdue; otherwise strictly reflect task's assigned color!
+                    const dotColor = isOverdue ? '#ef4444' : (task.color || '#10b981');
 
                     return (
                       <span
                         key={task.task_id}
-                        title={`${task.title}: ${isDone ? 'Selesai' : 'Belum Selesai'}`}
-                        className="w-1.5 h-1.5 rounded-full shrink-0 shadow-2xs"
+                        title={`${task.title}: ${isDone ? 'Selesai' : isOverdue ? 'Terlewat / Belum Selesai' : 'Terjadwal'}`}
+                        className={`w-2 h-2 rounded-full shrink-0 ring-1 ring-white shadow-2xs transition-transform ${
+                          isDone ? 'opacity-90' : isOverdue ? 'animate-pulse' : ''
+                        }`}
                         style={{ backgroundColor: dotColor }}
                       />
                     );
@@ -539,8 +578,8 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                   {!readOnly && onDeleteTask && matchedTask && (
                     <button
                       type="button"
-                      onClick={() => onDeleteTask(matchedTask.id)}
-                      title="Hapus Tugas"
+                      onClick={() => onDeleteTask(matchedTask.id, selectedDate)}
+                      title="Hapus / Cabut Tugas"
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -567,6 +606,64 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal when Marking Checklist/Other Tasks Completed */}
+      {confirmTaskModal.task && (
+        <SaveConfirmationModal
+          isOpen={confirmTaskModal.isOpen}
+          onClose={() => setConfirmTaskModal({ isOpen: false, task: null })}
+          onConfirm={handleConfirmTaskCompletion}
+          isSubmitting={isSubmittingConfirm}
+          title={
+            confirmTaskModal.task.is_completed
+              ? 'Konfirmasi Batalkan Status Selesai'
+              : 'Konfirmasi Selesaikan Tugas'
+          }
+          coopName={
+            confirmTaskModal.task.coop_name ||
+            (confirmTaskModal.task.flock_ids && confirmTaskModal.task.flock_ids.length > 0
+              ? `${confirmTaskModal.task.flock_ids.length} Kandang Terpilih`
+              : 'Semua Kandang')
+          }
+          flockName={confirmTaskModal.task.flock_name || undefined}
+          recordDate={selectedDate}
+          categoryBadge={
+            confirmTaskModal.task.task_type === 'cleaning'
+              ? 'Kebersihan'
+              : confirmTaskModal.task.task_type === 'feed'
+              ? 'Pakan'
+              : 'Tugas Mandiri'
+          }
+          items={[
+            {
+              label: 'Nama Tugas',
+              value: confirmTaskModal.task.title,
+              highlight: true,
+              color: 'text-slate-900',
+            },
+            {
+              label: 'Status Sekarang',
+              value: confirmTaskModal.task.is_completed ? 'Sudah Selesai' : 'Belum Selesai',
+              color: confirmTaskModal.task.is_completed ? 'text-emerald-700' : 'text-amber-700',
+            },
+            {
+              label: 'Waktu Target',
+              value: confirmTaskModal.task.due_time
+                ? `${confirmTaskModal.task.due_time.substring(0, 5)} WIB`
+                : 'Fleksibel',
+            },
+            {
+              label: 'Petugas Bertanggung Jawab',
+              value: activeProfile?.name || 'Petugas',
+            },
+          ]}
+          warningMessage={
+            confirmTaskModal.task.is_completed
+              ? 'Apakah Anda yakin ingin membatalkan tanda selesai pada tugas ini?'
+              : 'Pastikan kandang dan pekerjaan ini sudah benar-benar diperiksa dan diselesaikan sebelum disimpan.'
+          }
+        />
+      )}
     </div>
   );
 };

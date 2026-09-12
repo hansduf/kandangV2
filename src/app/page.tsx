@@ -11,12 +11,14 @@ import {
   fetchFlocks,
   fetchDashboardSummary,
   fetchDailyHistory,
+  fetchHealthRecords,
   saveDailyRecord,
   saveHealthRecord,
   createFlock,
   updateFlock,
 } from '@/lib/supabase';
 import { Flock, DashboardSummary, DailyRecord, HealthRecord } from '@/types/database';
+import { DailyCalendarCard } from '@/components/DailyCalendarCard';
 import {
   Egg,
   TrendingUp,
@@ -36,6 +38,7 @@ export default function DashboardHomePage() {
   const [activeFlockId, setActiveFlockId] = useState<string>('');
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [history, setHistory] = useState<DailyRecord[]>([]);
+  const [healthList, setHealthList] = useState<HealthRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Timeframe Filter State for Dashboard
@@ -78,10 +81,14 @@ export default function DashboardHomePage() {
     setLoading(true);
     try {
       const limit = mode === '7' ? 7 : mode === '14' ? 14 : mode === '30' ? 30 : 365;
-      const sumData = await fetchDashboardSummary(flockId);
-      const histData = await fetchDailyHistory(flockId, limit);
+      const [sumData, histData, healthData] = await Promise.all([
+        fetchDashboardSummary(flockId),
+        fetchDailyHistory(flockId, limit),
+        fetchHealthRecords(flockId),
+      ]);
       setSummary(sumData);
       setHistory(histData);
+      setHealthList(healthData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -340,6 +347,14 @@ export default function DashboardHomePage() {
               monthlyMortality={summary?.totals.monthly_mortality}
               totalMortality={summary?.totals.total_mortality}
               mortalityRate={summary?.totals.mortality_rate_percent}
+            />
+
+            {/* DAILY CALENDAR CARD: PRODUKSI, KEMATIAN & VAKSIN/OBAT */}
+            <DailyCalendarCard
+              flockName={activeFlock ? `${activeFlock.coop_name} (${activeFlock.name})` : 'Kandang'}
+              dailyRecords={history}
+              healthRecords={healthList}
+              onOpenQuickInput={() => setIsInputModalOpen(true)}
             />
 
             {/* Recent Daily Records Table */}

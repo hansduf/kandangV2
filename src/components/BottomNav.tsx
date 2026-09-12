@@ -27,15 +27,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickInput }) => {
           <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Beranda</span>
         </Link>
 
-        {/* Item 2: Analitik */}
+        {/* Item 2: Kandang */}
         <Link
-          href="/reports"
+          href="/flocks"
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
-            pathname === '/reports' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
+            pathname === '/flocks' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
           }`}
         >
-          <TrendingUp className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/reports' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
-          <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Analitik</span>
+          <Layers className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/flocks' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+          <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Kandang</span>
         </Link>
 
         {/* Item 3 (CENTER): Big Green Floating Circular "Catat (+)" Button */}
@@ -50,26 +50,26 @@ export const BottomNav: React.FC<BottomNavProps> = ({ onOpenQuickInput }) => {
           <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight text-slate-700 mt-0.5">Catat</span>
         </div>
 
-        {/* Item 4: Produksi */}
+        {/* Item 4: Kesehatan */}
         <Link
-          href="/daily-entry"
+          href="/health"
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
-            pathname === '/daily-entry' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
+            pathname === '/health' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
           }`}
         >
-          <Droplet className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/daily-entry' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
-          <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Produksi</span>
+          <Droplet className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/health' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+          <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Kesehatan</span>
         </Link>
 
-        {/* Item 5: Kandang */}
+        {/* Item 5: Analitik */}
         <Link
-          href="/flocks"
+          href="/reports"
           className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors ${
-            pathname === '/flocks' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
+            pathname === '/reports' ? 'text-[#00684a] font-black' : 'text-slate-500 font-semibold hover:text-slate-800'
           }`}
         >
-          <Layers className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/flocks' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
-          <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Kandang</span>
+          <TrendingUp className={`w-5 h-5 sm:w-6 sm:h-6 mb-0.5 ${pathname === '/reports' ? 'stroke-[2.5px] text-[#00684a]' : 'stroke-[1.8]'}`} />
+          <span className="text-[10px] sm:text-[11px] leading-tight font-black tracking-tight">Analitik</span>
         </Link>
 
       </div>

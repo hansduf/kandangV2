@@ -749,3 +749,25 @@ BEGIN
 END;
 $$;
 
+-- RLS & Access Policies for Task & Profile Tables
+ALTER TABLE public.app_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.farm_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.task_completions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all access to app_profiles" ON public.app_profiles;
+DROP POLICY IF EXISTS "Allow all access to farm_tasks" ON public.farm_tasks;
+DROP POLICY IF EXISTS "Allow all access to task_completions" ON public.task_completions;
+
+CREATE POLICY "Allow all access to app_profiles" ON public.app_profiles FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access to farm_tasks" ON public.farm_tasks FOR ALL TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access to task_completions" ON public.task_completions FOR ALL TO public USING (true) WITH CHECK (true);
+
+GRANT ALL ON TABLE public.app_profiles TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.farm_tasks TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.task_completions TO anon, authenticated, service_role;
+
+GRANT EXECUTE ON FUNCTION public.get_tasks_for_date(DATE, UUID) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.toggle_task_completion(UUID, DATE, UUID, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.verify_owner_pin(UUID, TEXT) TO anon, authenticated, service_role;
+
+

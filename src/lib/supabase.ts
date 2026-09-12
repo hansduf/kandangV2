@@ -801,6 +801,36 @@ export async function fetchAllTasks(): Promise<FarmTask[]> {
   return stored ? JSON.parse(stored) : [];
 }
 
+export async function updateFarmTask(id: string, updates: Partial<FarmTask>): Promise<FarmTask> {
+  if (isConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('farm_tasks')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (!error && data) return data;
+    } catch (err) {
+      console.warn('Failed update in supabase farm_tasks, updating locally:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('kandang_tasks');
+    if (stored) {
+      const tasks: FarmTask[] = JSON.parse(stored);
+      const index = tasks.findIndex((t) => t.id === id);
+      if (index >= 0) {
+        tasks[index] = { ...tasks[index], ...updates };
+        localStorage.setItem('kandang_tasks', JSON.stringify(tasks));
+        return tasks[index];
+      }
+    }
+  }
+  return { id, title: updates.title || '', task_type: updates.task_type || 'custom', recurrence_type: updates.recurrence_type || 'daily', start_date: '', is_active: true } as FarmTask;
+}
+
 export async function deleteTask(id: string): Promise<void> {
   if (isConfigured) {
     try {
@@ -823,5 +853,6 @@ export async function deleteTask(id: string): Promise<void> {
     }
   }
 }
+
 
 

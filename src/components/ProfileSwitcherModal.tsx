@@ -90,7 +90,7 @@ export const ProfileSwitcherModal: React.FC = () => {
               KandangKu Profile
             </span>
             <h3 className="text-base sm:text-lg font-black text-slate-900 mt-1">
-              {pinTargetProfile ? 'Verifikasi PIN Pemilik' : 'Pilih Siapa yang Mengakses'}
+              {pinTargetProfile ? 'Verifikasi PIN' : 'Pilih Akun Pengguna'}
             </h3>
           </div>
 
@@ -182,24 +182,22 @@ export const ProfileSwitcherModal: React.FC = () => {
           /* VIEW 2: PROFILE CARDS SELECTION (NETFLIX/MCP STYLE) */
           <div className="space-y-3 py-1">
             <p className="text-xs text-slate-500 font-semibold text-center">
-              Pilih profil pengguna untuk menyesuaikan tampilan tugas & menu
+              Pilih nama akun Anda untuk melanjutkan
             </p>
 
             <div className="grid grid-cols-2 gap-3 pt-1">
               {profiles.map((p) => {
                 const isCurrent = activeProfile?.id === p.id;
-                const isOwnerRole = p.role === 'owner';
+                const requiresPin = p.role === 'owner';
 
                 return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => handleSelectProfile(p)}
-                    className={`p-3.5 rounded-3xl border text-center transition-all relative flex flex-col items-center justify-center gap-2 active:scale-95 group ${
-                      isOwnerRole
-                        ? 'bg-gradient-to-b from-emerald-50/70 to-emerald-100/40 border-emerald-200 hover:border-[#00684a]'
-                        : 'bg-gradient-to-b from-slate-50 to-blue-50/40 border-slate-200 hover:border-blue-400'
-                    } ${isCurrent ? 'ring-2 ring-[#00684a] shadow-md' : 'shadow-xs'}`}
+                    className={`p-4 rounded-3xl border text-center transition-all relative flex flex-col items-center justify-center gap-2.5 active:scale-95 group bg-slate-50 hover:bg-white hover:border-[#00684a] ${
+                      isCurrent ? 'ring-2 ring-[#00684a] shadow-md bg-white border-[#00684a]' : 'border-slate-200 shadow-xs'
+                    }`}
                   >
                     {isCurrent && (
                       <span className="absolute top-2 right-2 w-5 h-5 bg-[#00684a] text-white rounded-full flex items-center justify-center text-[10px] font-black">
@@ -209,28 +207,22 @@ export const ProfileSwitcherModal: React.FC = () => {
 
                     {/* Avatar Icon */}
                     <div
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm text-white font-black text-base transition-transform group-hover:scale-105 ${
-                        isOwnerRole
-                          ? 'bg-gradient-to-br from-[#00684a] to-emerald-800'
-                          : 'bg-gradient-to-br from-blue-600 to-indigo-800'
-                      }`}
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs text-white font-black text-lg transition-transform group-hover:scale-105"
+                      style={{ backgroundColor: p.avatar_color || '#00684a' }}
                     >
-                      {isOwnerRole ? <Crown className="w-6 h-6 text-amber-300" /> : <HardHat className="w-6 h-6 text-amber-300" />}
+                      {p.name ? p.name.charAt(0).toUpperCase() : 'U'}
                     </div>
 
-                    <div>
-                      <span className="text-xs font-black text-slate-900 block truncate max-w-[110px]">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-black text-slate-900 block truncate max-w-[120px]">
                         {p.name}
                       </span>
-                      <span
-                        className={`inline-block text-[9.5px] font-extrabold px-2 py-0.5 rounded-full mt-0.5 border ${
-                          isOwnerRole
-                            ? 'bg-emerald-100 text-[#00684a] border-emerald-200'
-                            : 'bg-blue-100 text-blue-700 border-blue-200'
-                        }`}
-                      >
-                        {isOwnerRole ? '👑 Pemilik (PIN)' : '👷 Pekerja'}
-                      </span>
+                      {requiresPin && (
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-slate-400">
+                          <Lock className="w-3 h-3" />
+                          <span>PIN</span>
+                        </span>
+                      )}
                     </div>
                   </button>
                 );
@@ -239,7 +231,7 @@ export const ProfileSwitcherModal: React.FC = () => {
 
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 text-center mt-2">
               <p className="text-[10px] text-slate-500 font-semibold">
-                💡 <strong className="text-slate-700">Pekerja:</strong> Sekali klik langsung masuk untuk mencatat telur & tugas harian.
+                💡 Sekali klik langsung masuk untuk mencatat telur & tugas harian.
               </p>
             </div>
           </div>

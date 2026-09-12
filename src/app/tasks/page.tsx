@@ -12,6 +12,7 @@ import {
   fetchFlocks,
   fetchAllTasks,
   createFarmTask,
+  updateFarmTask,
   deleteTask,
   fetchProfiles,
   createProfile,
@@ -30,18 +31,17 @@ import {
   Clock,
   Calendar,
   Lock,
-  HardHat,
-  Crown,
   Bell,
   CheckCircle2,
   Shield,
   Layers,
   Save,
   X,
+  Pencil,
 } from 'lucide-react';
 
 export default function TasksPage() {
-  const { isOwner, activeProfile, refreshProfiles } = useProfile();
+  const { isOwner, activeProfile, refreshProfiles, updateProfileName } = useProfile();
   const [activeTab, setActiveTab] = useState<'tasks' | 'workers'>('tasks');
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [tasks, setTasks] = useState<FarmTask[]>([]);
@@ -50,9 +50,15 @@ export default function TasksPage() {
 
   // Modals
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<FarmTask | null>(null);
   const [isWorkerModalOpen, setIsWorkerModalOpen] = useState(false);
   const [isQuickInputOpen, setIsQuickInputOpen] = useState(false);
   const [isFlockModalOpen, setIsFlockModalOpen] = useState(false);
+
+  // Edit Username Modal State
+  const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<AppProfile | null>(null);
+  const [editNameInput, setEditNameInput] = useState('');
 
   // Task Form State
   const [taskTitle, setTaskTitle] = useState('');
@@ -97,23 +103,69 @@ export default function TasksPage() {
     loadData();
   }, []);
 
-  const handleCreateTask = async (e: React.FormEvent) => {
+  const handleOpenCreateTask = () => {
+    setEditingTask(null);
+    setTaskTitle('');
+    setTaskDesc('');
+    setTaskType('custom');
+    setTaskFlockId('');
+    setTaskAssignedTo('');
+    setRecurrenceType('daily');
+    setRecurrenceInterval(3);
+    setSelectedDays([1, 3, 5]);
+    setDueTime('16:00');
+    setStartDate(new Date().toISOString().split('T')[0]);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleOpenEditTask = (task: FarmTask) => {
+    setEditingTask(task);
+    setTaskTitle(task.title);
+    setTaskDesc(task.description || '');
+    setTaskType(task.task_type || 'custom');
+    setTaskFlockId(task.flock_id || '');
+    setTaskAssignedTo(task.assigned_to || '');
+    setRecurrenceType(task.recurrence_type || 'daily');
+    setRecurrenceInterval(task.recurrence_interval || 1);
+    setSelectedDays(task.days_of_week && task.days_of_week.length > 0 ? task.days_of_week : [1, 3, 5]);
+    setDueTime(task.due_time || '16:00');
+    setStartDate(task.start_date || new Date().toISOString().split('T')[0]);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
 
-    await createFarmTask({
-      title: taskTitle.trim(),
-      description: taskDesc.trim() || null,
-      task_type: taskType,
-      flock_id: taskFlockId || null,
-      assigned_to: taskAssignedTo || null,
-      recurrence_type: recurrenceType,
-      recurrence_interval: recurrenceType === 'interval' ? Number(recurrenceInterval) || 1 : 1,
-      days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
-      due_time: dueTime || '16:00',
-      start_date: startDate,
-    });
+    if (editingTask) {
+      await updateFarmTask(editingTask.id, {
+        title: taskTitle.trim(),
+        description: taskDesc.trim() || null,
+        task_type: taskType,
+        flock_id: taskFlockId || null,
+        assigned_to: taskAssignedTo || null,
+        recurrence_type: recurrenceType,
+        recurrence_interval: recurrenceType === 'interval' ? Number(recurrenceInterval) || 1 : 1,
+        days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
+        due_time: dueTime || '16:00',
+        start_date: startDate,
+      });
+    } else {
+      await createFarmTask({
+        title: taskTitle.trim(),
+        description: taskDesc.trim() || null,
+        task_type: taskType,
+        flock_id: taskFlockId || null,
+        assigned_to: taskAssignedTo || null,
+        recurrence_type: recurrenceType,
+        recurrence_interval: recurrenceType === 'interval' ? Number(recurrenceInterval) || 1 : 1,
+        days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
+        due_time: dueTime || '16:00',
+        start_date: startDate,
+      });
+    }
 
+    setEditingTask(null);
     setTaskTitle('');
     setTaskDesc('');
     setIsTaskModalOpen(false);
@@ -125,6 +177,23 @@ export default function TasksPage() {
       await deleteTask(id);
       await loadData();
     }
+  };
+
+  const handleOpenEditName = (profile: AppProfile) => {
+    setEditingProfile(profile);
+    setEditNameInput(profile.name);
+    setIsEditNameModalOpen(true);
+  };
+
+  const handleSaveProfileName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProfile || !editNameInput.trim()) return;
+
+    await updateProfileName(editingProfile.id, editNameInput.trim());
+    setIsEditNameModalOpen(false);
+    setEditingProfile(null);
+    await loadData();
+    await refreshProfiles();
   };
 
   const handleCreateWorker = async (e: React.FormEvent) => {
@@ -146,7 +215,7 @@ export default function TasksPage() {
   };
 
   const handleDeleteWorker = async (id: string) => {
-    if (confirm('Hapus akun pekerja ini?')) {
+    if (confirm('Hapus akun ini?')) {
       await deleteProfile(id);
       await loadData();
       await refreshProfiles();
@@ -163,7 +232,7 @@ export default function TasksPage() {
     const ownerProfile = workers.find((w) => w.role === 'owner');
     if (ownerProfile) {
       await updateOwnerPin(ownerProfile.id, newPin);
-      setPinSuccess('✅ PIN Pemilik berhasil diperbarui!');
+      setPinSuccess('✅ PIN Keamanan berhasil diperbarui!');
       setNewPin('');
       setTimeout(() => setPinSuccess(''), 3000);
       await refreshProfiles();
@@ -191,10 +260,10 @@ export default function TasksPage() {
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black text-slate-900">
-                Manajemen Tugas & Akun Pekerja
+                Manajemen Tugas & Akun Pengguna
               </h2>
               <p className="text-[11px] font-semibold text-slate-500">
-                Buat tugas berulang (alarm), checklist harian & kelola akun staf kandang
+                Buat tugas berulang (alarm), checklist harian & kelola akun pengguna
               </p>
             </div>
           </div>
@@ -221,7 +290,7 @@ export default function TasksPage() {
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>Akun Pekerja & PIN</span>
+              <span>Daftar Pengguna & PIN</span>
             </button>
           </div>
         </div>
@@ -236,12 +305,12 @@ export default function TasksPage() {
                   Daftar Tugas Berulang (Alarm Kandang)
                 </h3>
                 <p className="text-[10px] text-slate-500 font-semibold">
-                  Tugas otomatis muncul pada floating edge & kalender pekerja
+                  Tugas otomatis muncul pada floating edge & kalender pengguna
                 </p>
               </div>
 
               <button
-                onClick={() => setIsTaskModalOpen(true)}
+                onClick={handleOpenCreateTask}
                 className="bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-md transition-all shrink-0"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
@@ -287,7 +356,7 @@ export default function TasksPage() {
                           </span>
                         )}
                         <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700">
-                          👷 {assigned ? assigned.name : 'Semua Pekerja'}
+                          👤 {assigned ? assigned.name : 'Semua Pengguna'}
                         </span>
                         {t.due_time && (
                           <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700">
@@ -297,7 +366,14 @@ export default function TasksPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-100">
+                      <button
+                        onClick={() => handleOpenEditTask(t)}
+                        className="text-slate-400 hover:text-emerald-700 p-1.5 rounded-xl hover:bg-emerald-50 transition-colors"
+                        title="Edit tugas"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => handleDeleteTask(t.id)}
                         className="text-slate-400 hover:text-rose-600 p-1.5 rounded-xl hover:bg-rose-50 transition-colors"
@@ -325,7 +401,7 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* TAB 2: AKUN PEKERJA & PIN OWNER */}
+        {/* TAB 2: AKUN PENGGUNA & PIN */}
         {activeTab === 'workers' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             {/* Change Owner PIN Card */}
@@ -336,10 +412,10 @@ export default function TasksPage() {
                 </div>
                 <div>
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Ubah PIN Keamanan Pemilik
+                    Ubah PIN Keamanan
                   </h3>
                   <p className="text-[10px] text-slate-500 font-semibold">
-                    PIN 4-digit digunakan saat memilih profil Pemilik agar pekerja tidak bisa mengakses menu pengaturan
+                    PIN 4-digit digunakan untuk melindungi menu pengaturan dan tugas
                   </p>
                 </div>
               </div>
@@ -368,7 +444,7 @@ export default function TasksPage() {
               )}
             </div>
 
-            {/* Workers List Management */}
+            {/* Users List Management */}
             <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-sm space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
@@ -377,10 +453,10 @@ export default function TasksPage() {
                   </div>
                   <div>
                     <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                      Daftar Akun Pekerja
+                      Daftar Akun Pengguna
                     </h3>
                     <p className="text-[10px] text-slate-500 font-semibold">
-                      Pekerja langsung masuk tanpa PIN untuk kemudahan operasional lapangan
+                      Kelola nama pengguna akun yang bertugas mencatat dan mengerjakan tugas
                     </p>
                   </div>
                 </div>
@@ -390,11 +466,11 @@ export default function TasksPage() {
                   className="bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
-                  <span>Tambah Pekerja</span>
+                  <span>Tambah Pengguna</span>
                 </button>
               </div>
 
-              {/* Workers Grid */}
+              {/* Users Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 {workers.map((w) => {
                   const isOwnerAcc = w.role === 'owner';
@@ -406,26 +482,14 @@ export default function TasksPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-sm shadow-xs ${
-                            isOwnerAcc
-                              ? 'bg-[#00684a]'
-                              : 'bg-blue-600'
-                          }`}
+                          className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-sm shadow-xs uppercase"
+                          style={{ backgroundColor: w.avatar_color || '#00684a' }}
                         >
-                          {isOwnerAcc ? <Crown className="w-5 h-5 text-amber-300" /> : <HardHat className="w-5 h-5 text-amber-300" />}
+                          {w.name ? w.name.charAt(0) : 'U'}
                         </div>
                         <div>
                           <span className="text-xs font-black text-slate-900 block">
                             {w.name}
-                          </span>
-                          <span
-                            className={`inline-block text-[9px] font-extrabold px-1.5 py-0.2 rounded-md ${
-                              isOwnerAcc
-                                ? 'bg-emerald-100 text-[#00684a]'
-                                : 'bg-blue-100 text-blue-700'
-                            }`}
-                          >
-                            {isOwnerAcc ? '👑 Pemilik' : '👷 Pekerja'}
                           </span>
                           {w.phone && (
                             <span className="text-[10px] text-slate-500 font-semibold block mt-0.5">
@@ -435,15 +499,24 @@ export default function TasksPage() {
                         </div>
                       </div>
 
-                      {!isOwnerAcc && (
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => handleDeleteWorker(w.id)}
-                          className="text-slate-400 hover:text-rose-600 p-1.5 rounded-xl hover:bg-rose-50 transition-colors"
-                          title="Hapus pekerja"
+                          onClick={() => handleOpenEditName(w)}
+                          className="text-slate-400 hover:text-emerald-700 p-1.5 rounded-xl hover:bg-emerald-50 transition-colors"
+                          title="Ubah nama pengguna"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
                         </button>
-                      )}
+                        {!isOwnerAcc && (
+                          <button
+                            onClick={() => handleDeleteWorker(w.id)}
+                            className="text-slate-400 hover:text-rose-600 p-1.5 rounded-xl hover:bg-rose-50 transition-colors"
+                            title="Hapus akun"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -453,7 +526,7 @@ export default function TasksPage() {
         )}
       </main>
 
-      {/* CREATE TASK MODAL */}
+      {/* CREATE / EDIT TASK MODAL */}
       {isTaskModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl p-5 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
@@ -462,7 +535,9 @@ export default function TasksPage() {
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00684a] flex items-center justify-center border border-emerald-200">
                   <CheckSquare className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-black text-slate-900">Buat Tugas Baru</h3>
+                <h3 className="text-sm font-black text-slate-900">
+                  {editingTask ? 'Edit Tugas & Alarm' : 'Buat Tugas Baru'}
+                </h3>
               </div>
               <button
                 onClick={() => setIsTaskModalOpen(false)}
@@ -472,7 +547,7 @@ export default function TasksPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateTask} className="space-y-3">
+            <form onSubmit={handleSaveTask} className="space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
                   Nama Tugas
@@ -494,7 +569,7 @@ export default function TasksPage() {
                 <textarea
                   value={taskDesc}
                   onChange={(e) => setTaskDesc(e.target.value)}
-                  placeholder="Petunjuk pengerjaan untuk pekerja..."
+                  placeholder="Petunjuk pengerjaan..."
                   rows={2}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
                 />
@@ -527,14 +602,12 @@ export default function TasksPage() {
                     onChange={(e) => setTaskAssignedTo(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
                   >
-                    <option value="">Semua Pekerja</option>
-                    {workers
-                      .filter((w) => w.role === 'worker')
-                      .map((w) => (
-                        <option key={w.id} value={w.id}>
-                          {w.name}
-                        </option>
-                      ))}
+                    <option value="">Semua Pengguna</option>
+                    {workers.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -598,20 +671,23 @@ export default function TasksPage() {
                       { d: 5, l: 'Jum' },
                       { d: 6, l: 'Sab' },
                       { d: 0, l: 'Min' },
-                    ].map((item) => (
-                      <button
-                        key={item.d}
-                        type="button"
-                        onClick={() => handleDayToggle(item.d)}
-                        className={`w-7 h-7 rounded-lg text-[10px] font-black transition-all ${
-                          selectedDays.includes(item.d)
-                            ? 'bg-[#00684a] text-white'
-                            : 'bg-white text-slate-600 border border-slate-200'
-                        }`}
-                      >
-                        {item.l}
-                      </button>
-                    ))}
+                    ].map((day) => {
+                      const isSel = selectedDays.includes(day.d);
+                      return (
+                        <button
+                          key={day.d}
+                          type="button"
+                          onClick={() => handleDayToggle(day.d)}
+                          className={`w-9 h-8 rounded-xl text-xs font-black border transition-all ${
+                            isSel
+                              ? 'bg-[#00684a] text-white border-[#00684a]'
+                              : 'bg-white text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          {day.l}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -648,14 +724,61 @@ export default function TasksPage() {
                 className="w-full bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black py-3 rounded-2xl shadow-md text-xs transition-all flex items-center justify-center gap-2 mt-2"
               >
                 <Save className="w-4 h-4 stroke-[3]" />
-                <span>SIMPAN TUGAS</span>
+                <span>{editingTask ? 'SIMPAN PERUBAHAN TUGAS' : 'SIMPAN TUGAS'}</span>
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* CREATE WORKER MODAL */}
+      {/* EDIT USERNAME MODAL */}
+      {isEditNameModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00684a] flex items-center justify-center border border-emerald-200">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-black text-slate-900">Ubah Nama Pengguna</h3>
+              </div>
+              <button
+                onClick={() => setIsEditNameModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfileName} className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  Nama Pengguna Baru
+                </label>
+                <input
+                  type="text"
+                  value={editNameInput}
+                  onChange={(e) => setEditNameInput(e.target.value)}
+                  placeholder="Masukkan nama pengguna..."
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black py-3 rounded-2xl shadow-md text-xs transition-all flex items-center justify-center gap-2 mt-2"
+              >
+                <Save className="w-4 h-4 stroke-[3]" />
+                <span>SIMPAN NAMA BARU</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE USER MODAL */}
       {isWorkerModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white border border-slate-200 rounded-3xl p-5 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
@@ -664,7 +787,7 @@ export default function TasksPage() {
                 <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center border border-blue-200">
                   <Users className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-black text-slate-900">Tambah Akun Pekerja</h3>
+                <h3 className="text-sm font-black text-slate-900">Tambah Pengguna Baru</h3>
               </div>
               <button
                 onClick={() => setIsWorkerModalOpen(false)}
@@ -677,13 +800,13 @@ export default function TasksPage() {
             <form onSubmit={handleCreateWorker} className="space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  Nama Pekerja / Staf
+                  Nama Pengguna
                 </label>
                 <input
                   type="text"
                   value={workerName}
                   onChange={(e) => setWorkerName(e.target.value)}
-                  placeholder="e.g. Budi Santoso"
+                  placeholder="e.g. Pak Budi / Mas Dani"
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
                   required
                 />
@@ -691,29 +814,29 @@ export default function TasksPage() {
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  No WhatsApp / HP (Opsional)
+                  No. WhatsApp / HP (Opsional)
                 </label>
                 <input
-                  type="text"
+                  type="tel"
                   value={workerPhone}
                   onChange={(e) => setWorkerPhone(e.target.value)}
-                  placeholder="e.g. 08123456789"
+                  placeholder="08123456789"
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  Warna Avatar Profil
+                  Warna Avatar
                 </label>
-                <div className="flex gap-2 pt-1">
-                  {['#2563eb', '#059669', '#d97706', '#7c3aed', '#e11d48', '#0891b2'].map((color) => (
+                <div className="flex items-center gap-2 pt-1">
+                  {['#00684a', '#2563eb', '#7c3aed', '#d97706', '#dc2626', '#0891b2'].map((color) => (
                     <button
                       key={color}
                       type="button"
                       onClick={() => setWorkerColor(color)}
                       className={`w-8 h-8 rounded-xl transition-transform ${
-                        workerColor === color ? 'scale-110 ring-2 ring-slate-900 shadow-sm' : 'opacity-80'
+                        workerColor === color ? 'ring-2 ring-slate-900 scale-110' : 'opacity-70'
                       }`}
                       style={{ backgroundColor: color }}
                     />
@@ -726,7 +849,7 @@ export default function TasksPage() {
                 className="w-full bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black py-3 rounded-2xl shadow-md text-xs transition-all flex items-center justify-center gap-2 mt-2"
               >
                 <Save className="w-4 h-4 stroke-[3]" />
-                <span>DAFTARKAN PEKERJA</span>
+                <span>DAFTARKAN PENGGUNA</span>
               </button>
             </form>
           </div>

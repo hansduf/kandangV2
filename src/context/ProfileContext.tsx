@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppProfile } from '@/types/database';
-import { fetchProfiles, verifyOwnerPin as apiVerifyOwnerPin } from '@/lib/supabase';
+import { fetchProfiles, verifyOwnerPin as apiVerifyOwnerPin, updateProfile as apiUpdateProfile } from '@/lib/supabase';
 
 interface ProfileContextType {
   profiles: AppProfile[];
@@ -15,6 +15,7 @@ interface ProfileContextType {
   loginOwnerWithPin: (pin: string) => Promise<boolean>;
   logoutToProfileSelect: () => void;
   refreshProfiles: () => Promise<void>;
+  updateProfileName: (profileId: string, newName: string) => Promise<AppProfile>;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
@@ -94,6 +95,19 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsProfileModalOpen(true);
   };
 
+  const updateProfileName = async (profileId: string, newName: string): Promise<AppProfile> => {
+    const updated = await apiUpdateProfile(profileId, { name: newName.trim() });
+    if (activeProfile?.id === profileId) {
+      const refreshedActive = { ...activeProfile, name: newName.trim() };
+      setActiveProfile(refreshedActive);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('kandang_active_profile', JSON.stringify(refreshedActive));
+      }
+    }
+    await loadProfiles();
+    return updated;
+  };
+
   const isOwner = activeProfile?.role === 'owner';
   const isWorker = activeProfile?.role === 'worker';
 
@@ -112,6 +126,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
         refreshProfiles: async () => {
           await loadProfiles();
         },
+        updateProfileName,
       }}
     >
       {children}

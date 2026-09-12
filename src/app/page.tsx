@@ -177,15 +177,15 @@ export default function DashboardHomePage() {
         {isWorker ? (
           <div className="space-y-3.5 sm:space-y-4">
             {/* Worker Greeting & Quick Action Banner */}
-            <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-3xl p-4 sm:p-5 text-white shadow-lg space-y-3 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-[#00684a] via-emerald-800 to-slate-900 rounded-3xl p-4 sm:p-5 text-white shadow-lg space-y-3 relative overflow-hidden">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20">
-                    <HardHat className="w-5 h-5 sm:w-6 sm:h-6 text-amber-300" />
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center border border-white/20 text-white font-black text-base uppercase">
+                    {activeProfile?.name ? activeProfile.name.charAt(0) : 'U'}
                   </div>
                   <div>
-                    <h2 className="text-sm sm:text-base font-black">Halo, {activeProfile?.name || 'Pekerja'}! 👷</h2>
-                    <p className="text-[11px] sm:text-xs text-blue-100 font-medium">Dashboard Petugas Kandang Harian</p>
+                    <h2 className="text-sm sm:text-base font-black">Halo, {activeProfile?.name || 'Pengguna'}! 👋</h2>
+                    <p className="text-[11px] sm:text-xs text-emerald-100 font-medium">Pencatatan Telur & Agenda Tugas Harian</p>
                   </div>
                 </div>
                 <button

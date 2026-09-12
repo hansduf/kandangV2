@@ -23,8 +23,6 @@ import {
   Egg,
   Skull,
   TrendingUp,
-  Award,
-  ShieldCheck,
   Layers,
   Calendar,
 } from 'lucide-react';
@@ -310,23 +308,7 @@ export default function ReportsPage() {
     };
   }, [summaries, flockPeriodList]);
 
-  // 3. LEADERBOARDS (ADAPTS TO SELECTED TIMEFRAME)
-  const bestHdpFlock = useMemo(() => {
-    if (flockPeriodList.length === 0) return null;
-    return [...flockPeriodList].sort((a, b) => b.period_avg_hdp - a.period_avg_hdp)[0];
-  }, [flockPeriodList]);
-
-  const highestProductionFlock = useMemo(() => {
-    if (flockPeriodList.length === 0) return null;
-    return [...flockPeriodList].sort((a, b) => b.period_egg_good_pcs - a.period_egg_good_pcs)[0];
-  }, [flockPeriodList]);
-
-  const lowestMortalityFlock = useMemo(() => {
-    if (flockPeriodList.length === 0) return null;
-    return [...flockPeriodList].sort((a, b) => a.period_mortality_pcs - b.period_mortality_pcs)[0];
-  }, [flockPeriodList]);
-
-  // 4. UNIFIED FARM DAILY HISTORY (ALL FLOCKS COMBINED BY DATE)
+  // 3. UNIFIED FARM DAILY HISTORY (ALL FLOCKS COMBINED BY DATE)
   const farmDailyHistory = useMemo(() => {
     const dateMap = new Map<
       string,
@@ -706,64 +688,6 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* 2. LEADERBOARDS & BEST PERFORMERS (ADAPTS TO TIMEFRAME) */}
-        {flockPeriodList.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Best HDP in Period */}
-            <div className="bg-white p-3.5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#00684a] border border-emerald-200 flex items-center justify-center shrink-0">
-                <Award className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                  HDP Tertinggi ({periodLabel})
-                </span>
-                <span className="text-xs font-black text-slate-900 block">
-                  {bestHdpFlock?.flock.coop_name} ({bestHdpFlock?.flock.name})
-                </span>
-                <span className="text-xs font-extrabold text-[#00684a]">
-                  {bestHdpFlock?.period_avg_hdp || 0}% HDP
-                </span>
-              </div>
-            </div>
-
-            {/* Highest Production in Period */}
-            <div className="bg-white p-3.5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
-                <Egg className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                  Produksi Terbanyak ({periodLabel})
-                </span>
-                <span className="text-xs font-black text-slate-900 block">
-                  {highestProductionFlock?.flock.coop_name} ({highestProductionFlock?.flock.name})
-                </span>
-                <span className="text-xs font-extrabold text-amber-600">
-                  {highestProductionFlock?.period_egg_good_pcs.toLocaleString('id-ID') || 0} butir
-                </span>
-              </div>
-            </div>
-
-            {/* Healthiest / Lowest Mortality in Period */}
-            <div className="bg-white p-3.5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">
-                  Kandang Tersehat ({periodLabel})
-                </span>
-                <span className="text-xs font-black text-slate-900 block">
-                  {lowestMortalityFlock?.flock.coop_name} ({lowestMortalityFlock?.flock.name})
-                </span>
-                <span className="text-xs font-extrabold text-purple-600">
-                  Mati: {lowestMortalityFlock?.period_mortality_pcs || 0} ekor
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 3. DETAIL & TREN PERFORMA TERPADU (DINAIKKAN KE ATAS TABEL KOMPARASI) */}
         <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-3.5">

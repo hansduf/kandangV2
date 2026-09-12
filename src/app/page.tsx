@@ -362,7 +362,9 @@ export default function DashboardHomePage() {
                       </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[11px] sm:text-xs font-black text-[#00684a] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">{rec.hd_percent}% HD</span>
+                      <span className="text-[11px] sm:text-xs font-black text-[#00684a] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        {rec.hdp_percent !== undefined && rec.hdp_percent !== null ? rec.hdp_percent : (rec.hd_percent || 0)}% HDP
+                      </span>
                       <span className="block text-[10px] font-bold text-rose-600 mt-0.5">
                         {rec.mortality_pcs > 0 ? `+${rec.mortality_pcs} mati` : '0 mati'}
                       </span>

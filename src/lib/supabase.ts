@@ -252,6 +252,7 @@ export async function saveHealthRecord(record: HealthRecord): Promise<void> {
     const newRecord = { ...record, id: `h-${Date.now()}` };
     records.unshift(newRecord);
     localStorage.setItem(`kandang_health_${record.flock_id}`, JSON.stringify(records));
+    await checkAndSyncHealthTasks(record.record_date, record.flock_id, record.category);
     return;
   }
 
@@ -266,6 +267,7 @@ export async function saveHealthRecord(record: HealthRecord): Promise<void> {
     p_notes: record.notes || ''
   });
   if (error) throw error;
+  await checkAndSyncHealthTasks(record.record_date, record.flock_id, record.category);
 }
 
 export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
@@ -675,13 +677,58 @@ export const TASK_COLOR_PALETTE = [
 ];
 
 export async function fetchTasksForDate(date: string, workerId?: string): Promise<DailyTaskView[]> {
-  const allTasks = await fetchAllTasks();
+  const [allTasks, allFlocks] = await Promise.all([
+    fetchAllTasks(),
+    fetchFlocks(),
+  ]);
+
   const colorMap = new Map<string, string>();
   for (const t of allTasks) {
     colorMap.set(t.id, t.color || '#10b981');
   }
 
+  const flockMap = new Map<string, Flock>();
+  for (const f of allFlocks) {
+    flockMap.set(f.id, f);
+  }
+
   const validWorkerId = toValidUuidOrNull(workerId);
+
+  // Check which flocks have daily records and health records on this date
+  const recordedEggFlockIds = new Set<string>();
+  const recordedHealthMap = new Map<string, Set<string>>();
+
+  if (isConfigured) {
+    try {
+      const [drRes, hrRes] = await Promise.all([
+        supabase.from('daily_records').select('flock_id').eq('record_date', date),
+        supabase.from('health_records').select('flock_id, category').eq('record_date', date),
+      ]);
+      if (drRes.data) {
+        drRes.data.forEach((r: any) => recordedEggFlockIds.add(r.flock_id));
+      }
+      if (hrRes.data) {
+        hrRes.data.forEach((r: any) => {
+          const set = recordedHealthMap.get(r.flock_id) || new Set<string>();
+          set.add((r.category || '').toLowerCase());
+          recordedHealthMap.set(r.flock_id, set);
+        });
+      }
+    } catch (e) {
+      console.warn('Error querying daily/health records for task date:', e);
+    }
+  } else if (typeof window !== 'undefined') {
+    allFlocks.forEach((f) => {
+      const hist = getLocalDailyRecords(f.id);
+      if (hist.some((r) => r.record_date === date)) recordedEggFlockIds.add(f.id);
+      const hHist = getLocalHealthRecords(f.id);
+      const set = new Set<string>();
+      hHist.filter((r) => r.record_date === date).forEach((r) => set.add((r.category || '').toLowerCase()));
+      recordedHealthMap.set(f.id, set);
+    });
+  }
+
+  let rawList: DailyTaskView[] = [];
 
   if (isConfigured) {
     try {
@@ -692,53 +739,110 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
       if (error) {
         console.error('RPC get_tasks_for_date error:', error.message || error);
       } else if (data) {
-        return data.map((item: any) => ({
-          ...item,
-          color: item.color || colorMap.get(item.task_id) || '#10b981',
-        }));
+        rawList = data;
       }
     } catch (err) {
       console.warn('RPC get_tasks_for_date failed, using local tasks:', err);
     }
   }
 
-  // Local fallback: generate tasks for date
-  const storedCompletions = typeof window !== 'undefined' ? localStorage.getItem('kandang_task_completions') : null;
-  const completions: TaskCompletion[] = storedCompletions ? JSON.parse(storedCompletions) : [];
+  if (rawList.length === 0) {
+    // Local fallback: generate tasks for date
+    const storedCompletions = typeof window !== 'undefined' ? localStorage.getItem('kandang_task_completions') : null;
+    const completions: TaskCompletion[] = storedCompletions ? JSON.parse(storedCompletions) : [];
 
-  const targetDate = new Date(date);
-  const targetDayOfWeek = targetDate.getDay();
+    const targetDate = new Date(date);
+    const targetDayOfWeek = targetDate.getDay();
 
-  return allTasks.filter((t) => {
-    if (!t.is_active) return false;
-    if (t.start_date > date) return false;
-    if (t.end_date && t.end_date < date) return false;
-    if (workerId && t.assigned_to && t.assigned_to !== workerId) return false;
+    rawList = allTasks.filter((t) => {
+      if (!t.is_active) return false;
+      if (t.start_date > date) return false;
+      if (t.end_date && t.end_date < date) return false;
+      if (workerId && t.assigned_to && t.assigned_to !== workerId) return false;
 
-    if (t.recurrence_type === 'once') return t.start_date === date;
-    if (t.recurrence_type === 'daily') return true;
-    if (t.recurrence_type === 'days_of_week') return (t.days_of_week || []).includes(targetDayOfWeek);
-    if (t.recurrence_type === 'interval') {
-      const start = new Date(t.start_date);
-      const diffDays = Math.floor((targetDate.getTime() - start.getTime()) / 86400000);
-      return diffDays >= 0 && diffDays % Math.max(1, t.recurrence_interval || 1) === 0;
+      if (t.recurrence_type === 'once') return t.start_date === date;
+      if (t.recurrence_type === 'daily') return true;
+      if (t.recurrence_type === 'days_of_week') return (t.days_of_week || []).includes(targetDayOfWeek);
+      if (t.recurrence_type === 'interval') {
+        const start = new Date(t.start_date);
+        const diffDays = Math.floor((targetDate.getTime() - start.getTime()) / 86400000);
+        return diffDays >= 0 && diffDays % Math.max(1, t.recurrence_interval || 1) === 0;
+      }
+      return true;
+    }).map((t) => {
+      const isComp = completions.some((c) => c.task_id === t.id && c.task_date === date);
+      return {
+        task_id: t.id,
+        title: t.title,
+        description: t.description,
+        task_type: t.task_type,
+        flock_id: t.flock_id,
+        coop_name: t.flock_id ? flockMap.get(t.flock_id)?.coop_name || null : null,
+        flock_name: t.flock_id ? flockMap.get(t.flock_id)?.name || null : null,
+        assigned_to: t.assigned_to,
+        recurrence_type: t.recurrence_type,
+        recurrence_interval: t.recurrence_interval,
+        days_of_week: t.days_of_week,
+        due_time: t.due_time,
+        color: t.color || '#10b981',
+        is_completed: isComp,
+      };
+    });
+  }
+
+  // Active flocks for farm-wide status
+  const activeFlocks = allFlocks.filter((f) => f.status === 'active' || !f.status);
+
+  return rawList.map((item: any) => {
+    const flock = item.flock_id ? flockMap.get(item.flock_id) : null;
+    const coopName = item.coop_name || (flock ? flock.coop_name : null);
+    const flockName = item.flock_name || (flock ? flock.name : null);
+
+    let isCompleted = Boolean(item.is_completed);
+    let flocksStatus: { flock_id?: string; coop_name: string; is_done: boolean }[] = [];
+
+    if (item.task_type === 'daily_record') {
+      if (item.flock_id) {
+        const isDone = recordedEggFlockIds.has(item.flock_id);
+        isCompleted = isCompleted || isDone;
+        flocksStatus = [{ flock_id: item.flock_id, coop_name: coopName || 'Kandang', is_done: isCompleted }];
+      } else {
+        flocksStatus = activeFlocks.map((f) => ({
+          flock_id: f.id,
+          coop_name: f.coop_name,
+          is_done: recordedEggFlockIds.has(f.id),
+        }));
+        isCompleted = activeFlocks.length > 0 && flocksStatus.every((s) => s.is_done);
+      }
+    } else if (
+      item.task_type === 'vaccine' ||
+      item.task_type === 'medicine' ||
+      (item.task_type as any) === 'obat' ||
+      item.task_type === 'vitamin'
+    ) {
+      const targetCat = item.task_type === 'vaccine' ? 'vaksin' : item.task_type === 'vitamin' ? 'vitamin' : 'obat';
+      if (item.flock_id) {
+        const set = recordedHealthMap.get(item.flock_id);
+        const isDone = Boolean(set && Array.from(set).some((c) => c.includes(targetCat)));
+        isCompleted = isCompleted || isDone;
+        flocksStatus = [{ flock_id: item.flock_id, coop_name: coopName || 'Kandang', is_done: isCompleted }];
+      } else {
+        flocksStatus = activeFlocks.map((f) => {
+          const set = recordedHealthMap.get(f.id);
+          const isDone = Boolean(set && Array.from(set).some((c) => c.includes(targetCat)));
+          return { flock_id: f.id, coop_name: f.coop_name, is_done: isDone };
+        });
+        isCompleted = isCompleted || (activeFlocks.length > 0 && flocksStatus.some((s) => s.is_done));
+      }
     }
-    return true;
-  }).map((t) => {
-    const isComp = completions.some((c) => c.task_id === t.id && c.task_date === date);
+
     return {
-      task_id: t.id,
-      title: t.title,
-      description: t.description,
-      task_type: t.task_type,
-      flock_id: t.flock_id,
-      assigned_to: t.assigned_to,
-      recurrence_type: t.recurrence_type,
-      recurrence_interval: t.recurrence_interval,
-      days_of_week: t.days_of_week,
-      due_time: t.due_time,
-      color: t.color || '#10b981',
-      is_completed: isComp,
+      ...item,
+      coop_name: coopName,
+      flock_name: flockName,
+      color: item.color || colorMap.get(item.task_id) || '#10b981',
+      is_completed: isCompleted,
+      flocks_status: flocksStatus.length > 0 ? flocksStatus : undefined,
     };
   });
 }
@@ -904,6 +1008,32 @@ export async function checkAndSyncDailyEggTasks(
     }
   } catch (err) {
     console.warn('Failed to sync daily egg tasks:', err);
+  }
+}
+
+export async function checkAndSyncHealthTasks(
+  recordDate: string,
+  flockId: string,
+  category: string,
+  workerId?: string
+): Promise<void> {
+  try {
+    const tasksForDate = await fetchTasksForDate(recordDate, workerId);
+    const catLower = (category || '').toLowerCase();
+
+    const matchedTasks = tasksForDate.filter((t) => {
+      if (t.flock_id && t.flock_id !== flockId) return false;
+      if (catLower.includes('vaksin') && t.task_type === 'vaccine') return true;
+      if (catLower.includes('obat') && (t.task_type === 'medicine' || (t.task_type as any) === 'obat')) return true;
+      if (catLower.includes('vitamin') && t.task_type === 'vitamin') return true;
+      return false;
+    });
+
+    for (const t of matchedTasks) {
+      await setTaskCompletion(t.task_id, recordDate, true, workerId);
+    }
+  } catch (err) {
+    console.warn('Failed to sync health tasks:', err);
   }
 }
 

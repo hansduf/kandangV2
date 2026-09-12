@@ -28,6 +28,8 @@ interface QuickInputModalProps {
   onSaveHealth: (record: HealthRecord) => Promise<void>;
   previousEggPcs?: number;
   existingRecords?: DailyRecord[];
+  initialTab?: 'daily' | 'health' | 'mortality';
+  initialHealthCategory?: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan';
 }
 
 export const QuickInputModal: React.FC<QuickInputModalProps> = ({
@@ -40,15 +42,25 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   onSaveHealth,
   previousEggPcs = 0,
   existingRecords = [],
+  initialTab = 'daily',
+  initialHealthCategory = 'Vaksin',
 }) => {
   const activeFlock = flocks.find((f) => f.id === activeFlockId) || flocks[0];
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'mortality'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'mortality'>(initialTab);
 
   // Health State
   const [recordDate, setRecordDate] = useState(todayStr);
-  const [healthCategory, setHealthCategory] = useState<'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'>('Vaksin');
+  const [healthCategory, setHealthCategory] = useState<'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'>(initialHealthCategory);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialTab) setActiveTab(initialTab);
+      if (initialHealthCategory) setHealthCategory(initialHealthCategory);
+    }
+  }, [isOpen, initialTab, initialHealthCategory]);
+
   const [healthItemName, setHealthItemName] = useState('');
   const [healthDosage, setHealthDosage] = useState('');
   const [vaccinatedBirdsCount, setVaccinatedBirdsCount] = useState<number | ''>('');

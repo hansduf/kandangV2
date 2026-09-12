@@ -87,6 +87,22 @@ export default function TasksPage() {
   const [newPin, setNewPin] = useState('');
   const [pinSuccess, setPinSuccess] = useState('');
 
+  // Quick Input State for specific tasks
+  const [quickInputFlockId, setQuickInputFlockId] = useState<string>('');
+  const [quickInputTab, setQuickInputTab] = useState<'daily' | 'health' | 'mortality'>('daily');
+  const [quickInputHealthCategory, setQuickInputHealthCategory] = useState<'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'>('Vaksin');
+
+  const handleOpenQuickInputForTask = (
+    flockId?: string,
+    tab: 'daily' | 'health' | 'mortality' = 'daily',
+    healthCategory: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan' = 'Vaksin'
+  ) => {
+    setQuickInputFlockId(flockId || (flocks[0]?.id || ''));
+    setQuickInputTab(tab);
+    setQuickInputHealthCategory(healthCategory);
+    setIsQuickInputOpen(true);
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -113,7 +129,7 @@ export default function TasksPage() {
     setEditingTask(null);
     setTaskTitle('');
     setTaskDesc('');
-    setTaskType('custom');
+    setTaskType('daily_record');
     setTaskFlockId('');
     setTaskAssignedTo('');
     setRecurrenceType('daily');
@@ -145,6 +161,7 @@ export default function TasksPage() {
     setTaskColor(task.color || '#06b6d4');
     setIsTaskModalOpen(true);
   };
+
 
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -416,7 +433,7 @@ export default function TasksPage() {
 
             {/* Task Calendar Monitoring Card */}
             <TaskCalendarCard
-              onOpenQuickInput={() => setIsQuickInputOpen(true)}
+              onOpenQuickInput={handleOpenQuickInputForTask}
               readOnly={false}
               onOpenCreateTask={handleOpenCreateTask}
               onOpenEditTask={handleOpenEditTask}
@@ -575,6 +592,49 @@ export default function TasksPage() {
             <form onSubmit={handleSaveTask} className="space-y-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  Kategori Tugas
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'daily_record' as const, label: 'Produksi Telur', icon: '🥚', defaultColor: '#10b981' },
+                    { id: 'vaccine' as const, label: 'Vaksinasi', icon: '💉', defaultColor: '#8b5cf6' },
+                    { id: 'medicine' as const, label: 'Obat', icon: '💊', defaultColor: '#3b82f6' },
+                    { id: 'vitamin' as const, label: 'Vitamin', icon: '✨', defaultColor: '#f59e0b' },
+                    { id: 'cleaning' as const, label: 'Kebersihan', icon: '🧹', defaultColor: '#14b8a6' },
+                    { id: 'custom' as const, label: 'Lainnya', icon: '📋', defaultColor: '#06b6d4' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        setTaskType(cat.id);
+                        if (!editingTask) {
+                          setTaskColor(cat.defaultColor);
+                          if (!taskTitle || ['Catat Produksi Telur & Pakan', 'Vaksinasi Ayam', 'Pemberian Obat', 'Pemberian Vitamin', 'Pembersihan & Semprot Kandang', 'Tugas Baru'].includes(taskTitle)) {
+                            if (cat.id === 'daily_record') setTaskTitle('Catat Produksi Telur & Pakan');
+                            else if (cat.id === 'vaccine') setTaskTitle('Vaksinasi Ayam');
+                            else if (cat.id === 'medicine') setTaskTitle('Pemberian Obat');
+                            else if (cat.id === 'vitamin') setTaskTitle('Pemberian Vitamin');
+                            else if (cat.id === 'cleaning') setTaskTitle('Pembersihan & Semprot Kandang');
+                            else setTaskTitle('Tugas Baru');
+                          }
+                        }
+                      }}
+                      className={`p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                        taskType === cat.id
+                          ? 'bg-emerald-50 border-[#00684a] text-[#00684a] font-black shadow-xs ring-1 ring-[#00684a]'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 font-semibold hover:bg-slate-100'
+                      }`}
+                    >
+                      <span className="text-base">{cat.icon}</span>
+                      <span className="text-[10px] leading-tight">{cat.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
                   Nama Tugas
                 </label>
                 <input
@@ -599,6 +659,7 @@ export default function TasksPage() {
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
                 />
               </div>
+
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -925,8 +986,10 @@ export default function TasksPage() {
         isOpen={isQuickInputOpen}
         onClose={() => setIsQuickInputOpen(false)}
         flocks={flocks}
-        activeFlockId={flocks[0]?.id}
-        onSelectFlock={() => {}}
+        activeFlockId={quickInputFlockId || (flocks[0]?.id || '')}
+        onSelectFlock={setQuickInputFlockId}
+        initialTab={quickInputTab}
+        initialHealthCategory={quickInputHealthCategory}
         onSaveDaily={async (rec) => {
           await saveDailyRecord(rec);
           await checkAndSyncDailyEggTasks(rec.record_date, rec.flock_id, activeProfile?.id);

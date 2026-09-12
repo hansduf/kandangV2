@@ -98,7 +98,7 @@ export interface AppProfile {
   created_at?: string;
 }
 
-export type TaskType = 'daily_record' | 'vaccine' | 'feed' | 'cleaning' | 'vitamin' | 'custom';
+export type TaskType = 'daily_record' | 'vaccine' | 'medicine' | 'vitamin' | 'cleaning' | 'feed' | 'custom';
 export type RecurrenceType = 'once' | 'daily' | 'interval' | 'days_of_week';
 
 export interface FarmTask {
@@ -128,6 +128,12 @@ export interface TaskCompletion {
   notes?: string | null;
 }
 
+export interface FlockTaskStatus {
+  flock_id?: string;
+  coop_name: string;
+  is_done: boolean;
+}
+
 export interface DailyTaskView {
   task_id: string;
   title: string;
@@ -148,5 +154,7 @@ export interface DailyTaskView {
   completed_by?: string | null;
   completed_by_name?: string | null;
   notes?: string | null;
+  flocks_status?: FlockTaskStatus[];
 }
+
 

@@ -4,10 +4,26 @@ import React, { useState, useEffect } from 'react';
 import { DailyTaskView } from '@/types/database';
 import { fetchTasksForDate, toggleTaskCompletion } from '@/lib/supabase';
 import { useProfile } from '@/context/ProfileContext';
-import { Egg, CheckCircle2, AlertCircle, ChevronUp, ChevronDown, Check, Bell, X } from 'lucide-react';
+import {
+  Egg,
+  CheckCircle2,
+  AlertCircle,
+  ChevronUp,
+  ChevronDown,
+  Check,
+  Bell,
+  X,
+  Syringe,
+  Pill,
+  Sparkles,
+} from 'lucide-react';
 
 interface FloatingTaskEdgeProps {
-  onOpenQuickInput: () => void;
+  onOpenQuickInput: (
+    flockId?: string,
+    tab?: 'daily' | 'health' | 'mortality',
+    healthCategory?: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'
+  ) => void;
   refreshTrigger?: any;
 }
 
@@ -45,10 +61,14 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
 
   const handleTaskClick = async (task: DailyTaskView) => {
     if (task.task_type === 'daily_record') {
-      // Immediately open the sleek quick input modal
-      onOpenQuickInput();
+      onOpenQuickInput(task.flock_id || undefined, 'daily');
+    } else if (task.task_type === 'vaccine') {
+      onOpenQuickInput(task.flock_id || undefined, 'health', 'Vaksin');
+    } else if (task.task_type === 'medicine' || (task.task_type as any) === 'obat') {
+      onOpenQuickInput(task.flock_id || undefined, 'health', 'Obat');
+    } else if (task.task_type === 'vitamin') {
+      onOpenQuickInput(task.flock_id || undefined, 'health', 'Vitamin');
     } else {
-      // Toggle completion directly
       await toggleTaskCompletion(task.task_id, todayStr, activeProfile?.id);
       await loadTodayTasks();
     }
@@ -83,31 +103,63 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
             </button>
           </div>
 
-          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             {tasks.map((task) => {
               const isEgg = task.task_type === 'daily_record';
+              const isVaccine = task.task_type === 'vaccine';
+              const isMedicine = task.task_type === 'medicine' || (task.task_type as any) === 'obat';
+              const isVitamin = task.task_type === 'vitamin';
+
               return (
                 <div
                   key={task.task_id}
-                  className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-2.5 ${
+                  className={`p-3 rounded-2xl border transition-all flex items-start justify-between gap-2.5 ${
                     task.is_completed
-                      ? 'bg-slate-50 border-slate-200 opacity-75'
+                      ? 'bg-slate-50 border-slate-200 opacity-80'
                       : 'bg-emerald-50/60 border-emerald-200 shadow-xs'
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-slate-900 truncate">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: task.color || '#10b981' }}
+                      />
+                      <span className={`text-xs font-black truncate ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-900'}`}>
                         {task.title}
                       </span>
-                      {task.coop_name && (
+                      {task.coop_name ? (
                         <span className="text-[9px] font-black bg-emerald-100 text-[#00684a] px-1.5 py-0.5 rounded-md border border-emerald-200">
-                          {task.coop_name}
+                          🏠 {task.coop_name}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-black bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200">
+                          🏠 Semua Kandang
                         </span>
                       )}
                     </div>
+
+                    {/* Per-kandang completion status breakdown */}
+                    {task.flocks_status && task.flocks_status.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {task.flocks_status.map((fs, idx) => (
+                          <span
+                            key={idx}
+                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-1 ${
+                              fs.is_done
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : 'bg-amber-50 text-amber-800 border-amber-300'
+                            }`}
+                          >
+                            <span>{fs.coop_name}</span>
+                            <span>{fs.is_done ? '✅ Selesai' : '⏳ Belum'}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {task.description && (
-                      <p className="text-[10px] text-slate-500 font-semibold truncate mt-0.5">
+                      <p className="text-[10px] text-slate-500 font-semibold truncate mt-1">
                         {task.description}
                       </p>
                     )}
@@ -121,11 +173,9 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTaskClick(task)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 shrink-0 active:scale-95 transition-all shadow-xs ${
+                    className={`px-2.5 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shrink-0 active:scale-95 transition-all shadow-xs mt-0.5 ${
                       task.is_completed
                         ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                        : isEgg
-                        ? 'bg-[#00684a] text-white hover:bg-emerald-800'
                         : 'bg-[#00684a] text-white hover:bg-emerald-800'
                     }`}
                   >
@@ -137,7 +187,22 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
                     ) : isEgg ? (
                       <>
                         <Egg className="w-3.5 h-3.5 fill-white/20" />
-                        <span>Catat Sekarang</span>
+                        <span>Catat Telur</span>
+                      </>
+                    ) : isVaccine ? (
+                      <>
+                        <Syringe className="w-3.5 h-3.5" />
+                        <span>Catat Vaksin</span>
+                      </>
+                    ) : isMedicine ? (
+                      <>
+                        <Pill className="w-3.5 h-3.5" />
+                        <span>Catat Obat</span>
+                      </>
+                    ) : isVitamin ? (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Catat Vitamin</span>
                       </>
                     ) : (
                       <>
@@ -161,13 +226,14 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
             : 'bg-emerald-800 text-white border-emerald-700'
         }`}
         onClick={() => {
-          if (primaryPendingTask?.task_type === 'daily_record') {
-            onOpenQuickInput();
+          if (primaryPendingTask) {
+            handleTaskClick(primaryPendingTask);
           } else {
             setIsExpanded(!isExpanded);
           }
         }}
       >
+
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${

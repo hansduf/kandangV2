@@ -64,9 +64,24 @@ export default function DashboardHomePage() {
   const [isFlockModalOpen, setIsFlockModalOpen] = useState(false);
   const [editingFlock, setEditingFlock] = useState<Flock | null>(null);
 
+  const [modalTab, setModalTab] = useState<'daily' | 'health' | 'mortality'>('daily');
+  const [modalHealthCategory, setModalHealthCategory] = useState<'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'>('Vaksin');
+
+  const handleOpenQuickInputCustom = (
+    flockId?: string,
+    tab: 'daily' | 'health' | 'mortality' = 'daily',
+    healthCategory: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan' = 'Vaksin'
+  ) => {
+    if (flockId) setActiveFlockId(flockId);
+    setModalTab(tab);
+    setModalHealthCategory(healthCategory);
+    setIsInputModalOpen(true);
+  };
+
   useEffect(() => {
     loadFlocks();
   }, []);
+
 
   useEffect(() => {
     if (activeFlockId) {
@@ -285,7 +300,7 @@ export default function DashboardHomePage() {
             {/* WORKER TASK CALENDAR AGENDA (HARI INI, BESOK, LUSA) */}
             <TaskCalendarCard
               workerId={activeProfile?.id}
-              onOpenQuickInput={() => setIsInputModalOpen(true)}
+              onOpenQuickInput={handleOpenQuickInputCustom}
             />
 
             {/* Recent Daily Records Table */}
@@ -531,7 +546,7 @@ export default function DashboardHomePage() {
 
                 {/* TASK CALENDAR CARD FOR OWNER */}
                 <TaskCalendarCard
-                  onOpenQuickInput={() => setIsInputModalOpen(true)}
+                  onOpenQuickInput={handleOpenQuickInputCustom}
                 />
 
                 {/* Recent Daily Records Table */}
@@ -579,7 +594,7 @@ export default function DashboardHomePage() {
 
       {/* FLOATING TASK EDGE NOTIFICATION BADGE */}
       <FloatingTaskEdge
-        onOpenQuickInput={() => setIsInputModalOpen(true)}
+        onOpenQuickInput={handleOpenQuickInputCustom}
         refreshTrigger={taskRefreshTrigger}
       />
 
@@ -593,6 +608,8 @@ export default function DashboardHomePage() {
         flocks={flocks}
         activeFlockId={activeFlockId}
         onSelectFlock={setActiveFlockId}
+        initialTab={modalTab}
+        initialHealthCategory={modalHealthCategory}
         onSaveDaily={handleSaveDaily}
         onSaveHealth={handleSaveHealth}
         previousEggPcs={previousEggPcs}

@@ -95,9 +95,17 @@ export default function HealthPage() {
           </div>
         </div>
 
-        {!loading && activeFlockId && (
-          <HealthRecordForm flockId={activeFlockId} onSave={handleSaveHealth} />
-        )}
+        {!loading && activeFlockId && (() => {
+          const activeFlock = flocks.find((f) => f.id === activeFlockId);
+          return (
+            <HealthRecordForm
+              flockId={activeFlockId}
+              coopName={activeFlock?.coop_name}
+              flockName={activeFlock?.name}
+              onSave={handleSaveHealth}
+            />
+          );
+        })()}
 
         {/* Timeline Records */}
         <div className="space-y-3 pt-2">

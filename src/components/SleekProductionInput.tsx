@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Scale,
 } from 'lucide-react';
+import { SaveConfirmationModal } from '@/components/SaveConfirmationModal';
 
 interface SleekProductionInputProps {
   flocks: Flock[];
@@ -45,9 +46,9 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
 
   const [eggBadPcs, setEggBadPcs] = useState<number | ''>('');
   const [notes, setNotes] = useState('');
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successToast, setSuccessToast] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Auto pre-populate if today already has a record
   useEffect(() => {
@@ -112,8 +113,17 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeFlock?.id) return;
+    if (goodPcsNum <= 0 && (!eggBadPcs || Number(eggBadPcs) <= 0)) {
+      alert('Isi jumlah butir telur terlebih dahulu!');
+      return;
+    }
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSave = async () => {
     if (!activeFlock?.id) return;
 
     setIsSubmitting(true);
@@ -137,7 +147,8 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         notes: notes.trim(),
       });
 
-      setSuccessToast('✅ CATATAN PRODUKSI BERHASIL DISIMPAN!');
+      setShowConfirmModal(false);
+      setSuccessToast(`✅ CATATAN PRODUKSI ${activeFlock.coop_name.toUpperCase()} BERHASIL DISIMPAN!`);
       setTimeout(() => {
         setSuccessToast('');
         if (onSuccessClose) onSuccessClose();
@@ -150,7 +161,7 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5">
+    <form onSubmit={handleOpenConfirm} className="space-y-3.5">
       {/* TANGGAL PENCATATAN */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
         <label className="text-xs font-black text-slate-800 uppercase tracking-wider">Tanggal Pencatatan</label>
@@ -385,6 +396,25 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
           {successToast}
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <SaveConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmSave}
+        isSubmitting={isSubmitting}
+        title="Konfirmasi Catatan Produksi Telur"
+        coopName={activeFlock?.coop_name || 'Kandang'}
+        flockName={activeFlock?.name}
+        recordDate={recordDate}
+        items={[
+          { label: 'Telur Utuh', value: `${goodPcsNum.toLocaleString('id-ID')} butir`, highlight: true },
+          { label: 'Berat Telur Utuh', value: `${finalKg} kg` },
+          { label: 'Telur Retak / Rusak', value: `${Number(eggBadPcs) || 0} butir` },
+          { label: 'Est. Hen-Day', value: `${liveHd}%` },
+          { label: 'Rata-rata Butir/Kg', value: `${finalRatio.toFixed(1)} btr/kg (${avgWeightG}g/btr)` },
+        ]}
+      />
     </form>
   );
 };

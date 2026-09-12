@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { DailyRecord, HealthRecord, Flock } from '@/types/database';
 import { SleekProductionInput } from '@/components/SleekProductionInput';
 import { GiantStepperInput } from '@/components/GiantStepperInput';
+import { SaveConfirmationModal, ConfirmationSummaryItem } from '@/components/SaveConfirmationModal';
 import {
   X,
   Egg,
@@ -73,6 +74,13 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    title: string;
+    categoryBadge?: string;
+    items: ConfirmationSummaryItem[];
+    action: () => Promise<void>;
+  } | null>(null);
 
   // Auto pre-populate mortality if record exists
   React.useEffect(() => {
@@ -93,14 +101,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
 
   const currentPopulation = activeFlock?.current_population || 0;
 
-  const handleSaveHealthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!healthItemName.trim()) {
-      alert('Pilih atau isi nama obat/vaksin!');
-      return;
-    }
+  const executeSaveHealth = async () => {
     if (!activeFlock?.id) return;
-
     setIsSubmitting(true);
     try {
       await onSaveHealth({
@@ -113,7 +115,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
         method: healthMethod,
         notes: healthNotes.trim(),
       });
-      setToastMessage(`✅ ${healthCategory.toUpperCase()} BERHASIL DISIMPAN!`);
+      setShowConfirmModal(false);
+      setToastMessage(`✅ ${healthCategory.toUpperCase()} ${activeFlock.coop_name.toUpperCase()} BERHASIL DISIMPAN!`);
       setTimeout(() => {
         setToastMessage('');
         onClose();
@@ -125,10 +128,31 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
     }
   };
 
-  const handleSaveMortalitySubmit = async (e: React.FormEvent) => {
+  const handleSaveHealthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!healthItemName.trim()) {
+      alert('Pilih atau isi nama obat/vaksin!');
+      return;
+    }
     if (!activeFlock?.id) return;
 
+    setConfirmConfig({
+      title: `Konfirmasi Catatan ${healthCategory}`,
+      categoryBadge: healthCategory,
+      items: [
+        { label: 'Nama Obat / Vaksin', value: healthItemName.trim(), highlight: true },
+        { label: 'Dosis', value: healthDosage.trim() || '-' },
+        { label: 'Jumlah Ayam Ditangani', value: `${(Number(vaccinatedBirdsCount) || currentPopulation).toLocaleString('id-ID')} ekor` },
+        { label: 'Metode Aplikasi', value: healthMethod },
+        ...(healthNotes.trim() ? [{ label: 'Catatan SOP', value: healthNotes.trim() }] : []),
+      ],
+      action: executeSaveHealth,
+    });
+    setShowConfirmModal(true);
+  };
+
+  const executeSaveMortality = async () => {
+    if (!activeFlock?.id) return;
     setIsSubmitting(true);
     try {
       const existing = existingRecords.find(
@@ -147,7 +171,8 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
         feed_kg: existing?.feed_kg || 0,
         notes: existing?.notes ? `${existing.notes}; Kematian` : 'Kematian/Afkir',
       });
-      setToastMessage('✅ KEMATIAN BERHASIL DISIMPAN!');
+      setShowConfirmModal(false);
+      setToastMessage(`✅ KEMATIAN ${activeFlock.coop_name.toUpperCase()} BERHASIL DISIMPAN!`);
       setTimeout(() => {
         setToastMessage('');
         onClose();
@@ -157,6 +182,30 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSaveMortalitySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeFlock?.id) return;
+    const mortNum = Number(mortalityPcs) || 0;
+    const cullNum = Number(cullingPcs) || 0;
+    if (mortNum <= 0 && cullNum <= 0) {
+      alert('Isi jumlah kematian atau afkir terlebih dahulu!');
+      return;
+    }
+
+    setConfirmConfig({
+      title: 'Konfirmasi Catatan Kematian / Afkir',
+      categoryBadge: 'Mortalitas',
+      items: [
+        { label: 'Ayam Mati Hari Ini', value: `${mortNum} ekor`, highlight: true, color: 'text-rose-600' },
+        { label: 'Ayam Afkir / Culling', value: `${cullNum} ekor`, color: 'text-amber-700' },
+        { label: 'Populasi Saat Ini', value: `${currentPopulation.toLocaleString('id-ID')} ekor` },
+        { label: 'Est. Sisa Populasi', value: `${Math.max(0, currentPopulation - mortNum - cullNum).toLocaleString('id-ID')} ekor` },
+      ],
+      action: executeSaveMortality,
+    });
+    setShowConfirmModal(true);
   };
 
   return (
@@ -539,6 +588,22 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
               <span>{isSubmitting ? 'MENYIMPAN...' : 'SIMPAN KEMATIAN'}</span>
             </button>
           </form>
+        )}
+
+        {/* Save Confirmation Modal */}
+        {confirmConfig && (
+          <SaveConfirmationModal
+            isOpen={showConfirmModal}
+            onClose={() => setShowConfirmModal(false)}
+            onConfirm={confirmConfig.action}
+            isSubmitting={isSubmitting}
+            title={confirmConfig.title}
+            categoryBadge={confirmConfig.categoryBadge}
+            coopName={activeFlock?.coop_name || 'Kandang'}
+            flockName={activeFlock?.name}
+            recordDate={recordDate}
+            items={confirmConfig.items}
+          />
         )}
       </div>
     </div>

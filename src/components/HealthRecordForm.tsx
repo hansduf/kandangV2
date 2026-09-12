@@ -9,13 +9,21 @@ import {
   saveCategoryPreset,
 } from '@/lib/supabase';
 import { Syringe, Save, Pill, ShieldAlert, Sparkles, Plus, Tag } from 'lucide-react';
+import { SaveConfirmationModal } from '@/components/SaveConfirmationModal';
 
 interface HealthRecordFormProps {
   flockId: string;
+  coopName?: string;
+  flockName?: string;
   onSave: (record: HealthRecord) => Promise<void>;
 }
 
-export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onSave }) => {
+export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({
+  flockId,
+  coopName,
+  flockName,
+  onSave,
+}) => {
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
 
@@ -38,6 +46,7 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     const cats = fetchCustomCategories();
@@ -74,13 +83,16 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
     setShowAddPreset(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleOpenConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemName.trim()) {
       alert('Pilih atau ketik nama obat/vaksin!');
       return;
     }
+    setShowConfirmModal(true);
+  };
 
+  const handleConfirmSave = async () => {
     setIsSubmitting(true);
     setSuccessMessage('');
 
@@ -99,7 +111,8 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
         notes: notes.trim(),
       });
 
-      setSuccessMessage(`✅ DATA ${category.toUpperCase()} BERHASIL DISIMPAN!`);
+      setShowConfirmModal(false);
+      setSuccessMessage(`✅ DATA ${category.toUpperCase()} ${coopName ? coopName.toUpperCase() : ''} BERHASIL DISIMPAN!`);
       setItemName('');
       setDosage('');
       setVaccinatedBirdsCount('');
@@ -121,7 +134,7 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5">
+    <form onSubmit={handleOpenConfirm} className="space-y-3.5">
       {/* Visual Category Selection Grid */}
       <div className="bg-white p-4 border border-slate-200 rounded-3xl shadow-md space-y-2.5">
         <div className="flex items-center justify-between">
@@ -443,6 +456,26 @@ export const HealthRecordForm: React.FC<HealthRecordFormProps> = ({ flockId, onS
         <Save className="w-5 h-5 stroke-[3]" />
         <span>{isSubmitting ? 'MENYIMPAN...' : `SIMPAN DATA ${category.toUpperCase()}`}</span>
       </button>
+
+      {/* Confirmation Modal */}
+      <SaveConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmSave}
+        isSubmitting={isSubmitting}
+        title={`Konfirmasi Catatan ${category}`}
+        categoryBadge={category}
+        coopName={coopName || 'Kandang'}
+        flockName={flockName}
+        recordDate={date}
+        items={[
+          { label: 'Nama Item', value: itemName.trim(), highlight: true },
+          { label: 'Dosis', value: dosage.trim() || '-' },
+          { label: 'Jumlah Ayam', value: vaccinatedBirdsCount ? `${Number(vaccinatedBirdsCount).toLocaleString('id-ID')} ekor` : '-' },
+          { label: 'Metode Aplikasi', value: method },
+          ...(notes.trim() ? [{ label: 'Catatan', value: notes.trim() }] : []),
+        ]}
+      />
     </form>
   );
 };

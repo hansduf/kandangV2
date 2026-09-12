@@ -822,6 +822,8 @@ export default function ReportsPage() {
           {/* Performance Chart for Selected View and Timeframe */}
           <PerformanceChart
             records={displayedRecords}
+            allHistories={allHistories}
+            isAllView={isAllView}
             timeMode={timeMode}
             startDate={startDate}
             endDate={endDate}
@@ -830,111 +832,6 @@ export default function ReportsPage() {
             totalMortality={displayedTotalMort}
             mortalityRate={displayedMortRate}
           />
-
-          {/* Table of Daily Records */}
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                {isAllView
-                  ? 'Catatan Harian Terpadu (Gabungan Seluruh Kandang)'
-                  : `Riwayat Catatan Harian ${activeFlockSummary?.flock.coop_name}`}
-              </h4>
-              <span className="text-[10px] font-bold text-slate-500">
-                {displayedRecords.length} Hari Catatan ({periodLabel})
-              </span>
-            </div>
-
-            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-              <table className="w-full text-left border-collapse min-w-[620px]">
-                <thead>
-                  <tr className="border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase bg-slate-50/70">
-                    <th className="py-2.5 px-2">Tanggal</th>
-                    <th className="py-2.5 px-2">Telur Utuh {isAllView ? '(Total Farm)' : ''}</th>
-                    <th className="py-2.5 px-2 text-center">Retak</th>
-                    <th className="py-2.5 px-2 text-center">HDP %</th>
-                    <th className="py-2.5 px-2 text-center">HHP %</th>
-                    <th className="py-2.5 px-2 text-right">Mati</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                  {displayedRecords.slice(0, 15).map((r) => {
-                    const farmRec = r as DailyRecord & {
-                      coops?: {
-                        coop_name: string;
-                        flock_name: string;
-                        egg_good_pcs: number;
-                        egg_good_kg: number;
-                        egg_bad_pcs: number;
-                        hdp_percent: number;
-                        mortality_pcs: number;
-                      }[];
-                    };
-
-                    return (
-                      <tr key={r.record_date} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-3 px-2">
-                          <div className="font-black text-slate-900">{r.record_date}</div>
-                          {/* If viewing All Coops: show breakdown badges for each coop on that day */}
-                          {isAllView && farmRec.coops && farmRec.coops.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {farmRec.coops.map((c) => (
-                                <span
-                                  key={c.coop_name}
-                                  className="inline-flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-700 border border-slate-200"
-                                >
-                                  <strong className="text-[#00684a] font-black">
-                                    {c.coop_name}:
-                                  </strong>
-                                  <span>
-                                    {c.egg_good_pcs} btr ({c.hdp_percent}% HDP)
-                                  </span>
-                                  {c.mortality_pcs > 0 && (
-                                    <span className="text-rose-600 font-extrabold">
-                                      • {c.mortality_pcs} mati
-                                    </span>
-                                  )}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-2">
-                          <div className="font-extrabold text-[#00684a]">
-                            {r.egg_good_pcs.toLocaleString('id-ID')} btr
-                          </div>
-                          <div className="text-[10px] text-slate-500 font-bold">
-                            {r.egg_good_kg} kg
-                          </div>
-                        </td>
-                        <td className="py-3 px-2 text-center font-bold text-amber-700">
-                          {r.egg_bad_pcs} btr
-                        </td>
-                        <td className="py-3 px-2 text-center font-black text-[#00684a]">
-                          {r.hdp_percent !== undefined && r.hdp_percent !== null
-                            ? r.hdp_percent
-                            : r.hd_percent || 0}%
-                        </td>
-                        <td className="py-3 px-2 text-center font-bold text-amber-600">
-                          {r.hhp_percent || 0}%
-                        </td>
-                        <td className="py-3 px-2 text-right font-black text-rose-600">
-                          {r.mortality_pcs > 0 ? `+${r.mortality_pcs}` : '0'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-
-                  {displayedRecords.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="text-center py-6 text-slate-400 text-xs font-semibold">
-                        Belum ada catatan harian untuk rentang waktu ini.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         {/* 4. CARD KALENDER VERSI SEMUA KANDANG (FARM CALENDAR) */}

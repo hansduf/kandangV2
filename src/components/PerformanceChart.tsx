@@ -1,21 +1,30 @@
 'use client';
 
 import React, { useState } from 'react';
-import { DailyRecord } from '@/types/database';
+import { DailyRecord, Flock } from '@/types/database';
 import {
   ResponsiveContainer,
   AreaChart,
   Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
   CartesianGrid,
-  BarChart,
-  Bar,
+  Legend,
 } from 'recharts';
+import { Trophy, BarChart3, TrendingUp } from 'lucide-react';
+
+interface FlockHistoryItem {
+  flock: Flock;
+  records: DailyRecord[];
+}
 
 interface PerformanceChartProps {
   records: DailyRecord[];
+  allHistories?: FlockHistoryItem[];
+  isAllView?: boolean;
   timeMode?: '7' | '14' | '30' | 'all' | 'custom';
   startDate?: string;
   endDate?: string;
@@ -25,8 +34,21 @@ interface PerformanceChartProps {
   mortalityRate?: number;
 }
 
+const COOP_COLORS = [
+  '#00684a', // Emerald
+  '#2563eb', // Blue
+  '#d97706', // Amber
+  '#7c3aed', // Purple
+  '#e11d48', // Rose
+  '#0891b2', // Cyan
+  '#ea580c', // Orange
+  '#4f46e5', // Indigo
+];
+
 export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   records,
+  allHistories = [],
+  isAllView = false,
   timeMode = '14',
   startDate,
   endDate,
@@ -35,15 +57,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   totalMortality = 0,
   mortalityRate = 0,
 }) => {
-  const [metric, setMetric] = useState<'hdp' | 'hhp' | 'kg' | 'mortality'>('hdp');
+  // Metrics: pcs (Telur Utuh Butir), bad (Telur Rusak Butir), kg, hdp, hhp, mortality
+  const [metric, setMetric] = useState<'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality'>('pcs');
+  const [chartMode, setChartMode] = useState<'aggregate' | 'race'>('aggregate');
   const [mortView, setMortView] = useState<'chart' | '7d' | '30d' | 'total'>('chart');
 
-  // Ensure records are sorted chronologically ascending (oldest to newest) for chart display
+  // Sort single/aggregate records chronologically ascending
   const sortedRecords = [...records].sort((a, b) => a.record_date.localeCompare(b.record_date));
 
   // Filter records based on timeMode or custom date range if needed
   let filteredRecords = sortedRecords;
-
   if (timeMode === '7') {
     filteredRecords = sortedRecords.slice(-7);
   } else if (timeMode === '14') {
@@ -56,7 +79,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     );
   }
 
-  // Format data for chart
+  // Format data for standard Area Chart
   const chartData = filteredRecords.map((r) => {
     let displayDate = r.record_date;
     if (r.record_date.length >= 10) {
@@ -69,20 +92,164 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     return {
       date: displayDate,
       fullDate: r.record_date,
-      hdp: r.hdp_percent !== undefined && r.hdp_percent !== null ? r.hdp_percent : (r.hd_percent || 0),
-      hhp: r.hhp_percent || 0,
+      egg_pcs: r.egg_good_pcs || 0,
+      egg_bad_pcs: r.egg_bad_pcs || 0,
       egg_kg: r.egg_good_kg || 0,
+      hdp:
+        r.hdp_percent !== undefined && r.hdp_percent !== null
+          ? r.hdp_percent
+          : r.hd_percent || 0,
+      hhp: r.hhp_percent || 0,
       feed_kg: r.feed_kg || 0,
       fcr: r.fcr || 0,
       mortality: r.mortality_pcs || 0,
     };
   });
 
+  // Prepare Multi-Line Race Data if allHistories is available
+  const canShowRace = isAllView && allHistories.length > 1;
+
+  // Collect unique dates across all flocks in the filtered timeframe
+  const uniqueDates = Array.from(
+    new Set(
+      allHistories.flatMap((h) =>
+        h.records
+          .filter((r) => {
+            if (timeMode === 'all') return true;
+            if (!startDate || !endDate) return true;
+            return r.record_date >= startDate && r.record_date <= endDate;
+          })
+          .map((r) => r.record_date)
+      )
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  // Build race dataset per date
+  const raceData = uniqueDates.map((d) => {
+    let displayDate = d;
+    if (d.length >= 10) {
+      const parts = d.split('-');
+      if (parts.length === 3) displayDate = `${parts[2]}/${parts[1]}`;
+    }
+
+    const row: any = {
+      date: displayDate,
+      fullDate: d,
+    };
+
+    allHistories.forEach(({ flock, records: fRecs }) => {
+      const rec = fRecs.find((r) => r.record_date === d);
+      const key = flock.coop_name || flock.name;
+      let val = 0;
+      if (rec) {
+        if (metric === 'pcs') val = rec.egg_good_pcs || 0;
+        else if (metric === 'bad') val = rec.egg_bad_pcs || 0;
+        else if (metric === 'kg') val = rec.egg_good_kg || 0;
+        else if (metric === 'hdp')
+          val =
+            rec.hdp_percent !== undefined && rec.hdp_percent !== null
+              ? rec.hdp_percent
+              : rec.hd_percent || 0;
+        else if (metric === 'hhp') val = rec.hhp_percent || 0;
+        else if (metric === 'mortality') val = rec.mortality_pcs || 0;
+      }
+      row[key] = val;
+    });
+
+    return row;
+  });
+
+  // Rank summary for race chart
+  const raceTotals = allHistories.map(({ flock, records: fRecs }, idx) => {
+    const key = flock.coop_name || flock.name;
+    const fFiltered = fRecs.filter((r) => {
+      if (timeMode === 'all') return true;
+      if (!startDate || !endDate) return true;
+      return r.record_date >= startDate && r.record_date <= endDate;
+    });
+
+    let totalVal = 0;
+    if (metric === 'pcs') {
+      totalVal = fFiltered.reduce((acc, r) => acc + (r.egg_good_pcs || 0), 0);
+    } else if (metric === 'bad') {
+      totalVal = fFiltered.reduce((acc, r) => acc + (r.egg_bad_pcs || 0), 0);
+    } else if (metric === 'kg') {
+      totalVal = Number(fFiltered.reduce((acc, r) => acc + (r.egg_good_kg || 0), 0).toFixed(2));
+    } else if (metric === 'hdp') {
+      const sum = fFiltered.reduce(
+        (acc, r) =>
+          acc +
+          (r.hdp_percent !== undefined && r.hdp_percent !== null
+            ? r.hdp_percent
+            : r.hd_percent || 0),
+        0
+      );
+      totalVal = fFiltered.length > 0 ? Number((sum / fFiltered.length).toFixed(1)) : 0;
+    } else if (metric === 'hhp') {
+      const sum = fFiltered.reduce((acc, r) => acc + (r.hhp_percent || 0), 0);
+      totalVal = fFiltered.length > 0 ? Number((sum / fFiltered.length).toFixed(1)) : 0;
+    } else if (metric === 'mortality') {
+      totalVal = fFiltered.reduce((acc, r) => acc + (r.mortality_pcs || 0), 0);
+    }
+
+    return {
+      key,
+      flockName: flock.name,
+      coopName: flock.coop_name,
+      totalVal,
+      color: COOP_COLORS[idx % COOP_COLORS.length],
+    };
+  }).sort((a, b) => (metric === 'mortality' ? a.totalVal - b.totalVal : b.totalVal - a.totalVal));
+
   const metricConfig = {
-    hdp: { label: 'Hen-Day Production (HDP %)', dataKey: 'hdp', color: '#00684a', gradientId: 'emeraldGrad', unit: '%' },
-    hhp: { label: 'Hen-Housed Production (HHP %)', dataKey: 'hhp', color: '#d97706', gradientId: 'amberGrad', unit: '%' },
-    kg: { label: 'Telur Utuh (Kg)', dataKey: 'egg_kg', color: '#2563eb', gradientId: 'blueGrad', unit: 'kg' },
-    mortality: { label: 'Mortalitas (Ekor)', dataKey: 'mortality', color: '#e11d48', gradientId: 'roseGrad', unit: 'ekor' },
+    pcs: {
+      label: 'Telur Utuh (Jumlah Butir)',
+      shortLabel: 'Butir Utuh',
+      dataKey: 'egg_pcs',
+      color: '#00684a',
+      gradientId: 'emeraldGrad',
+      unit: 'btr',
+    },
+    bad: {
+      label: 'Telur Retak / Rusak (Butir)',
+      shortLabel: 'Telur Rusak',
+      dataKey: 'egg_bad_pcs',
+      color: '#d97706',
+      gradientId: 'amberGrad',
+      unit: 'btr',
+    },
+    kg: {
+      label: 'Telur Utuh (Kg)',
+      shortLabel: 'Kg Telur',
+      dataKey: 'egg_kg',
+      color: '#2563eb',
+      gradientId: 'blueGrad',
+      unit: 'kg',
+    },
+    hdp: {
+      label: 'Hen-Day Production (HDP %)',
+      shortLabel: 'HDP %',
+      dataKey: 'hdp',
+      color: '#059669',
+      gradientId: 'tealGrad',
+      unit: '%',
+    },
+    hhp: {
+      label: 'Hen-Housed Production (HHP %)',
+      shortLabel: 'HHP %',
+      dataKey: 'hhp',
+      color: '#7c3aed',
+      gradientId: 'purpleGrad',
+      unit: '%',
+    },
+    mortality: {
+      label: 'Mortalitas (Ekor)',
+      shortLabel: 'Kematian',
+      dataKey: 'mortality',
+      color: '#e11d48',
+      gradientId: 'roseGrad',
+      unit: 'ekor',
+    },
   }[metric];
 
   // Mortality summary data for sub-view
@@ -92,46 +259,144 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     { label: 'Total Kumulatif', value: totalMortality, color: '#e11d48' },
   ];
 
+  // Custom Tooltip for Race Chart with Rankings
+  const RaceTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const sorted = [...payload].sort(
+        (a, b) => (Number(b.value) || 0) - (Number(a.value) || 0)
+      );
+      const medals = ['🥇', '🥈', '🥉'];
+
+      return (
+        <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-xl text-xs space-y-1.5 min-w-[200px]">
+          <div className="text-[11px] font-black text-slate-800 border-b border-slate-100 pb-1.5 flex items-center justify-between">
+            <span>📅 {payload[0]?.payload?.fullDate || label}</span>
+            <span className="text-[9.5px] font-black text-[#00684a] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Peringkat Harian
+            </span>
+          </div>
+          <div className="space-y-1.5 pt-0.5">
+            {sorted.map((entry, idx) => {
+              const rankBadge = medals[idx] || `${idx + 1}.`;
+              return (
+                <div
+                  key={entry.dataKey}
+                  className="flex items-center justify-between gap-2 text-xs"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[11px] shrink-0">{rankBadge}</span>
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: entry.color }}
+                    />
+                    <span className="font-bold text-slate-800 truncate">
+                      {entry.name}
+                    </span>
+                  </div>
+                  <span className="font-black text-slate-900 shrink-0">
+                    {entry.value} {metricConfig.unit}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 space-y-3 shadow-sm">
-      {/* Metric Selector Tabs */}
+      {/* Top Header: Title & Chart Mode Selector */}
       <div className="flex items-center justify-between gap-2 flex-wrap border-b border-slate-100 pb-2.5">
         <div>
-          <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-            Grafik Tren Performa
-          </h3>
-          <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500">Visualisasi metrik HDP, HHP, Kg & Kematian</p>
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4 text-[#00684a]" />
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+              {chartMode === 'race' ? 'Grafik Balapan Antar Kandang' : 'Grafik Tren Performa'}
+            </h3>
+          </div>
+          <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-0.5">
+            {chartMode === 'race'
+              ? 'Perbandingan multi-kandang langsung: amati siapa yang memimpin'
+              : 'Visualisasi lengkap Butir Utuh, Rusak, Kg, HDP, & Kematian'}
+          </p>
         </div>
 
-        {/* Metric Selector Pills */}
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
-          {(['hdp', 'hhp', 'kg', 'mortality'] as const).map((m) => (
+        {/* View Mode Toggle: Total Farm vs Balapan Antar Kandang (only in All Coops view) */}
+        {canShowRace && (
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
-              key={m}
-              onClick={() => { setMetric(m); if (m === 'mortality') setMortView('chart'); }}
-              className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all ${
-                metric === m
+              type="button"
+              onClick={() => setChartMode('aggregate')}
+              className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all flex items-center gap-1 ${
+                chartMode === 'aggregate'
+                  ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              }`}
+            >
+              <BarChart3 className="w-3 h-3" />
+              <span>Gabungan Farm</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartMode('race')}
+              className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all flex items-center gap-1 ${
+                chartMode === 'race'
                   ? 'bg-[#00684a] text-white shadow-xs scale-[1.02]'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              {m === 'hdp' ? 'HDP %' : m === 'hhp' ? 'HHP %' : m === 'kg' ? 'Kg Telur' : 'Kematian'}
+              <Trophy className="w-3 h-3" />
+              <span>Balapan Kandang</span>
             </button>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Mortality Sub-View Selector (only when mortality selected) */}
-      {metric === 'mortality' && (
+      {/* Metric Selector Pills (Butir Utuh, Telur Rusak, Kg Telur, HDP %, HHP %, Kematian) */}
+      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+        {(
+          [
+            { id: 'pcs' as const, label: '🥚 Butir Utuh' },
+            { id: 'bad' as const, label: '💔 Telur Rusak' },
+            { id: 'kg' as const, label: '⚖️ Kg Telur' },
+            { id: 'hdp' as const, label: '📈 HDP %' },
+            { id: 'hhp' as const, label: '📊 HHP %' },
+            { id: 'mortality' as const, label: '💀 Kematian' },
+          ] as const
+        ).map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => {
+              setMetric(m.id);
+              if (m.id === 'mortality') setMortView('chart');
+            }}
+            className={`px-3 py-1.5 text-[10px] sm:text-[11px] font-black rounded-xl transition-all whitespace-nowrap border ${
+              metric === m.id
+                ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs scale-[1.02]'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Mortality Sub-View Selector (only when mortality selected and not in race mode) */}
+      {metric === 'mortality' && chartMode === 'aggregate' && (
         <div className="flex gap-1 bg-rose-50 p-1 rounded-xl border border-rose-200">
-          {([
+          {[
             { key: 'chart' as const, label: 'Grafik Harian' },
             { key: '7d' as const, label: '7 Hari' },
             { key: '30d' as const, label: '30 Hari' },
             { key: 'total' as const, label: 'Kumulatif' },
-          ]).map((item) => (
+          ].map((item) => (
             <button
               key={item.key}
+              type="button"
               onClick={() => setMortView(item.key)}
               className={`flex-1 px-2 py-1 text-[10px] font-black rounded-lg transition-all ${
                 mortView === item.key
@@ -145,42 +410,100 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         </div>
       )}
 
-      <div className="h-56 w-full pt-1">
-        {/* Show summary cards for mortality sub-views */}
-        {metric === 'mortality' && mortView !== 'chart' ? (
+      {/* Chart Canvas Area */}
+      <div className="h-64 sm:h-72 w-full pt-1">
+        {metric === 'mortality' && chartMode === 'aggregate' && mortView !== 'chart' ? (
           <div className="h-full flex flex-col items-center justify-center gap-3">
             {mortView === '7d' && (
               <div className="text-center space-y-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Kematian 7 Hari Terakhir</span>
-                <div className="text-4xl font-black text-rose-600">{weeklyMortality} <span className="text-lg text-slate-400">ekor</span></div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Kematian 7 Hari Terakhir
+                </span>
+                <div className="text-4xl font-black text-rose-600">
+                  {weeklyMortality} <span className="text-lg text-slate-400">ekor</span>
+                </div>
               </div>
             )}
             {mortView === '30d' && (
               <div className="text-center space-y-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Kematian 30 Hari Terakhir</span>
-                <div className="text-4xl font-black text-rose-600">{monthlyMortality} <span className="text-lg text-slate-400">ekor</span></div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Kematian 30 Hari Terakhir
+                </span>
+                <div className="text-4xl font-black text-rose-600">
+                  {monthlyMortality} <span className="text-lg text-slate-400">ekor</span>
+                </div>
               </div>
             )}
             {mortView === 'total' && (
               <div className="text-center space-y-2">
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Kematian Kumulatif</span>
-                <div className="text-4xl font-black text-rose-600">{totalMortality} <span className="text-lg text-slate-400">ekor</span></div>
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Total Kematian Kumulatif
+                </span>
+                <div className="text-4xl font-black text-rose-600">
+                  {totalMortality} <span className="text-lg text-slate-400">ekor</span>
+                </div>
                 <span className="text-xs font-black text-rose-500 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
                   Tingkat Mortalitas: {mortalityRate}%
                 </span>
               </div>
             )}
-            {/* Mini summary row below */}
             <div className="grid grid-cols-3 gap-2 w-full mt-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-center">
               {mortSummary.map((s) => (
                 <div key={s.label}>
-                  <span className="block text-[8px] font-bold text-slate-500 uppercase">{s.label}</span>
-                  <span className="text-xs font-black" style={{ color: s.color }}>{s.value}</span>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">
+                    {s.label}
+                  </span>
+                  <span className="text-xs font-black" style={{ color: s.color }}>
+                    {s.value}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
+        ) : chartMode === 'race' && raceData.length > 0 ? (
+          /* Multi-Line Race Chart (Balapan Antar Kandang) */
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={raceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                tickLine={false}
+                axisLine={{ stroke: '#cbd5e1' }}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip content={<RaceTooltip />} />
+              <Legend
+                wrapperStyle={{
+                  paddingTop: 10,
+                  fontSize: '11px',
+                  fontWeight: 700,
+                }}
+              />
+              {allHistories.map(({ flock }, idx) => {
+                const key = flock.coop_name || flock.name;
+                const color = COOP_COLORS[idx % COOP_COLORS.length];
+                return (
+                  <Line
+                    key={flock.id}
+                    type="monotone"
+                    dataKey={key}
+                    name={flock.coop_name}
+                    stroke={color}
+                    strokeWidth={3}
+                    dot={{ r: 3.5, fill: color, stroke: '#ffffff', strokeWidth: 1.5 }}
+                    activeDot={{ r: 6, fill: color, stroke: '#ffffff', strokeWidth: 2 }}
+                  />
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
         ) : chartData.length > 0 ? (
+          /* Standard Area Chart */
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
@@ -196,6 +519,14 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                   <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
                   <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
                 </linearGradient>
+                <linearGradient id="tealGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#059669" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#059669" stopOpacity={0.0} />
+                </linearGradient>
+                <linearGradient id="purpleGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#7c3aed" stopOpacity={0.0} />
+                </linearGradient>
                 <linearGradient id="roseGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#e11d48" stopOpacity={0.35} />
                   <stop offset="95%" stopColor="#e11d48" stopOpacity={0.0} />
@@ -203,8 +534,17 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
               </defs>
 
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} />
-              <YAxis tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }} tickLine={false} axisLine={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                tickLine={false}
+                axisLine={{ stroke: '#cbd5e1' }}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                tickLine={false}
+                axisLine={false}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#ffffff',
@@ -237,6 +577,40 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           </div>
         )}
       </div>
+
+      {/* Race Standings Bar (Displayed when in Race Mode) */}
+      {chartMode === 'race' && raceTotals.length > 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between text-[10px] font-black text-slate-600 uppercase tracking-wider">
+            <span className="flex items-center gap-1 text-[#00684a]">
+              <Trophy className="w-3.5 h-3.5" />
+              <span>Klasemen {metricConfig.shortLabel} (Periode Ini)</span>
+            </span>
+            <span>{raceTotals.length} Kandang</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {raceTotals.map((item, idx) => {
+              const medals = ['🥇', '🥈', '🥉'];
+              return (
+                <div
+                  key={item.key}
+                  className="bg-white border border-slate-200 px-2 py-1 rounded-xl flex items-center gap-1.5 text-[11px] shadow-2xs"
+                >
+                  <span className="text-xs">{medals[idx] || `#${idx + 1}`}</span>
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="font-bold text-slate-800">{item.coopName}:</span>
+                  <span className="font-black text-slate-900">
+                    {item.totalVal.toLocaleString('id-ID')} {metricConfig.unit}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

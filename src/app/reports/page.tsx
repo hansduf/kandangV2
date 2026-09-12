@@ -21,14 +21,11 @@ import {
   Egg,
   Skull,
   TrendingUp,
-  Layers,
   Award,
-  Activity,
   ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
-  ChevronRight,
-  Info,
+  Layers,
+  Activity,
+  Calendar,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -41,11 +38,16 @@ import {
   Cell,
 } from 'recharts';
 
+interface FlockHistoryItem {
+  flock: Flock;
+  records: DailyRecord[];
+}
+
 export default function ReportsPage() {
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [summaries, setSummaries] = useState<DashboardSummary[]>([]);
-  const [activeFlockId, setActiveFlockId] = useState<string>('');
-  const [selectedHistory, setSelectedHistory] = useState<DailyRecord[]>([]);
+  const [allHistories, setAllHistories] = useState<FlockHistoryItem[]>([]);
+  const [viewFlockId, setViewFlockId] = useState<string>('all'); // 'all' or flock.id
   const [loading, setLoading] = useState(true);
   const [chartMetric, setChartMetric] = useState<'hdp' | 'eggs_today' | 'pop' | 'mortality'>('hdp');
 
@@ -57,12 +59,6 @@ export default function ReportsPage() {
     loadAllData();
   }, []);
 
-  useEffect(() => {
-    if (activeFlockId) {
-      loadFlockHistory(activeFlockId);
-    }
-  }, [activeFlockId]);
-
   const loadAllData = async () => {
     setLoading(true);
     try {
@@ -70,24 +66,34 @@ export default function ReportsPage() {
       setFlocks(flockList);
 
       if (flockList.length > 0) {
-        if (!activeFlockId) {
-          setActiveFlockId(flockList[0].id);
-        }
-
-        // Concurrently fetch summaries for all flocks
-        const sumList = await Promise.all(
-          flockList.map(async (f) => {
-            try {
-              return await fetchDashboardSummary(f.id);
-            } catch (err) {
-              console.error(`Error loading summary for flock ${f.id}:`, err);
-              return null;
-            }
-          })
-        );
+        // Concurrently fetch summaries and 60-day daily histories for all coops
+        const [sumList, histList] = await Promise.all([
+          Promise.all(
+            flockList.map(async (f) => {
+              try {
+                return await fetchDashboardSummary(f.id);
+              } catch (err) {
+                console.error(`Error loading summary for flock ${f.id}:`, err);
+                return null;
+              }
+            })
+          ),
+          Promise.all(
+            flockList.map(async (f) => {
+              try {
+                const recs = await fetchDailyHistory(f.id, 60);
+                return { flock: f, records: recs };
+              } catch (err) {
+                console.error(`Error loading history for flock ${f.id}:`, err);
+                return { flock: f, records: [] };
+              }
+            })
+          ),
+        ]);
 
         const validSummaries = sumList.filter(Boolean) as DashboardSummary[];
         setSummaries(validSummaries);
+        setAllHistories(histList);
       }
     } catch (err) {
       console.error('Error loading reports data:', err);
@@ -96,35 +102,24 @@ export default function ReportsPage() {
     }
   };
 
-  const loadFlockHistory = async (flockId: string) => {
-    try {
-      const hist = await fetchDailyHistory(flockId, 30);
-      setSelectedHistory(hist);
-    } catch (err) {
-      console.error('Error loading flock history:', err);
-    }
-  };
-
   const handleCreateFlock = async (flockData: Partial<Flock>) => {
     const newFlock = await createFlock(flockData);
     await loadAllData();
-    setActiveFlockId(newFlock.id);
+    setViewFlockId(newFlock.id);
     return newFlock;
   };
 
   const handleSaveDaily = async (record: DailyRecord) => {
     await saveDailyRecord(record);
     await loadAllData();
-    if (activeFlockId) await loadFlockHistory(activeFlockId);
   };
 
   const handleSaveHealth = async (record: HealthRecord) => {
     await saveHealthRecord(record);
     await loadAllData();
-    if (activeFlockId) await loadFlockHistory(activeFlockId);
   };
 
-  // AGGREGATE CALCULATIONS ACROSS ALL FLOCKS
+  // 1. AGGREGATE STATS ACROSS ALL FLOCKS
   const farmAggregates = useMemo(() => {
     let totalActivePop = 0;
     let totalInitialPop = 0;
@@ -179,7 +174,7 @@ export default function ReportsPage() {
     };
   }, [summaries]);
 
-  // LEADERBOARDS
+  // 2. LEADERBOARDS
   const bestHdpFlock = useMemo(() => {
     if (summaries.length === 0) return null;
     return [...summaries].sort((a, b) => {
@@ -203,7 +198,7 @@ export default function ReportsPage() {
     )[0];
   }, [summaries]);
 
-  // CHART DATA: Comparison Bar Chart
+  // 3. COMPARISON BAR CHART DATA
   const comparisonChartData = useMemo(() => {
     return summaries.map((s) => ({
       name: `${s.flock.coop_name} (${s.flock.name})`,
@@ -216,7 +211,126 @@ export default function ReportsPage() {
     }));
   }, [summaries]);
 
-  // EXPORT ALL FLOCKS COMPARISON CSV
+  // 4. UNIFIED FARM DAILY HISTORY (ALL FLOCKS COMBINED BY DATE)
+  const farmDailyHistory = useMemo(() => {
+    const dateMap = new Map<
+      string,
+      {
+        record_date: string;
+        egg_good_pcs: number;
+        egg_good_kg: number;
+        egg_bad_pcs: number;
+        egg_bad_kg: number;
+        mortality_pcs: number;
+        culling_pcs: number;
+        feed_kg: number;
+        pop_sum: number;
+        initial_pop_sum: number;
+        coops: {
+          coop_name: string;
+          flock_name: string;
+          egg_good_pcs: number;
+          egg_good_kg: number;
+          egg_bad_pcs: number;
+          hdp_percent: number;
+          mortality_pcs: number;
+        }[];
+      }
+    >();
+
+    allHistories.forEach(({ flock, records }) => {
+      records.forEach((r) => {
+        const existing = dateMap.get(r.record_date) || {
+          record_date: r.record_date,
+          egg_good_pcs: 0,
+          egg_good_kg: 0,
+          egg_bad_pcs: 0,
+          egg_bad_kg: 0,
+          mortality_pcs: 0,
+          culling_pcs: 0,
+          feed_kg: 0,
+          pop_sum: 0,
+          initial_pop_sum: 0,
+          coops: [],
+        };
+
+        existing.egg_good_pcs += r.egg_good_pcs || 0;
+        existing.egg_good_kg = Number((existing.egg_good_kg + (r.egg_good_kg || 0)).toFixed(2));
+        existing.egg_bad_pcs += r.egg_bad_pcs || 0;
+        existing.egg_bad_kg = Number((existing.egg_bad_kg + (r.egg_bad_kg || 0)).toFixed(2));
+        existing.mortality_pcs += r.mortality_pcs || 0;
+        existing.culling_pcs += r.culling_pcs || 0;
+        existing.feed_kg = Number((existing.feed_kg + (r.feed_kg || 0)).toFixed(2));
+        existing.pop_sum += flock.current_population || 0;
+        existing.initial_pop_sum += flock.initial_population || flock.current_population || 0;
+
+        existing.coops.push({
+          coop_name: flock.coop_name,
+          flock_name: flock.name,
+          egg_good_pcs: r.egg_good_pcs || 0,
+          egg_good_kg: r.egg_good_kg || 0,
+          egg_bad_pcs: r.egg_bad_pcs || 0,
+          hdp_percent:
+            r.hdp_percent !== undefined && r.hdp_percent !== null
+              ? r.hdp_percent
+              : r.hd_percent || 0,
+          mortality_pcs: r.mortality_pcs || 0,
+        });
+
+        dateMap.set(r.record_date, existing);
+      });
+    });
+
+    const sortedDates = Array.from(dateMap.keys()).sort((a, b) => b.localeCompare(a));
+    return sortedDates.map((date) => {
+      const item = dateMap.get(date)!;
+      const hdp =
+        item.pop_sum > 0 ? Number(((item.egg_good_pcs / item.pop_sum) * 100).toFixed(2)) : 0;
+      const hhp =
+        item.initial_pop_sum > 0
+          ? Number(((item.egg_good_pcs / item.initial_pop_sum) * 100).toFixed(2))
+          : 0;
+
+      return {
+        record_date: item.record_date,
+        flock_id: 'all',
+        egg_good_pcs: item.egg_good_pcs,
+        egg_good_kg: item.egg_good_kg,
+        egg_bad_pcs: item.egg_bad_pcs,
+        egg_bad_kg: item.egg_bad_kg,
+        mortality_pcs: item.mortality_pcs,
+        culling_pcs: item.culling_pcs,
+        feed_kg: item.feed_kg,
+        hd_percent: hdp,
+        hdp_percent: hdp,
+        hhp_percent: hhp,
+        fcr: item.egg_good_kg > 0 ? Number((item.feed_kg / item.egg_good_kg).toFixed(2)) : 0,
+        notes: '',
+        coops: item.coops,
+      } as DailyRecord & { coops: typeof item.coops };
+    });
+  }, [allHistories]);
+
+  // Active records & summary based on selected view ('all' or specific flock)
+  const isAllView = viewFlockId === 'all';
+  const activeFlockSummary = summaries.find((s) => s.flock.id === viewFlockId);
+  const activeSingleHistory = allHistories.find((h) => h.flock.id === viewFlockId)?.records || [];
+
+  const displayedRecords = isAllView ? farmDailyHistory : activeSingleHistory;
+  const displayedWeeklyMort = isAllView
+    ? farmAggregates.cumWeeklyMort
+    : activeFlockSummary?.totals.weekly_mortality;
+  const displayedMonthlyMort = isAllView
+    ? farmAggregates.cumMonthlyMort
+    : activeFlockSummary?.totals.monthly_mortality;
+  const displayedTotalMort = isAllView
+    ? farmAggregates.cumMortality
+    : activeFlockSummary?.totals.total_mortality;
+  const displayedMortRate = isAllView
+    ? farmAggregates.farmMortRate
+    : activeFlockSummary?.totals.mortality_rate_percent;
+
+  // EXPORT ALL COOP CSV
   const exportMultiCoopCSV = () => {
     if (summaries.length === 0) return;
     const headers = [
@@ -232,14 +346,14 @@ export default function ReportsPage() {
       'Telur Utuh Hari Ini (Kg)',
       'Telur Retak Hari Ini (Btr)',
       'Mati Hari Ini (Ekor)',
-      'Rata-rata HDP Kumulatif (%)',
+      'Rata2 HDP Kumulatif (%)',
       'Total Telur Kumulatif (Btr)',
       'Total Telur Kumulatif (Kg)',
       'Total Mati Kumulatif (Ekor)',
       'Tingkat Mortalitas (%)',
       'Total Pakan (Kg)',
       'FCR Kumulatif',
-      'Status'
+      'Status',
     ];
 
     const rows = summaries.map((s) => [
@@ -286,7 +400,7 @@ export default function ReportsPage() {
       farmAggregates.farmMortRate,
       farmAggregates.cumFeedKg,
       farmAggregates.farmFCR,
-      'Active'
+      'Active',
     ]);
 
     const csvContent =
@@ -304,8 +418,6 @@ export default function ReportsPage() {
     document.body.removeChild(link);
   };
 
-  const activeFlockSummary = summaries.find((s) => s.flock.id === activeFlockId);
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
       <Navbar onOpenNewFlockModal={() => setIsModalOpen(true)} />
@@ -322,7 +434,7 @@ export default function ReportsPage() {
                 Analitik & Komparasi Seluruh Kandang
               </h2>
               <p className="text-[11px] font-semibold text-slate-500">
-                Perbandingan performa komparatif multi-kandang & data farm
+                Laporan terpadu semua kandang, gabungan farm & data komparatif
               </p>
             </div>
           </div>
@@ -375,7 +487,8 @@ export default function ReportsPage() {
                 <span>Telur Utuh Hari Ini</span>
               </div>
               <div className="text-xl sm:text-2xl font-black mt-1 text-white">
-                {farmAggregates.todayEggPcs.toLocaleString('id-ID')} <span className="text-xs text-amber-200">btr</span>
+                {farmAggregates.todayEggPcs.toLocaleString('id-ID')}{' '}
+                <span className="text-xs text-amber-200">btr</span>
               </div>
               <span className="text-[10px] text-amber-100/80 font-semibold">
                 {farmAggregates.todayEggKg} kg total
@@ -401,7 +514,8 @@ export default function ReportsPage() {
                 <span>Total Telur Kumulatif</span>
               </div>
               <div className="text-xl sm:text-2xl font-black mt-1 text-white">
-                {farmAggregates.cumEggPcs.toLocaleString('id-ID')} <span className="text-xs text-blue-200">btr</span>
+                {farmAggregates.cumEggPcs.toLocaleString('id-ID')}{' '}
+                <span className="text-xs text-blue-200">btr</span>
               </div>
               <span className="text-[10px] text-blue-100/80 font-semibold">
                 {farmAggregates.cumEggKg.toLocaleString('id-ID')} kg
@@ -530,21 +644,27 @@ export default function ReportsPage() {
                         return (
                           <div className="bg-slate-900 text-white p-2.5 rounded-xl text-xs font-bold shadow-xl border border-slate-800 space-y-1">
                             <div className="font-black text-emerald-300">{data.name}</div>
-                            <div>HDP Hari Ini: <strong className="text-white">{data.hdp}%</strong></div>
-                            <div>Telur Hari Ini: <strong className="text-white">{data.eggs_today} btr</strong></div>
-                            <div>Populasi: <strong className="text-white">{data.pop} ekor</strong></div>
-                            <div>Total Mati: <strong className="text-rose-400">{data.mortality} ekor</strong></div>
+                            <div>
+                              HDP Hari Ini: <strong className="text-white">{data.hdp}%</strong>
+                            </div>
+                            <div>
+                              Telur Hari Ini:{' '}
+                              <strong className="text-white">{data.eggs_today} btr</strong>
+                            </div>
+                            <div>
+                              Populasi: <strong className="text-white">{data.pop} ekor</strong>
+                            </div>
+                            <div>
+                              Total Mati:{' '}
+                              <strong className="text-rose-400">{data.mortality} ekor</strong>
+                            </div>
                           </div>
                         );
                       }
                       return null;
                     }}
                   />
-                  <Bar
-                    dataKey={chartMetric}
-                    radius={[8, 8, 0, 0]}
-                    fill="#00684a"
-                  >
+                  <Bar dataKey={chartMetric} radius={[8, 8, 0, 0]} fill="#00684a">
                     {comparisonChartData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
@@ -605,12 +725,12 @@ export default function ReportsPage() {
                 {summaries.map((s) => {
                   const hdpToday = s.today.hdp_percent || s.today.hd_percent || 0;
                   const isGoodHdp = hdpToday >= 80;
-                  const isSelected = s.flock.id === activeFlockId;
+                  const isSelected = s.flock.id === viewFlockId;
 
                   return (
                     <tr
                       key={s.flock.id}
-                      onClick={() => setActiveFlockId(s.flock.id)}
+                      onClick={() => setViewFlockId(s.flock.id)}
                       className={`cursor-pointer transition-colors ${
                         isSelected ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'hover:bg-slate-50'
                       }`}
@@ -618,7 +738,9 @@ export default function ReportsPage() {
                       <td className="py-3 px-2">
                         <div className="font-black text-slate-900 flex items-center gap-1.5">
                           <span>{s.flock.coop_name}</span>
-                          <span className="text-[10px] font-bold text-slate-400">({s.flock.name})</span>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            ({s.flock.name})
+                          </span>
                           {isSelected && (
                             <span className="w-1.5 h-1.5 rounded-full bg-[#00684a]" />
                           )}
@@ -630,7 +752,10 @@ export default function ReportsPage() {
                       </td>
                       <td className="py-3 px-2 text-center">
                         <div className="font-black text-slate-900">
-                          {s.flock.current_population} <span className="text-[10px] text-slate-400">/ {s.flock.initial_population}</span>
+                          {s.flock.current_population}{' '}
+                          <span className="text-[10px] text-slate-400">
+                            / {s.flock.initial_population}
+                          </span>
                         </div>
                       </td>
                       <td className="py-3 px-2 text-center">
@@ -648,8 +773,12 @@ export default function ReportsPage() {
                         </span>
                       </td>
                       <td className="py-3 px-2 text-center">
-                        <div className="font-extrabold text-slate-900">{s.today.egg_good_pcs} btr</div>
-                        <div className="text-[10px] text-emerald-700 font-bold">{s.today.egg_good_kg} kg</div>
+                        <div className="font-extrabold text-slate-900">
+                          {s.today.egg_good_pcs} btr
+                        </div>
+                        <div className="text-[10px] text-emerald-700 font-bold">
+                          {s.today.egg_good_kg} kg
+                        </div>
                       </td>
                       <td className="py-3 px-2 text-center font-bold text-amber-700">
                         {s.today.egg_bad_pcs} btr
@@ -677,7 +806,7 @@ export default function ReportsPage() {
                   );
                 })}
 
-                {/* TOTAL / AGREGATE ROW */}
+                {/* TOTAL / AGGREGATE ROW */}
                 <tr className="bg-slate-100 font-black text-slate-900 border-t-2 border-slate-300">
                   <td className="py-3 px-2 uppercase tracking-wider text-[11px] text-[#00684a]">
                     Total Farm
@@ -686,7 +815,10 @@ export default function ReportsPage() {
                     {flocks.length} Kandang
                   </td>
                   <td className="py-3 px-2 text-center font-black">
-                    {farmAggregates.totalActivePop.toLocaleString('id-ID')} <span className="text-[10px] text-slate-500">/ {farmAggregates.totalInitialPop.toLocaleString('id-ID')}</span>
+                    {farmAggregates.totalActivePop.toLocaleString('id-ID')}{' '}
+                    <span className="text-[10px] text-slate-500">
+                      / {farmAggregates.totalInitialPop.toLocaleString('id-ID')}
+                    </span>
                   </td>
                   <td className="py-3 px-2 text-center">
                     <span className="bg-emerald-600 text-white px-2 py-0.5 rounded-md text-[11px] font-black">
@@ -694,20 +826,32 @@ export default function ReportsPage() {
                     </span>
                   </td>
                   <td className="py-3 px-2 text-center">
-                    <div className="font-black">{farmAggregates.todayEggPcs.toLocaleString('id-ID')} btr</div>
-                    <div className="text-[10px] text-emerald-700 font-bold">{farmAggregates.todayEggKg} kg</div>
+                    <div className="font-black">
+                      {farmAggregates.todayEggPcs.toLocaleString('id-ID')} btr
+                    </div>
+                    <div className="text-[10px] text-emerald-700 font-bold">
+                      {farmAggregates.todayEggKg} kg
+                    </div>
                   </td>
                   <td className="py-3 px-2 text-center text-amber-700 font-black">
                     {farmAggregates.todayEggBadPcs} btr
                   </td>
                   <td className="py-3 px-2 text-center text-slate-500 font-bold">-</td>
                   <td className="py-3 px-2 text-center">
-                    <div className="font-black">{farmAggregates.cumEggPcs.toLocaleString('id-ID')} btr</div>
-                    <div className="text-[10px] text-slate-600 font-bold">{farmAggregates.cumEggKg.toLocaleString('id-ID')} kg</div>
+                    <div className="font-black">
+                      {farmAggregates.cumEggPcs.toLocaleString('id-ID')} btr
+                    </div>
+                    <div className="text-[10px] text-slate-600 font-bold">
+                      {farmAggregates.cumEggKg.toLocaleString('id-ID')} kg
+                    </div>
                   </td>
                   <td className="py-3 px-2 text-right">
-                    <div className="font-black text-rose-600">{farmAggregates.cumMortality} ekor</div>
-                    <div className="text-[10px] text-rose-500 font-bold">{farmAggregates.farmMortRate}%</div>
+                    <div className="font-black text-rose-600">
+                      {farmAggregates.cumMortality} ekor
+                    </div>
+                    <div className="text-[10px] text-rose-500 font-bold">
+                      {farmAggregates.farmMortRate}%
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -715,81 +859,166 @@ export default function ReportsPage() {
           </div>
         </div>
 
-        {/* 5. DEEP DIVE: DETAIL & RIWAYAT KANDANG INDIVIDUAL */}
-        {activeFlockSummary && (
-          <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 flex-wrap gap-2">
+        {/* 5. DETAIL & TREN PERFORMA TERPADU: SEMUA KANDANG ATAU PER KANDANG */}
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-sm space-y-3.5">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+            <div>
               <div className="flex items-center gap-2">
-                <span className="bg-[#00684a] text-white text-[10px] font-black px-2.5 py-1 rounded-xl">
-                  {activeFlockSummary.flock.coop_name}
+                <span
+                  className={`text-[10px] font-black px-2.5 py-1 rounded-xl text-white ${
+                    isAllView ? 'bg-[#00684a]' : 'bg-slate-800'
+                  }`}
+                >
+                  {isAllView
+                    ? 'Total Farm (Semua Kandang)'
+                    : `${activeFlockSummary?.flock.coop_name} (${activeFlockSummary?.flock.name})`}
                 </span>
                 <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Detail & Tren Kandang: {activeFlockSummary.flock.name}
+                  Detail & Tren Harian
                 </h3>
               </div>
-
-              {/* Coop Selector Pills for quick switch */}
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                {flocks.map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setActiveFlockId(f.id)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
-                      f.id === activeFlockId
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {f.coop_name}
-                  </button>
-                ))}
-              </div>
+              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 mt-0.5">
+                {isAllView
+                  ? 'Menampilkan performa gabungan seluruh kandang & breakdown per kandang pada setiap tanggal'
+                  : `Menampilkan riwayat catatan dan tren khusus ${activeFlockSummary?.flock.coop_name}`}
+              </p>
             </div>
 
-            {/* Performance Chart of selected flock */}
-            <PerformanceChart
-              records={selectedHistory}
-              weeklyMortality={activeFlockSummary.totals.weekly_mortality}
-              monthlyMortality={activeFlockSummary.totals.monthly_mortality}
-              totalMortality={activeFlockSummary.totals.total_mortality}
-              mortalityRate={activeFlockSummary.totals.mortality_rate_percent}
-            />
+            {/* View Selector Pills: Semua Kandang vs Kandang W vs Kandang 1 */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button
+                onClick={() => setViewFlockId('all')}
+                className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 ${
+                  viewFlockId === 'all'
+                    ? 'bg-[#00684a] text-white shadow-xs scale-[1.02]'
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+                }`}
+              >
+                <Layers className="w-3 h-3" />
+                <span>Semua Kandang</span>
+              </button>
+              {flocks.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setViewFlockId(f.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
+                    viewFlockId === f.id
+                      ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
+                      : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  {f.coop_name} ({f.name})
+                </button>
+              ))}
+            </div>
+          </div>
 
-            {/* Recent Daily Records Table for this flock */}
-            <div className="overflow-x-auto pt-2">
-              <table className="w-full text-left border-collapse">
+          {/* Performance Chart for Selected View */}
+          <PerformanceChart
+            records={displayedRecords}
+            weeklyMortality={displayedWeeklyMort}
+            monthlyMortality={displayedMonthlyMort}
+            totalMortality={displayedTotalMort}
+            mortalityRate={displayedMortRate}
+          />
+
+          {/* Table of Daily Records */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                {isAllView
+                  ? 'Catatan Harian Terpadu (Gabungan Seluruh Kandang)'
+                  : `Riwayat Catatan Harian ${activeFlockSummary?.flock.coop_name}`}
+              </h4>
+              <span className="text-[10px] font-bold text-slate-400">
+                {displayedRecords.length} Hari Catatan
+              </span>
+            </div>
+
+            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+              <table className="w-full text-left border-collapse min-w-[620px]">
                 <thead>
-                  <tr className="border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase">
-                    <th className="py-2 px-1">Tanggal</th>
-                    <th className="py-2 px-1">Telur Utuh</th>
-                    <th className="py-2 px-1 text-center">Retak</th>
-                    <th className="py-2 px-1 text-center">HDP %</th>
-                    <th className="py-2 px-1 text-center">HHP %</th>
-                    <th className="py-2 px-1 text-right">Mati</th>
+                  <tr className="border-b border-slate-200 text-[10px] font-black text-slate-500 uppercase bg-slate-50/70">
+                    <th className="py-2.5 px-2">Tanggal</th>
+                    <th className="py-2.5 px-2">Telur Utuh {isAllView ? '(Total Farm)' : ''}</th>
+                    <th className="py-2.5 px-2 text-center">Retak</th>
+                    <th className="py-2.5 px-2 text-center">HDP %</th>
+                    <th className="py-2.5 px-2 text-center">HHP %</th>
+                    <th className="py-2.5 px-2 text-right">Mati</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
-                  {selectedHistory.slice(0, 10).map((r) => (
-                    <tr key={r.record_date} className="hover:bg-slate-50">
-                      <td className="py-2.5 px-1 font-black text-slate-900">{r.record_date}</td>
-                      <td className="py-2.5 px-1">
-                        <div className="font-extrabold text-[#00684a]">{r.egg_good_pcs} btr</div>
-                        <div className="text-[10px] text-slate-500 font-bold">{r.egg_good_kg} kg</div>
-                      </td>
-                      <td className="py-2.5 px-1 text-center font-bold text-amber-700">{r.egg_bad_pcs} btr</td>
-                      <td className="py-2.5 px-1 text-center font-black text-[#00684a]">
-                        {r.hdp_percent !== undefined && r.hdp_percent !== null ? r.hdp_percent : (r.hd_percent || 0)}%
-                      </td>
-                      <td className="py-2.5 px-1 text-center font-bold text-amber-600">
-                        {r.hhp_percent || 0}%
-                      </td>
-                      <td className="py-2.5 px-1 text-right font-black text-rose-600">{r.mortality_pcs}</td>
-                    </tr>
-                  ))}
-                  {selectedHistory.length === 0 && (
+                  {displayedRecords.slice(0, 15).map((r) => {
+                    const farmRec = r as DailyRecord & {
+                      coops?: {
+                        coop_name: string;
+                        flock_name: string;
+                        egg_good_pcs: number;
+                        egg_good_kg: number;
+                        egg_bad_pcs: number;
+                        hdp_percent: number;
+                        mortality_pcs: number;
+                      }[];
+                    };
+
+                    return (
+                      <tr key={r.record_date} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-2">
+                          <div className="font-black text-slate-900">{r.record_date}</div>
+                          {/* If viewing All Coops: show breakdown badges for each coop on that day! */}
+                          {isAllView && farmRec.coops && farmRec.coops.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {farmRec.coops.map((c) => (
+                                <span
+                                  key={c.coop_name}
+                                  className="inline-flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md text-[10px] font-bold text-slate-700 border border-slate-200"
+                                >
+                                  <strong className="text-[#00684a] font-black">
+                                    {c.coop_name}:
+                                  </strong>
+                                  <span>
+                                    {c.egg_good_pcs} btr ({c.hdp_percent}% HDP)
+                                  </span>
+                                  {c.mortality_pcs > 0 && (
+                                    <span className="text-rose-600 font-extrabold">
+                                      • {c.mortality_pcs} mati
+                                    </span>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="font-extrabold text-[#00684a]">
+                            {r.egg_good_pcs.toLocaleString('id-ID')} btr
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-bold">
+                            {r.egg_good_kg} kg
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-center font-bold text-amber-700">
+                          {r.egg_bad_pcs} btr
+                        </td>
+                        <td className="py-3 px-2 text-center font-black text-[#00684a]">
+                          {r.hdp_percent !== undefined && r.hdp_percent !== null
+                            ? r.hdp_percent
+                            : r.hd_percent || 0}%
+                        </td>
+                        <td className="py-3 px-2 text-center font-bold text-amber-600">
+                          {r.hhp_percent || 0}%
+                        </td>
+                        <td className="py-3 px-2 text-right font-black text-rose-600">
+                          {r.mortality_pcs > 0 ? `+${r.mortality_pcs}` : '0'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {displayedRecords.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="text-center py-4 text-slate-400 text-xs font-semibold">
-                        Belum ada catatan harian untuk kandang ini.
+                      <td colSpan={6} className="text-center py-6 text-slate-400 text-xs font-semibold">
+                        Belum ada catatan harian untuk ditampilkan.
                       </td>
                     </tr>
                   )}
@@ -797,7 +1026,7 @@ export default function ReportsPage() {
               </table>
             </div>
           </div>
-        )}
+        </div>
       </main>
 
       <BottomNav onOpenQuickInput={() => setIsQuickInputOpen(true)} />
@@ -806,8 +1035,8 @@ export default function ReportsPage() {
         isOpen={isQuickInputOpen}
         onClose={() => setIsQuickInputOpen(false)}
         flocks={flocks}
-        activeFlockId={activeFlockId}
-        onSelectFlock={setActiveFlockId}
+        activeFlockId={viewFlockId !== 'all' ? viewFlockId : flocks[0]?.id}
+        onSelectFlock={(id) => setViewFlockId(id)}
         onSaveDaily={handleSaveDaily}
         onSaveHealth={handleSaveHealth}
       />

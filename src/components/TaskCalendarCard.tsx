@@ -419,21 +419,31 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                       )}
                     </div>
 
-                    {/* Per-kandang completion breakdown for multi-coop transparency */}
+                    {/* Per-kandang completion breakdown for multi-coop transparency (Clickable) */}
                     {task.flocks_status && task.flocks_status.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {task.flocks_status.map((fs, idx) => (
-                          <span
+                          <button
                             key={idx}
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-1 ${
+                            type="button"
+                            onClick={() => {
+                              if (onOpenQuickInput) {
+                                if (isEgg) onOpenQuickInput(fs.flock_id, 'daily');
+                                else if (task.task_type === 'vaccine') onOpenQuickInput(fs.flock_id, 'health', 'Vaksin');
+                                else if (task.task_type === 'medicine' || (task.task_type as any) === 'obat') onOpenQuickInput(fs.flock_id, 'health', 'Obat');
+                                else if (task.task_type === 'vitamin') onOpenQuickInput(fs.flock_id, 'health', 'Vitamin');
+                              }
+                            }}
+                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-1 transition-all active:scale-95 ${
                               fs.is_done
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : 'bg-amber-50 text-amber-800 border-amber-300'
+                                : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 ring-1 ring-amber-400 cursor-pointer'
                             }`}
+                            title={`Klik untuk catat ${fs.coop_name}`}
                           >
                             <span>{fs.coop_name}</span>
                             <span>{fs.is_done ? '✅ Selesai' : '⏳ Belum'}</span>
-                          </span>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -453,50 +463,67 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
 
                 {/* Actions: Catat (Telur/Vaksin/Obat/Vitamin) / Edit / Delete */}
                 <div className="flex items-center gap-1 shrink-0">
-                  {!task.is_completed && onOpenQuickInput && (
-                    <>
-                      {isEgg && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenQuickInput(task.flock_id || undefined, 'daily')}
-                          className="px-2.5 py-1 rounded-xl bg-[#00684a] text-white text-[10px] font-black hover:bg-emerald-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
-                        >
-                          <Egg className="w-3 h-3 fill-white/30" />
-                          <span>Catat Telur</span>
-                        </button>
-                      )}
-                      {task.task_type === 'vaccine' && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenQuickInput(task.flock_id || undefined, 'health', 'Vaksin')}
-                          className="px-2.5 py-1 rounded-xl bg-purple-700 text-white text-[10px] font-black hover:bg-purple-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
-                        >
-                          <Syringe className="w-3 h-3" />
-                          <span>Catat Vaksin</span>
-                        </button>
-                      )}
-                      {(task.task_type === 'medicine' || (task.task_type as any) === 'obat') && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenQuickInput(task.flock_id || undefined, 'health', 'Obat')}
-                          className="px-2.5 py-1 rounded-xl bg-blue-700 text-white text-[10px] font-black hover:bg-blue-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
-                        >
-                          <Pill className="w-3 h-3" />
-                          <span>Catat Obat</span>
-                        </button>
-                      )}
-                      {task.task_type === 'vitamin' && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenQuickInput(task.flock_id || undefined, 'health', 'Vitamin')}
-                          className="px-2.5 py-1 rounded-xl bg-amber-600 text-white text-[10px] font-black hover:bg-amber-700 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          <span>Catat Vitamin</span>
-                        </button>
-                      )}
-                    </>
-                  )}
+                  {!task.is_completed && onOpenQuickInput && (() => {
+                    const pendingFlock = task.flocks_status?.find((f) => !f.is_done);
+                    const targetFlockId = pendingFlock?.flock_id || task.flock_id || undefined;
+                    const coopLabel = pendingFlock ? ` (${pendingFlock.coop_name})` : '';
+
+                    return (
+                      <>
+                        {isEgg && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenQuickInput(targetFlockId, 'daily')}
+                            className="px-2.5 py-1 rounded-xl bg-[#00684a] text-white text-[10px] font-black hover:bg-emerald-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
+                          >
+                            <Egg className="w-3 h-3 fill-white/30" />
+                            <span>Catat Telur{coopLabel}</span>
+                          </button>
+                        )}
+                        {task.task_type === 'vaccine' && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenQuickInput(targetFlockId, 'health', 'Vaksin')}
+                            className="px-2.5 py-1 rounded-xl bg-purple-700 text-white text-[10px] font-black hover:bg-purple-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
+                          >
+                            <Syringe className="w-3 h-3" />
+                            <span>Catat Vaksin{coopLabel}</span>
+                          </button>
+                        )}
+                        {(task.task_type === 'medicine' || (task.task_type as any) === 'obat') && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenQuickInput(targetFlockId, 'health', 'Obat')}
+                            className="px-2.5 py-1 rounded-xl bg-blue-700 text-white text-[10px] font-black hover:bg-blue-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
+                          >
+                            <Pill className="w-3 h-3" />
+                            <span>Catat Obat{coopLabel}</span>
+                          </button>
+                        )}
+                        {task.task_type === 'vitamin' && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenQuickInput(targetFlockId, 'health', 'Vitamin')}
+                            className="px-2.5 py-1 rounded-xl bg-amber-600 text-white text-[10px] font-black hover:bg-amber-700 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>Catat Vitamin{coopLabel}</span>
+                          </button>
+                        )}
+                        {!isEgg && task.task_type !== 'vaccine' && task.task_type !== 'medicine' && (task.task_type as any) !== 'obat' && task.task_type !== 'vitamin' && (
+                          <button
+                            type="button"
+                            disabled={readOnly}
+                            onClick={() => handleToggle(task)}
+                            className="px-2.5 py-1 rounded-xl bg-slate-800 text-white text-[10px] font-black hover:bg-slate-900 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
+                          >
+                            <Check className="w-3 h-3 stroke-[3]" />
+                            <span>Tandai Selesai</span>
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {!readOnly && onOpenEditTask && matchedTask && (
                     <button

@@ -107,7 +107,9 @@ export interface FarmTask {
   description?: string | null;
   task_type: TaskType;
   flock_id?: string | null;
+  flock_ids?: string[] | null;
   assigned_to?: string | null; // Profile ID or null (all workers)
+  assigned_to_ids?: string[] | null; // Multiple profile IDs
   recurrence_type: RecurrenceType;
   recurrence_interval?: number; // every N days
   days_of_week?: number[]; // [0,1,2,3,4,5,6] (0=Sun, 1=Mon, ...)
@@ -140,9 +142,11 @@ export interface DailyTaskView {
   description?: string | null;
   task_type: TaskType;
   flock_id?: string | null;
+  flock_ids?: string[] | null;
   coop_name?: string | null;
   flock_name?: string | null;
   assigned_to?: string | null;
+  assigned_to_ids?: string[] | null;
   assigned_name?: string | null;
   recurrence_type: RecurrenceType;
   recurrence_interval?: number;

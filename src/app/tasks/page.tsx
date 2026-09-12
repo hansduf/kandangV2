@@ -70,12 +70,15 @@ export default function TasksPage() {
   const [taskDesc, setTaskDesc] = useState('');
   const [taskType, setTaskType] = useState<TaskType>('custom');
   const [taskFlockId, setTaskFlockId] = useState<string>('');
+  const [taskFlockIds, setTaskFlockIds] = useState<string[]>([]);
   const [taskAssignedTo, setTaskAssignedTo] = useState<string>('');
+  const [taskAssignedToIds, setTaskAssignedToIds] = useState<string[]>([]);
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('daily');
   const [recurrenceInterval, setRecurrenceInterval] = useState<number>(3);
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // Mon, Wed, Fri
   const [dueTime, setDueTime] = useState('16:00');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState('');
   const [taskColor, setTaskColor] = useState<string>('#06b6d4');
 
   // Worker Form State
@@ -131,12 +134,15 @@ export default function TasksPage() {
     setTaskDesc('');
     setTaskType('daily_record');
     setTaskFlockId('');
+    setTaskFlockIds([]);
     setTaskAssignedTo('');
+    setTaskAssignedToIds([]);
     setRecurrenceType('daily');
     setRecurrenceInterval(3);
     setSelectedDays([1, 3, 5]);
     setDueTime('16:00');
     setStartDate(defaultDate || new Date().toISOString().split('T')[0]);
+    setEndDate('');
 
     // Pick first unused color from palette
     const usedColors = new Set(tasks.map((t) => (t.color || '').toLowerCase()));
@@ -152,49 +158,47 @@ export default function TasksPage() {
     setTaskDesc(task.description || '');
     setTaskType(task.task_type || 'custom');
     setTaskFlockId(task.flock_id || '');
+    setTaskFlockIds(task.flock_ids || (task.flock_id ? [task.flock_id] : []));
     setTaskAssignedTo(task.assigned_to || '');
+    setTaskAssignedToIds(task.assigned_to_ids || (task.assigned_to ? [task.assigned_to] : []));
     setRecurrenceType(task.recurrence_type || 'daily');
     setRecurrenceInterval(task.recurrence_interval || 1);
     setSelectedDays(task.days_of_week && task.days_of_week.length > 0 ? task.days_of_week : [1, 3, 5]);
     setDueTime(task.due_time || '16:00');
     setStartDate(task.start_date || new Date().toISOString().split('T')[0]);
+    setEndDate(task.end_date || '');
     setTaskColor(task.color || '#06b6d4');
     setIsTaskModalOpen(true);
   };
-
 
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
 
+    const primaryFlockId = taskFlockIds.length === 1 ? taskFlockIds[0] : null;
+    const primaryAssignedTo = taskAssignedToIds.length === 1 ? taskAssignedToIds[0] : null;
+
+    const taskPayload = {
+      title: taskTitle.trim(),
+      description: taskDesc.trim() || null,
+      task_type: taskType,
+      flock_id: primaryFlockId,
+      flock_ids: taskFlockIds.length > 0 ? taskFlockIds : null,
+      assigned_to: primaryAssignedTo,
+      assigned_to_ids: taskAssignedToIds.length > 0 ? taskAssignedToIds : null,
+      recurrence_type: recurrenceType,
+      recurrence_interval: recurrenceType === 'interval' ? Number(recurrenceInterval) || 1 : 1,
+      days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
+      due_time: dueTime || '16:00',
+      start_date: startDate,
+      end_date: endDate.trim() || null,
+      color: taskColor,
+    };
+
     if (editingTask) {
-      await updateFarmTask(editingTask.id, {
-        title: taskTitle.trim(),
-        description: taskDesc.trim() || null,
-        task_type: taskType,
-        flock_id: taskFlockId || null,
-        assigned_to: taskAssignedTo || null,
-        recurrence_type: recurrenceType,
-        recurrence_interval: recurrenceType === 'interval' ? Number(recurrenceInterval) || 1 : 1,
-        days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
-        due_time: dueTime || '16:00',
-        start_date: startDate,
-        color: taskColor,
-      });
+      await updateFarmTask(editingTask.id, taskPayload);
     } else {
-      await createFarmTask({
-        title: taskTitle.trim(),
-        description: taskDesc.trim() || null,
-        task_type: taskType,
-        flock_id: taskFlockId || null,
-        assigned_to: taskAssignedTo || null,
-        recurrence_type: recurrenceType,
-        recurrence_interval: recurrenceType === 'interval' ? Number(recurrenceInterval) || 1 : 1,
-        days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
-        due_time: dueTime || '16:00',
-        start_date: startDate,
-        color: taskColor,
-      });
+      await createFarmTask(taskPayload);
     }
 
     setEditingTask(null);
@@ -353,8 +357,17 @@ export default function TasksPage() {
             {/* List of Recurring Tasks */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {tasks.map((t) => {
-                const flock = flocks.find((f) => f.id === t.flock_id);
-                const assigned = workers.find((w) => w.id === t.assigned_to);
+                const coopLabel = t.flock_ids && t.flock_ids.length > 0
+                  ? t.flock_ids.map((fid) => flocks.find((f) => f.id === fid)?.coop_name).filter(Boolean).join(', ')
+                  : t.flock_id
+                  ? flocks.find((f) => f.id === t.flock_id)?.coop_name || 'Kandang'
+                  : 'Semua Kandang';
+
+                const workerLabel = t.assigned_to_ids && t.assigned_to_ids.length > 0
+                  ? t.assigned_to_ids.map((wid) => workers.find((w) => w.id === wid)?.name).filter(Boolean).join(', ')
+                  : t.assigned_to
+                  ? workers.find((w) => w.id === t.assigned_to)?.name || 'Pengguna'
+                  : 'Semua Pengguna';
 
                 return (
                   <div
@@ -388,19 +401,20 @@ export default function TasksPage() {
                       )}
 
                       <div className="flex flex-wrap gap-1.5 pt-2 text-[10px] font-bold text-slate-500">
-                        {flock && (
-                          <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700">
-                            🏠 {flock.coop_name}
-                          </span>
-                        )}
                         <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700">
-                          👤 {assigned ? assigned.name : 'Semua Pengguna'}
+                          🏠 {coopLabel}
+                        </span>
+                        <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700">
+                          👤 {workerLabel}
                         </span>
                         {t.due_time && (
                           <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-700">
                             ⏰ {t.due_time.substring(0, 5)} WIB
                           </span>
                         )}
+                        <span className="bg-slate-100 px-2 py-0.5 rounded-md text-slate-600">
+                          {t.end_date ? `📅 ${t.start_date} s/d ${t.end_date}` : `📅 Mulai ${t.start_date}`}
+                        </span>
                       </div>
                     </div>
 
@@ -661,40 +675,113 @@ export default function TasksPage() {
               </div>
 
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                    Kandang
+              {/* Multi-Flock Selector */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase">
+                    Pilih Kandang {taskFlockIds.length > 0 ? `(${taskFlockIds.length} dipilih)` : '(Semua Kandang)'}
                   </label>
-                  <select
-                    value={taskFlockId}
-                    onChange={(e) => setTaskFlockId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-                  >
-                    <option value="">Semua Kandang</option>
-                    {flocks.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.coop_name} ({f.name})
-                      </option>
-                    ))}
-                  </select>
+                  {taskFlockIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setTaskFlockIds([])}
+                      className="text-[10px] font-bold text-[#00684a] hover:underline"
+                    >
+                      Pilih Semua
+                    </button>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                    Ditugaskan Ke
-                  </label>
-                  <select
-                    value={taskAssignedTo}
-                    onChange={(e) => setTaskAssignedTo(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setTaskFlockIds([])}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
+                      taskFlockIds.length === 0
+                        ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
                   >
-                    <option value="">Semua Pengguna</option>
-                    {workers.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
+                    Semua Kandang
+                  </button>
+                  {flocks.map((f) => {
+                    const isSelected = taskFlockIds.includes(f.id);
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setTaskFlockIds(taskFlockIds.filter((id) => id !== f.id));
+                          } else {
+                            setTaskFlockIds([...taskFlockIds, f.id]);
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        <span>{f.coop_name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Multi-Worker Selector */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase">
+                    Ditugaskan Ke {taskAssignedToIds.length > 0 ? `(${taskAssignedToIds.length} dipilih)` : '(Semua Pengguna)'}
+                  </label>
+                  {taskAssignedToIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setTaskAssignedToIds([])}
+                      className="text-[10px] font-bold text-[#00684a] hover:underline"
+                    >
+                      Pilih Semua
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setTaskAssignedToIds([])}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
+                      taskAssignedToIds.length === 0
+                        ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Semua Pengguna
+                  </button>
+                  {workers.map((w) => {
+                    const isSelected = taskAssignedToIds.includes(w.id);
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setTaskAssignedToIds(taskAssignedToIds.filter((id) => id !== w.id));
+                          } else {
+                            setTaskAssignedToIds([...taskAssignedToIds, w.id]);
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        <span>{w.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -793,16 +880,29 @@ export default function TasksPage() {
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                    Target Jam (Due)
+                    Sampai Tanggal (Opsional)
                   </label>
                   <input
-                    type="time"
-                    value={dueTime}
-                    onChange={(e) => setDueTime(e.target.value)}
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-                    required
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  Target Jam (Due)
+                </label>
+                <input
+                  type="time"
+                  value={dueTime}
+                  onChange={(e) => setDueTime(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                  required
+                />
               </div>
 
               {/* Unique Task Color Picker */}

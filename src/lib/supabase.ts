@@ -758,7 +758,16 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
       if (!t.is_active) return false;
       if (t.start_date > date) return false;
       if (t.end_date && t.end_date < date) return false;
-      if (workerId && t.assigned_to && t.assigned_to !== workerId) return false;
+
+      // Filter by worker if specified
+      if (workerId) {
+        const hasSpecificWorker = t.assigned_to || (t.assigned_to_ids && t.assigned_to_ids.length > 0);
+        if (hasSpecificWorker) {
+          const isDirect = t.assigned_to === workerId;
+          const isInList = t.assigned_to_ids && t.assigned_to_ids.includes(workerId);
+          if (!isDirect && !isInList) return false;
+        }
+      }
 
       if (t.recurrence_type === 'once') return t.start_date === date;
       if (t.recurrence_type === 'daily') return true;
@@ -777,9 +786,11 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
         description: t.description,
         task_type: t.task_type,
         flock_id: t.flock_id,
+        flock_ids: t.flock_ids,
         coop_name: t.flock_id ? flockMap.get(t.flock_id)?.coop_name || null : null,
         flock_name: t.flock_id ? flockMap.get(t.flock_id)?.name || null : null,
         assigned_to: t.assigned_to,
+        assigned_to_ids: t.assigned_to_ids,
         recurrence_type: t.recurrence_type,
         recurrence_interval: t.recurrence_interval,
         days_of_week: t.days_of_week,
@@ -801,19 +812,25 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
     let isCompleted = Boolean(item.is_completed);
     let flocksStatus: { flock_id?: string; coop_name: string; is_done: boolean }[] = [];
 
+    // Determine target flocks for this task
+    let targetFlocks: Flock[] = [];
+    if (item.flock_ids && Array.isArray(item.flock_ids) && item.flock_ids.length > 0) {
+      targetFlocks = item.flock_ids.map((id: string) => flockMap.get(id)).filter(Boolean) as Flock[];
+    } else if (item.flock_id) {
+      const f = flockMap.get(item.flock_id);
+      if (f) targetFlocks = [f];
+    } else {
+      targetFlocks = activeFlocks;
+    }
+
     if (item.task_type === 'daily_record') {
-      if (item.flock_id) {
-        const isDone = recordedEggFlockIds.has(item.flock_id);
-        isCompleted = isCompleted || isDone;
-        flocksStatus = [{ flock_id: item.flock_id, coop_name: coopName || 'Kandang', is_done: isCompleted }];
-      } else {
-        flocksStatus = activeFlocks.map((f) => ({
-          flock_id: f.id,
-          coop_name: f.coop_name,
-          is_done: recordedEggFlockIds.has(f.id),
-        }));
-        isCompleted = activeFlocks.length > 0 && flocksStatus.every((s) => s.is_done);
-      }
+      flocksStatus = targetFlocks.map((f) => ({
+        flock_id: f.id,
+        coop_name: f.coop_name,
+        is_done: recordedEggFlockIds.has(f.id),
+      }));
+      // Only marked completed if EVERY target flock has recorded
+      isCompleted = flocksStatus.length > 0 ? flocksStatus.every((s) => s.is_done) : isCompleted;
     } else if (
       item.task_type === 'vaccine' ||
       item.task_type === 'medicine' ||
@@ -821,19 +838,13 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
       item.task_type === 'vitamin'
     ) {
       const targetCat = item.task_type === 'vaccine' ? 'vaksin' : item.task_type === 'vitamin' ? 'vitamin' : 'obat';
-      if (item.flock_id) {
-        const set = recordedHealthMap.get(item.flock_id);
+      flocksStatus = targetFlocks.map((f) => {
+        const set = recordedHealthMap.get(f.id);
         const isDone = Boolean(set && Array.from(set).some((c) => c.includes(targetCat)));
-        isCompleted = isCompleted || isDone;
-        flocksStatus = [{ flock_id: item.flock_id, coop_name: coopName || 'Kandang', is_done: isCompleted }];
-      } else {
-        flocksStatus = activeFlocks.map((f) => {
-          const set = recordedHealthMap.get(f.id);
-          const isDone = Boolean(set && Array.from(set).some((c) => c.includes(targetCat)));
-          return { flock_id: f.id, coop_name: f.coop_name, is_done: isDone };
-        });
-        isCompleted = isCompleted || (activeFlocks.length > 0 && flocksStatus.some((s) => s.is_done));
-      }
+        return { flock_id: f.id, coop_name: f.coop_name, is_done: isDone };
+      });
+      // CRITICAL FIX: ALL target flocks must be done for task to be complete!
+      isCompleted = flocksStatus.length > 0 ? flocksStatus.every((s) => s.is_done) : isCompleted;
     }
 
     return {
@@ -979,32 +990,27 @@ export async function checkAndSyncDailyEggTasks(
     const allFlocks = await fetchFlocks();
     const activeFlocks = allFlocks.filter((f) => f.status === 'active' || !f.status);
 
-    // Check which flocks have records for recordDate
-    const flockChecks = await Promise.all(
-      activeFlocks.map(async (f) => {
-        if (f.id === savedFlockId) return true;
-        const hist = await fetchDailyHistory(f.id, 60);
-        return hist.some((r) => r.record_date === recordDate);
-      })
-    );
-
-    const allFlocksRecorded = activeFlocks.length > 0 && flockChecks.every(Boolean);
-
     for (const task of eggTasks) {
-      if (task.flock_id) {
-        // Task is specific to a flock
-        if (task.flock_id === savedFlockId) {
-          await setTaskCompletion(task.task_id, recordDate, true, workerId);
-        }
+      let targetFlockIds: string[] = [];
+      if (task.flock_ids && task.flock_ids.length > 0) {
+        targetFlockIds = task.flock_ids;
+      } else if (task.flock_id) {
+        targetFlockIds = [task.flock_id];
       } else {
-        // General farm-wide task: ONLY complete if ALL active flocks have recorded!
-        if (allFlocksRecorded) {
-          await setTaskCompletion(task.task_id, recordDate, true, workerId);
-        } else {
-          // If not all flocks are recorded yet, revert to incomplete
-          await setTaskCompletion(task.task_id, recordDate, false, workerId);
-        }
+        targetFlockIds = activeFlocks.map((f) => f.id);
       }
+
+      // Check if all target flocks have daily records for recordDate
+      const allDone = await Promise.all(
+        targetFlockIds.map(async (fid) => {
+          if (fid === savedFlockId) return true;
+          const hist = await fetchDailyHistory(fid, 60);
+          return hist.some((r) => r.record_date === recordDate);
+        })
+      );
+
+      const isAllTargetDone = targetFlockIds.length > 0 && allDone.every(Boolean);
+      await setTaskCompletion(task.task_id, recordDate, isAllTargetDone, workerId);
     }
   } catch (err) {
     console.warn('Failed to sync daily egg tasks:', err);
@@ -1021,16 +1027,51 @@ export async function checkAndSyncHealthTasks(
     const tasksForDate = await fetchTasksForDate(recordDate, workerId);
     const catLower = (category || '').toLowerCase();
 
-    const matchedTasks = tasksForDate.filter((t) => {
-      if (t.flock_id && t.flock_id !== flockId) return false;
+    const healthTasks = tasksForDate.filter((t) => {
       if (catLower.includes('vaksin') && t.task_type === 'vaccine') return true;
       if (catLower.includes('obat') && (t.task_type === 'medicine' || (t.task_type as any) === 'obat')) return true;
       if (catLower.includes('vitamin') && t.task_type === 'vitamin') return true;
       return false;
     });
 
-    for (const t of matchedTasks) {
-      await setTaskCompletion(t.task_id, recordDate, true, workerId);
+    if (healthTasks.length === 0) return;
+
+    const allFlocks = await fetchFlocks();
+    const activeFlocks = allFlocks.filter((f) => f.status === 'active' || !f.status);
+
+    for (const t of healthTasks) {
+      let targetFlockIds: string[] = [];
+      if (t.flock_ids && t.flock_ids.length > 0) {
+        targetFlockIds = t.flock_ids;
+      } else if (t.flock_id) {
+        targetFlockIds = [t.flock_id];
+      } else {
+        targetFlockIds = activeFlocks.map((f) => f.id);
+      }
+
+      // If the saved flock is not even one of the target flocks, skip
+      if (!targetFlockIds.includes(flockId)) continue;
+
+      const allDone = await Promise.all(
+        targetFlockIds.map(async (fid) => {
+          if (fid === flockId) return true;
+          if (isConfigured) {
+            const { data } = await supabase
+              .from('health_records')
+              .select('id, category')
+              .eq('flock_id', fid)
+              .eq('record_date', recordDate);
+            return Boolean(data && data.some((r: any) => (r.category || '').toLowerCase().includes(catLower)));
+          } else if (typeof window !== 'undefined') {
+            const hHist = getLocalHealthRecords(fid);
+            return hHist.some((r: any) => r.record_date === recordDate && (r.category || '').toLowerCase().includes(catLower));
+          }
+          return false;
+        })
+      );
+
+      const isAllTargetDone = targetFlockIds.length > 0 && allDone.every(Boolean);
+      await setTaskCompletion(t.task_id, recordDate, isAllTargetDone, workerId);
     }
   } catch (err) {
     console.warn('Failed to sync health tasks:', err);
@@ -1151,7 +1192,9 @@ export async function createFarmTask(task: Partial<FarmTask>): Promise<FarmTask>
     description: task.description?.trim() || null,
     task_type: task.task_type || 'custom',
     flock_id: cleanFlockId,
+    flock_ids: task.flock_ids && task.flock_ids.length > 0 ? task.flock_ids : null,
     assigned_to: cleanAssignedTo,
+    assigned_to_ids: task.assigned_to_ids && task.assigned_to_ids.length > 0 ? task.assigned_to_ids : null,
     recurrence_type: task.recurrence_type || 'daily',
     recurrence_interval: task.recurrence_interval || 1,
     days_of_week: task.days_of_week || [],
@@ -1172,7 +1215,9 @@ export async function createFarmTask(task: Partial<FarmTask>): Promise<FarmTask>
           description: newTask.description,
           task_type: newTask.task_type,
           flock_id: cleanFlockId,
+          flock_ids: newTask.flock_ids,
           assigned_to: cleanAssignedTo,
+          assigned_to_ids: newTask.assigned_to_ids,
           recurrence_type: newTask.recurrence_type,
           recurrence_interval: newTask.recurrence_interval,
           days_of_week: newTask.days_of_week,
@@ -1312,7 +1357,9 @@ export async function fetchAllTasks(): Promise<FarmTask[]> {
 export async function updateFarmTask(id: string, updates: Partial<FarmTask>): Promise<FarmTask> {
   const cleanPayload: any = { ...updates };
   if ('flock_id' in cleanPayload) cleanPayload.flock_id = toValidUuidOrNull(cleanPayload.flock_id);
+  if ('flock_ids' in cleanPayload) cleanPayload.flock_ids = cleanPayload.flock_ids && cleanPayload.flock_ids.length > 0 ? cleanPayload.flock_ids : null;
   if ('assigned_to' in cleanPayload) cleanPayload.assigned_to = toValidUuidOrNull(cleanPayload.assigned_to);
+  if ('assigned_to_ids' in cleanPayload) cleanPayload.assigned_to_ids = cleanPayload.assigned_to_ids && cleanPayload.assigned_to_ids.length > 0 ? cleanPayload.assigned_to_ids : null;
 
   const validUuid = toValidUuidOrNull(id);
 

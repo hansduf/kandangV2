@@ -59,15 +59,19 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
   // If there are no tasks at all today
   if (tasks.length === 0) return null;
 
-  const handleTaskClick = async (task: DailyTaskView) => {
+  const handleTaskClick = async (task: DailyTaskView, specificFlockId?: string) => {
+    // Find uncompleted flock if any
+    const pendingFlock = task.flocks_status?.find((f) => !f.is_done);
+    const targetFlockId = specificFlockId || pendingFlock?.flock_id || task.flock_id || undefined;
+
     if (task.task_type === 'daily_record') {
-      onOpenQuickInput(task.flock_id || undefined, 'daily');
+      onOpenQuickInput(targetFlockId, 'daily');
     } else if (task.task_type === 'vaccine') {
-      onOpenQuickInput(task.flock_id || undefined, 'health', 'Vaksin');
+      onOpenQuickInput(targetFlockId, 'health', 'Vaksin');
     } else if (task.task_type === 'medicine' || (task.task_type as any) === 'obat') {
-      onOpenQuickInput(task.flock_id || undefined, 'health', 'Obat');
+      onOpenQuickInput(targetFlockId, 'health', 'Obat');
     } else if (task.task_type === 'vitamin') {
-      onOpenQuickInput(task.flock_id || undefined, 'health', 'Vitamin');
+      onOpenQuickInput(targetFlockId, 'health', 'Vitamin');
     } else {
       await toggleTaskCompletion(task.task_id, todayStr, activeProfile?.id);
       await loadTodayTasks();
@@ -109,6 +113,8 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
               const isVaccine = task.task_type === 'vaccine';
               const isMedicine = task.task_type === 'medicine' || (task.task_type as any) === 'obat';
               const isVitamin = task.task_type === 'vitamin';
+              const pendingFlock = task.flocks_status?.find((f) => !f.is_done);
+              const targetCoopLabel = pendingFlock ? ` (${pendingFlock.coop_name})` : '';
 
               return (
                 <div
@@ -139,21 +145,24 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
                       )}
                     </div>
 
-                    {/* Per-kandang completion status breakdown */}
+                    {/* Per-kandang completion status breakdown (Clickable badges) */}
                     {task.flocks_status && task.flocks_status.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {task.flocks_status.map((fs, idx) => (
-                          <span
+                          <button
                             key={idx}
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-1 ${
+                            type="button"
+                            onClick={() => handleTaskClick(task, fs.flock_id)}
+                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-1 transition-all active:scale-95 ${
                               fs.is_done
                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : 'bg-amber-50 text-amber-800 border-amber-300'
+                                : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 ring-1 ring-amber-400 cursor-pointer'
                             }`}
+                            title={`Klik untuk catat ${fs.coop_name}`}
                           >
                             <span>{fs.coop_name}</span>
                             <span>{fs.is_done ? '✅ Selesai' : '⏳ Belum'}</span>
-                          </span>
+                          </button>
                         ))}
                       </div>
                     )}
@@ -187,22 +196,22 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
                     ) : isEgg ? (
                       <>
                         <Egg className="w-3.5 h-3.5 fill-white/20" />
-                        <span>Catat Telur</span>
+                        <span>Catat Telur{targetCoopLabel}</span>
                       </>
                     ) : isVaccine ? (
                       <>
                         <Syringe className="w-3.5 h-3.5" />
-                        <span>Catat Vaksin</span>
+                        <span>Catat Vaksin{targetCoopLabel}</span>
                       </>
                     ) : isMedicine ? (
                       <>
                         <Pill className="w-3.5 h-3.5" />
-                        <span>Catat Obat</span>
+                        <span>Catat Obat{targetCoopLabel}</span>
                       </>
                     ) : isVitamin ? (
                       <>
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Catat Vitamin</span>
+                        <span>Catat Vitamin{targetCoopLabel}</span>
                       </>
                     ) : (
                       <>

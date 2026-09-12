@@ -619,36 +619,45 @@ export async function updateOwnerPin(profileId: string, newPin: string): Promise
 // FARM TASKS & RECURRING ALARMS
 // ==============================================================================
 
+// Color Palette for Farm Tasks
+export const TASK_COLOR_PALETTE = [
+  { name: 'Emerald', hex: '#10b981', label: 'Hijau (Emerald)' },
+  { name: 'Cyan', hex: '#06b6d4', label: 'Biru Kehijauan (Cyan)' },
+  { name: 'Blue', hex: '#3b82f6', label: 'Biru (Blue)' },
+  { name: 'Purple', hex: '#8b5cf6', label: 'Ungu (Purple)' },
+  { name: 'Amber', hex: '#f59e0b', label: 'Kuning Jingga (Amber)' },
+  { name: 'Pink', hex: '#ec4899', label: 'Merah Muda (Pink)' },
+  { name: 'Teal', hex: '#14b8a6', label: 'Hijau Toska (Teal)' },
+  { name: 'Indigo', hex: '#6366f1', label: 'Indigo' },
+  { name: 'Orange', hex: '#f97316', label: 'Oranye' },
+];
+
 export async function fetchTasksForDate(date: string, workerId?: string): Promise<DailyTaskView[]> {
+  const allTasks = await fetchAllTasks();
+  const colorMap = new Map<string, string>();
+  for (const t of allTasks) {
+    colorMap.set(t.id, t.color || '#10b981');
+  }
+
   if (isConfigured) {
     try {
       const { data, error } = await supabase.rpc('get_tasks_for_date', {
         p_date: date,
         p_worker_id: workerId || null,
       });
-      if (!error && data) return data;
+      if (!error && data && data.length > 0) {
+        return data.map((item: any) => ({
+          ...item,
+          color: item.color || colorMap.get(item.task_id) || '#10b981',
+        }));
+      }
     } catch (err) {
       console.warn('RPC get_tasks_for_date failed, using local tasks:', err);
     }
   }
 
   // Local fallback: generate tasks for date
-  if (typeof window === 'undefined') return [];
-  const storedTasks = localStorage.getItem('kandang_tasks');
-  const allTasks: FarmTask[] = storedTasks ? JSON.parse(storedTasks) : [
-    {
-      id: 'task-egg-default',
-      title: 'Catat Produksi Telur & Pakan',
-      description: 'Hitung jumlah butir telur utuh, rusak, dan timbangan sore ini',
-      task_type: 'daily_record',
-      recurrence_type: 'daily',
-      due_time: '16:30',
-      start_date: '2026-01-01',
-      is_active: true,
-    }
-  ];
-
-  const storedCompletions = localStorage.getItem('kandang_task_completions');
+  const storedCompletions = typeof window !== 'undefined' ? localStorage.getItem('kandang_task_completions') : null;
   const completions: TaskCompletion[] = storedCompletions ? JSON.parse(storedCompletions) : [];
 
   const targetDate = new Date(date);
@@ -682,6 +691,7 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
       recurrence_interval: t.recurrence_interval,
       days_of_week: t.days_of_week,
       due_time: t.due_time,
+      color: t.color || '#10b981',
       is_completed: isComp,
     };
   });
@@ -835,9 +845,17 @@ export async function checkAndSyncDailyEggTasks(
   }
 }
 
+export interface DayTaskIndicator {
+  task_id: string;
+  title: string;
+  color: string;
+  is_completed: boolean;
+}
+
 export interface MonthDayTaskStatus {
   total: number;
   completed: number;
+  tasks: DayTaskIndicator[];
 }
 
 export async function fetchMonthTaskStatus(
@@ -885,8 +903,7 @@ export async function fetchMonthTaskStatus(
     const targetDate = new Date(year, month, d);
     const targetDayOfWeek = targetDate.getDay();
 
-    let total = 0;
-    let completed = 0;
+    const dayTasks: DayTaskIndicator[] = [];
 
     for (const t of allTasks) {
       if (!t.is_active) continue;
@@ -910,15 +927,22 @@ export async function fetchMonthTaskStatus(
       }
 
       if (isDue) {
-        total++;
-        if (compSet.has(`${t.id}_${dateStr}`)) {
-          completed++;
-        }
+        const isDone = compSet.has(`${t.id}_${dateStr}`);
+        dayTasks.push({
+          task_id: t.id,
+          title: t.title,
+          color: t.color || '#10b981',
+          is_completed: isDone,
+        });
       }
     }
 
-    if (total > 0) {
-      result[dateStr] = { total, completed };
+    if (dayTasks.length > 0) {
+      result[dateStr] = {
+        total: dayTasks.length,
+        completed: dayTasks.filter((t) => t.is_completed).length,
+        tasks: dayTasks,
+      };
     }
   }
 
@@ -939,6 +963,7 @@ export async function createFarmTask(task: Partial<FarmTask>): Promise<FarmTask>
     start_date: task.start_date || new Date().toISOString().split('T')[0],
     end_date: task.end_date || null,
     due_time: task.due_time || '16:00',
+    color: task.color || '#06b6d4',
     is_active: true,
     created_at: new Date().toISOString(),
   };
@@ -959,6 +984,7 @@ export async function createFarmTask(task: Partial<FarmTask>): Promise<FarmTask>
           start_date: newTask.start_date,
           end_date: newTask.end_date,
           due_time: newTask.due_time,
+          color: newTask.color,
           is_active: true,
         })
         .select()
@@ -986,7 +1012,7 @@ export async function fetchAllTasks(): Promise<FarmTask[]> {
         .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
-      if (!error && data) return data;
+      if (!error && data && data.length > 0) return data;
     } catch (err) {
       console.warn('Failed to fetch from supabase farm_tasks, using local:', err);
     }
@@ -994,7 +1020,27 @@ export async function fetchAllTasks(): Promise<FarmTask[]> {
 
   if (typeof window === 'undefined') return [];
   const stored = localStorage.getItem('kandang_tasks');
-  return stored ? JSON.parse(stored) : [];
+  if (stored) {
+    const parsed: FarmTask[] = JSON.parse(stored);
+    if (parsed.length > 0) return parsed;
+  }
+
+  // Guaranteed default seed task if empty
+  const defaultTasks: FarmTask[] = [
+    {
+      id: 'task-egg-default',
+      title: 'Catat Produksi Telur & Pakan',
+      description: 'Hitung jumlah butir telur utuh, rusak, dan timbangan sore ini',
+      task_type: 'daily_record',
+      recurrence_type: 'daily',
+      due_time: '16:30',
+      start_date: '2026-01-01',
+      color: '#10b981', // Emerald
+      is_active: true,
+    }
+  ];
+  localStorage.setItem('kandang_tasks', JSON.stringify(defaultTasks));
+  return defaultTasks;
 }
 
 export async function updateFarmTask(id: string, updates: Partial<FarmTask>): Promise<FarmTask> {
@@ -1024,7 +1070,7 @@ export async function updateFarmTask(id: string, updates: Partial<FarmTask>): Pr
       }
     }
   }
-  return { id, title: updates.title || '', task_type: updates.task_type || 'custom', recurrence_type: updates.recurrence_type || 'daily', start_date: '', is_active: true } as FarmTask;
+  return { id, title: updates.title || '', task_type: updates.task_type || 'custom', recurrence_type: updates.recurrence_type || 'daily', start_date: '', color: updates.color || '#06b6d4', is_active: true } as FarmTask;
 }
 
 export async function deleteTask(id: string): Promise<void> {

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DailyTaskView } from '@/types/database';
+import { DailyTaskView, FarmTask } from '@/types/database';
 import {
   fetchTasksForDate,
   toggleTaskCompletion,
   fetchMonthTaskStatus,
+  fetchAllTasks,
   MonthDayTaskStatus,
 } from '@/lib/supabase';
 import { useProfile } from '@/context/ProfileContext';
@@ -16,18 +17,29 @@ import {
   Clock,
   Egg,
   Check,
+  Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 interface TaskCalendarCardProps {
   onOpenQuickInput?: () => void;
   workerId?: string;
   readOnly?: boolean;
+  onOpenCreateTask?: (date?: string) => void;
+  onOpenEditTask?: (task: FarmTask) => void;
+  onDeleteTask?: (taskId: string) => void;
+  refreshTrigger?: any;
 }
 
 export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
   onOpenQuickInput,
   workerId,
   readOnly = false,
+  onOpenCreateTask,
+  onOpenEditTask,
+  onDeleteTask,
+  refreshTrigger,
 }) => {
   const { activeProfile } = useProfile();
   const now = new Date();
@@ -40,6 +52,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
   const [currentMonth, setCurrentMonth] = useState<number>(now.getMonth());
   const [tasksForDate, setTasksForDate] = useState<DailyTaskView[]>([]);
   const [monthStatus, setMonthStatus] = useState<Record<string, MonthDayTaskStatus>>({});
+  const [activeTasks, setActiveTasks] = useState<FarmTask[]>([]);
   const [loading, setLoading] = useState(false);
 
   const monthNames = [
@@ -61,8 +74,12 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
 
   const loadMonthStatus = useCallback(async (year: number, month: number) => {
     try {
-      const data = await fetchMonthTaskStatus(year, month, workerId || activeProfile?.id);
-      setMonthStatus(data);
+      const [statusData, allTasksData] = await Promise.all([
+        fetchMonthTaskStatus(year, month, workerId || activeProfile?.id),
+        fetchAllTasks(),
+      ]);
+      setMonthStatus(statusData);
+      setActiveTasks(allTasksData);
     } catch (err) {
       console.error('Failed to load month task status:', err);
     }
@@ -70,11 +87,11 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
 
   useEffect(() => {
     loadTasks(selectedDate);
-  }, [selectedDate, loadTasks]);
+  }, [selectedDate, loadTasks, refreshTrigger]);
 
   useEffect(() => {
     loadMonthStatus(currentYear, currentMonth);
-  }, [currentYear, currentMonth, loadMonthStatus]);
+  }, [currentYear, currentMonth, loadMonthStatus, refreshTrigger]);
 
   const handlePrevMonth = () => {
     if (currentMonth === 0) {
@@ -140,7 +157,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
   return (
     <div className="bg-white border border-slate-200/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 space-y-3.5 shadow-sm">
       {/* Calendar Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00684a] border border-emerald-200 flex items-center justify-center shadow-xs">
             <CalendarIcon className="w-4 h-4" />
@@ -183,21 +200,22 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
         </div>
       </div>
 
-      {/* Legend Indicators */}
-      <div className="flex items-center justify-between gap-2 px-1 flex-wrap text-[10px] font-bold text-slate-500 bg-slate-50 p-2 rounded-xl border border-slate-200">
+      {/* Dynamic Task Color Legend */}
+      <div className="flex items-center gap-2.5 px-2 py-2 flex-wrap text-[10px] font-bold text-slate-600 bg-slate-50 rounded-xl border border-slate-200">
         <span className="text-slate-400 font-extrabold uppercase tracking-wider text-[9px]">Indikator:</span>
-        <div className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          <span>Semua Selesai</span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+          <span>Belum / Terlewat</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-amber-500" />
-          <span>Tugas Menunggu</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-rose-500" />
-          <span>Terlewat / Belum</span>
-        </div>
+        {activeTasks.map((t) => (
+          <div key={t.id} className="flex items-center gap-1.5">
+            <span
+              className="w-2 h-2 rounded-full shrink-0 shadow-2xs"
+              style={{ backgroundColor: t.color || '#10b981' }}
+            />
+            <span className="truncate max-w-[130px] font-bold text-slate-700">{t.title}</span>
+          </div>
+        ))}
       </div>
 
       {/* Quick Day Shortcuts */}
@@ -250,11 +268,6 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
             const isSelected = dateStr === selectedDate;
             const status = monthStatus[dateStr];
 
-            const hasTasks = Boolean(status && status.total > 0);
-            const isAllCompleted = hasTasks && status.completed >= status.total;
-            const isPastOverdue = hasTasks && !isAllCompleted && dateStr < todayStr;
-            const isPending = hasTasks && !isAllCompleted && dateStr >= todayStr;
-
             return (
               <button
                 key={dateStr}
@@ -285,26 +298,23 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                   )}
                 </div>
 
-                {/* Status Indicator Dots */}
-                <div className="flex items-center justify-center gap-0.5 mt-auto">
-                  {isAllCompleted && (
-                    <span
-                      title={`${status.completed}/${status.total} selesai`}
-                      className="w-1.5 h-1.5 rounded-full bg-emerald-500"
-                    />
-                  )}
-                  {isPending && (
-                    <span
-                      title={`${status.completed}/${status.total} selesai`}
-                      className="w-1.5 h-1.5 rounded-full bg-amber-500"
-                    />
-                  )}
-                  {isPastOverdue && (
-                    <span
-                      title={`${status.completed}/${status.total} selesai`}
-                      className="w-1.5 h-1.5 rounded-full bg-rose-500"
-                    />
-                  )}
+                {/* Status Indicator Dots Under Date Number */}
+                <div className="flex items-center justify-center gap-0.5 mt-auto flex-wrap max-w-full px-0.5">
+                  {status?.tasks && status.tasks.map((task) => {
+                    const isDone = task.is_completed;
+                    // Red if overdue/due today and not completed; custom color when done or future
+                    const isOverdueOrDueToday = !isDone && dateStr <= todayStr;
+                    const dotColor = isOverdueOrDueToday ? '#ef4444' : task.color || '#10b981';
+
+                    return (
+                      <span
+                        key={task.task_id}
+                        title={`${task.title}: ${isDone ? 'Selesai' : 'Belum Selesai'}`}
+                        className="w-1.5 h-1.5 rounded-full shrink-0 shadow-2xs"
+                        style={{ backgroundColor: dotColor }}
+                      />
+                    );
+                  })}
                 </div>
               </button>
             );
@@ -314,7 +324,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
 
       {/* Selected Date Detail Card */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+        <div className="flex items-center justify-between border-b border-slate-200/80 pb-2 flex-wrap gap-2">
           <div className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-[#00684a]" />
             <span className="text-xs font-black text-slate-800">
@@ -326,22 +336,36 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
               </span>
             )}
           </div>
-          <span className="text-[10px] font-black bg-white text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
-            {completedCount} / {tasksForDate.length} Selesai
-          </span>
+
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="text-[10px] font-black bg-white text-slate-700 px-2 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
+              {completedCount} / {tasksForDate.length} Selesai
+            </span>
+            {onOpenCreateTask && !readOnly && (
+              <button
+                type="button"
+                onClick={() => onOpenCreateTask(selectedDate)}
+                className="text-[10px] font-black bg-[#00684a] text-white hover:bg-emerald-800 px-2 py-1 rounded-lg transition-all flex items-center gap-1 shadow-2xs"
+              >
+                <Plus className="w-3 h-3 stroke-[3]" />
+                <span>Tambah Tugas</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Tasks List */}
         <div className="space-y-2">
           {tasksForDate.map((task) => {
             const isEgg = task.task_type === 'daily_record';
+            const matchedTask = activeTasks.find((t) => t.id === task.task_id);
 
             return (
               <div
                 key={task.task_id}
                 className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                   task.is_completed
-                    ? 'bg-white/60 border-slate-200 opacity-80'
+                    ? 'bg-white/60 border-slate-200 opacity-85'
                     : 'bg-white border-slate-200 shadow-xs'
                 }`}
               >
@@ -352,15 +376,23 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                     onClick={() => handleToggle(task)}
                     className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border transition-all ${
                       task.is_completed
-                        ? 'bg-[#00684a] border-[#00684a] text-white'
+                        ? 'text-white'
                         : 'bg-white border-slate-300 hover:border-emerald-500'
                     }`}
+                    style={{
+                      backgroundColor: task.is_completed ? (task.color || '#00684a') : undefined,
+                      borderColor: task.is_completed ? (task.color || '#00684a') : undefined,
+                    }}
                   >
                     {task.is_completed && <Check className="w-4 h-4 stroke-[3]" />}
                   </button>
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
+                        style={{ backgroundColor: task.color || '#10b981' }}
+                      />
                       <span
                         className={`text-xs font-black truncate ${
                           task.is_completed ? 'line-through text-slate-400' : 'text-slate-900'
@@ -387,23 +419,57 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                   </div>
                 </div>
 
-                {isEgg && !task.is_completed && onOpenQuickInput && (
-                  <button
-                    type="button"
-                    onClick={onOpenQuickInput}
-                    className="px-2.5 py-1 rounded-xl bg-[#00684a] text-white text-[10px] font-black shrink-0 hover:bg-emerald-800 active:scale-95 shadow-xs flex items-center gap-1"
-                  >
-                    <Egg className="w-3 h-3 fill-white/30" />
-                    <span>Catat</span>
-                  </button>
-                )}
+                {/* Actions: Catat / Edit / Delete */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {isEgg && !task.is_completed && onOpenQuickInput && (
+                    <button
+                      type="button"
+                      onClick={onOpenQuickInput}
+                      className="px-2.5 py-1 rounded-xl bg-[#00684a] text-white text-[10px] font-black hover:bg-emerald-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
+                    >
+                      <Egg className="w-3 h-3 fill-white/30" />
+                      <span>Catat</span>
+                    </button>
+                  )}
+
+                  {!readOnly && onOpenEditTask && matchedTask && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenEditTask(matchedTask)}
+                      title="Edit Tugas"
+                      className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
+                  {!readOnly && onDeleteTask && matchedTask && (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteTask(matchedTask.id)}
+                      title="Hapus Tugas"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
 
           {tasksForDate.length === 0 && !loading && (
-            <div className="text-center py-6 bg-white border border-slate-200/60 rounded-xl text-slate-400 text-xs font-semibold">
-              Tidak ada tugas yang dijadwalkan pada tanggal ini.
+            <div className="text-center py-6 bg-white border border-slate-200/60 rounded-xl text-slate-400 text-xs font-semibold space-y-2">
+              <p>Tidak ada tugas yang dijadwalkan pada tanggal ini.</p>
+              {onOpenCreateTask && !readOnly && (
+                <button
+                  type="button"
+                  onClick={() => onOpenCreateTask(selectedDate)}
+                  className="px-3 py-1.5 bg-emerald-50 text-[#00684a] border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all"
+                >
+                  + Buat Tugas di Tanggal Ini
+                </button>
+              )}
             </div>
           )}
         </div>

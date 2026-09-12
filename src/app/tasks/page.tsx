@@ -23,6 +23,7 @@ import {
   saveDailyRecord,
   saveHealthRecord,
   checkAndSyncDailyEggTasks,
+  TASK_COLOR_PALETTE,
 } from '@/lib/supabase';
 import {
   CheckSquare,
@@ -39,11 +40,14 @@ import {
   Save,
   X,
   Pencil,
+  Check,
 } from 'lucide-react';
 
 export default function TasksPage() {
-  const { isOwner, activeProfile, refreshProfiles, updateProfileName } = useProfile();
+  const { activeProfile, refreshProfiles, updateProfileName } = useProfile();
   const [activeTab, setActiveTab] = useState<'tasks' | 'workers'>('tasks');
+
+  // Data State
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [tasks, setTasks] = useState<FarmTask[]>([]);
   const [workers, setWorkers] = useState<AppProfile[]>([]);
@@ -72,6 +76,7 @@ export default function TasksPage() {
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // Mon, Wed, Fri
   const [dueTime, setDueTime] = useState('16:00');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [taskColor, setTaskColor] = useState<string>('#06b6d4');
 
   // Worker Form State
   const [workerName, setWorkerName] = useState('');
@@ -104,7 +109,7 @@ export default function TasksPage() {
     loadData();
   }, []);
 
-  const handleOpenCreateTask = () => {
+  const handleOpenCreateTask = (defaultDate?: string) => {
     setEditingTask(null);
     setTaskTitle('');
     setTaskDesc('');
@@ -115,7 +120,13 @@ export default function TasksPage() {
     setRecurrenceInterval(3);
     setSelectedDays([1, 3, 5]);
     setDueTime('16:00');
-    setStartDate(new Date().toISOString().split('T')[0]);
+    setStartDate(defaultDate || new Date().toISOString().split('T')[0]);
+
+    // Pick first unused color from palette
+    const usedColors = new Set(tasks.map((t) => (t.color || '').toLowerCase()));
+    const available = TASK_COLOR_PALETTE.find((p) => !usedColors.has(p.hex.toLowerCase()));
+    setTaskColor(available ? available.hex : TASK_COLOR_PALETTE[0].hex);
+
     setIsTaskModalOpen(true);
   };
 
@@ -131,6 +142,7 @@ export default function TasksPage() {
     setSelectedDays(task.days_of_week && task.days_of_week.length > 0 ? task.days_of_week : [1, 3, 5]);
     setDueTime(task.due_time || '16:00');
     setStartDate(task.start_date || new Date().toISOString().split('T')[0]);
+    setTaskColor(task.color || '#06b6d4');
     setIsTaskModalOpen(true);
   };
 
@@ -150,6 +162,7 @@ export default function TasksPage() {
         days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
         due_time: dueTime || '16:00',
         start_date: startDate,
+        color: taskColor,
       });
     } else {
       await createFarmTask({
@@ -163,6 +176,7 @@ export default function TasksPage() {
         days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
         due_time: dueTime || '16:00',
         start_date: startDate,
+        color: taskColor,
       });
     }
 
@@ -311,7 +325,7 @@ export default function TasksPage() {
               </div>
 
               <button
-                onClick={handleOpenCreateTask}
+                onClick={() => handleOpenCreateTask()}
                 className="bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-md transition-all shrink-0"
               >
                 <Plus className="w-4 h-4 stroke-[3]" />
@@ -332,8 +346,14 @@ export default function TasksPage() {
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-black text-slate-900">{t.title}</span>
-                        <span className="text-[9.5px] font-extrabold bg-emerald-50 text-[#00684a] px-2 py-0.5 rounded-full border border-emerald-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="w-3 h-3 rounded-full shrink-0 shadow-2xs"
+                            style={{ backgroundColor: t.color || '#10b981' }}
+                          />
+                          <span className="text-xs font-black text-slate-900 truncate">{t.title}</span>
+                        </div>
+                        <span className="text-[9.5px] font-extrabold bg-emerald-50 text-[#00684a] px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
                           {t.recurrence_type === 'daily'
                             ? 'Setiap Hari'
                             : t.recurrence_type === 'interval'
@@ -398,6 +418,10 @@ export default function TasksPage() {
             <TaskCalendarCard
               onOpenQuickInput={() => setIsQuickInputOpen(true)}
               readOnly={false}
+              onOpenCreateTask={handleOpenCreateTask}
+              onOpenEditTask={handleOpenEditTask}
+              onDeleteTask={handleDeleteTask}
+              refreshTrigger={tasks}
             />
           </div>
         )}
@@ -718,6 +742,44 @@ export default function TasksPage() {
                     required
                   />
                 </div>
+              </div>
+
+              {/* Unique Task Color Picker */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  Warna Indikator Kalender (Khusus Tugas Ini)
+                </label>
+                <div className="grid grid-cols-5 gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                  {TASK_COLOR_PALETTE.map((pal) => {
+                    const usedBy = tasks.find(
+                      (t) => t.id !== editingTask?.id && (t.color || '').toLowerCase() === pal.hex.toLowerCase()
+                    );
+                    const isSelected = taskColor.toLowerCase() === pal.hex.toLowerCase();
+
+                    return (
+                      <button
+                        key={pal.hex}
+                        type="button"
+                        disabled={Boolean(usedBy)}
+                        onClick={() => setTaskColor(pal.hex)}
+                        title={usedBy ? `${pal.label} (Sudah dipakai: ${usedBy.title})` : pal.label}
+                        className={`h-9 rounded-xl flex items-center justify-center transition-all relative ${
+                          usedBy
+                            ? 'opacity-25 cursor-not-allowed border border-slate-200'
+                            : isSelected
+                            ? 'ring-2 ring-slate-900 scale-105 shadow-sm'
+                            : 'hover:scale-105 border border-transparent'
+                        }`}
+                        style={{ backgroundColor: pal.hex }}
+                      >
+                        {isSelected && <Check className="w-4 h-4 text-white stroke-[3]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span className="text-[9.5px] text-slate-400 font-semibold mt-1 block">
+                  *Pilih warna unik agar pekerja tidak bingung. Warna merah khusus untuk tugas belum dikerjakan/terlewat.
+                </span>
               </div>
 
               <button

@@ -114,6 +114,7 @@ export interface FarmTask {
   start_date: string;
   end_date?: string | null;
   due_time?: string | null; // e.g. '16:00'
+  color?: string; // Hex color code for calendar indicator
   is_active: boolean;
   created_at?: string;
 }
@@ -141,6 +142,7 @@ export interface DailyTaskView {
   recurrence_interval?: number;
   days_of_week?: number[];
   due_time?: string | null;
+  color?: string;
   is_completed: boolean;
   completed_at?: string | null;
   completed_by?: string | null;

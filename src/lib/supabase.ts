@@ -2,15 +2,18 @@ import { createClient } from '@supabase/supabase-js';
 import { Flock, DailyRecord, HealthRecord, DashboardSummary, AppProfile, FarmTask, TaskCompletion, DailyTaskView } from '@/types/database';
 import { addToSyncQueue } from './syncQueue';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummykey';
+const DEFAULT_SUPABASE_URL = 'https://jygcjwueflcpwmfzzvon.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_KDgoBXOuCkWem_h8VO5IZw_zPg3-1Ll';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const isConfigured = !!(
-  process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-  !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('xyzcompany')
+  (process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL) &&
+  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY) &&
+  !supabaseUrl.includes('xyzcompany')
 );
 
 // MOCK LOCAL STORAGE FALLBACK DATA FOR PREVIEW MODE IF SUPABASE IS NOT YET CONNECTED

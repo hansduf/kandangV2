@@ -7,6 +7,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme">
 
         <activity
@@ -34,17 +35,56 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- KandangKu Home Screen Widget -->
+        <!-- Widget 1: Ringkasan Produksi & HDP -->
         <receiver
-            android:name=".KandangWidgetProvider"
-            android:label="KandangKu Ringkasan"
+            android:name=".ProductionWidgetProvider"
+            android:label="KandangKu: Ringkasan Produksi"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/widget_kandang_info" />
+                android:resource="@xml/widget_production_info" />
+        </receiver>
+
+        <!-- Widget 2: Grafik Tren Produksi 7 Hari -->
+        <receiver
+            android:name=".ChartWidgetProvider"
+            android:label="KandangKu: Grafik 7 Hari"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_chart_info" />
+        </receiver>
+
+        <!-- Widget 3: Kalender & Tugas Hari Ini -->
+        <receiver
+            android:name=".CalendarWidgetProvider"
+            android:label="KandangKu: Kalender &amp; Tugas"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_calendar_info" />
+        </receiver>
+
+        <!-- Widget 4: Bar Aksi Cepat Catat -->
+        <receiver
+            android:name=".ActionsWidgetProvider"
+            android:label="KandangKu: Aksi Cepat"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_actions_info" />
         </receiver>
     </application>
 

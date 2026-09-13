@@ -25,6 +25,7 @@ import { DailyCalendarCard } from '@/components/DailyCalendarCard';
 import { FloatingTaskEdge } from '@/components/FloatingTaskEdge';
 import { TaskCalendarCard } from '@/components/TaskCalendarCard';
 import { useProfile } from '@/context/ProfileContext';
+import { syncDataToWidgets } from '@/lib/widgetBridge';
 import {
   Egg,
   TrendingUp,
@@ -88,6 +89,16 @@ export default function DashboardHomePage() {
       loadDashboard(activeFlockId, timeMode);
     }
   }, [activeFlockId, timeMode]);
+
+  useEffect(() => {
+    if (summary) {
+      syncDataToWidgets({
+        summary,
+        history,
+        profile: activeProfile,
+      });
+    }
+  }, [summary, history, activeProfile]);
 
   const loadFlocks = async () => {
     try {

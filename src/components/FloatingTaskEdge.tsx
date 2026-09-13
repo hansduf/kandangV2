@@ -36,6 +36,11 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
   const [tasks, setTasks] = useState<DailyTaskView[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [confirmTaskModal, setConfirmTaskModal] = useState<{
+    isOpen: boolean;
+    task: DailyTaskView | null;
+  }>({ isOpen: false, task: null });
+  const [isSubmittingConfirm, setIsSubmittingConfirm] = useState(false);
   const todayStr = new Date().toISOString().split('T')[0];
 
   const loadTodayTasks = async () => {
@@ -56,15 +61,6 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
 
   const pendingTasks = tasks.filter((t) => !t.is_completed);
   const completedTasks = tasks.filter((t) => t.is_completed);
-
-  // If there are no tasks at all today
-  if (tasks.length === 0) return null;
-
-  const [confirmTaskModal, setConfirmTaskModal] = useState<{
-    isOpen: boolean;
-    task: DailyTaskView | null;
-  }>({ isOpen: false, task: null });
-  const [isSubmittingConfirm, setIsSubmittingConfirm] = useState(false);
 
   const handleTaskClick = async (task: DailyTaskView, specificFlockId?: string) => {
     // Find uncompleted flock if any
@@ -100,6 +96,9 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
   };
 
   const primaryPendingTask = pendingTasks[0];
+
+  // If there are no tasks at all today, return null AFTER all hooks are registered
+  if (tasks.length === 0) return null;
 
   return (
     <div className="fixed bottom-20 sm:bottom-24 left-3 right-3 sm:left-auto sm:right-6 sm:max-w-md z-40 animate-in slide-in-from-bottom-5 duration-300">

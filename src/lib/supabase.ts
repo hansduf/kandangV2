@@ -1310,7 +1310,29 @@ export async function createFarmTask(task: Partial<FarmTask>): Promise<FarmTask>
     created_at: new Date().toISOString(),
   };
 
+  // Anti-duplication safeguard: check if identical active task already exists in Supabase
   if (isConfigured) {
+    try {
+      const { data: existingDup } = await supabase
+        .from('farm_tasks')
+        .select('*')
+        .eq('is_active', true)
+        .eq('title', newTask.title)
+        .eq('task_type', newTask.task_type)
+        .limit(1);
+
+      if (existingDup && existingDup.length > 0) {
+        const match = existingDup[0];
+        if (
+          match.recurrence_type === newTask.recurrence_type &&
+          match.start_date === newTask.start_date
+        ) {
+          console.warn('Prevented duplicate clone insertion for:', newTask.title);
+          return match;
+        }
+      }
+    } catch (e) {}
+
     try {
       const { data, error } = await supabase
         .from('farm_tasks')
@@ -1372,14 +1394,53 @@ export async function fetchAllTasks(): Promise<FarmTask[]> {
       if (error) {
         console.error('Failed to fetch from supabase farm_tasks:', error.message || error);
       } else if (data) {
-        if (typeof window !== 'undefined') {
-          // Read deleted task IDs to ensure deleted tasks are never resurrected
-          const deletedIds = new Set<string>(JSON.parse(localStorage.getItem('kandang_deleted_tasks') || '[]'));
-          const cleanData = data.filter((t) => !deletedIds.has(t.id));
-          localStorage.setItem('kandang_tasks', JSON.stringify(cleanData));
-          return cleanData;
+        const deletedIds = typeof window !== 'undefined'
+          ? new Set<string>(JSON.parse(localStorage.getItem('kandang_deleted_tasks') || '[]'))
+          : new Set<string>();
+
+        // Auto-Deduplicate: Clean up all multiplied / cloned tasks caused by previous loop
+        const seenKeys = new Map<string, FarmTask>();
+        const duplicateIdsToDeactivate: string[] = [];
+
+        for (const task of data) {
+          if (deletedIds.has(task.id)) {
+            duplicateIdsToDeactivate.push(task.id);
+            continue;
+          }
+
+          // Generate composite signature
+          const sig = `${(task.title || '').trim().toLowerCase()}|${task.task_type}|${task.recurrence_type}|${task.due_time || ''}|${task.start_date || ''}`;
+          if (seenKeys.has(sig)) {
+            duplicateIdsToDeactivate.push(task.id);
+          } else {
+            seenKeys.set(sig, task);
+          }
         }
-        return data;
+
+        const uniqueTasks = Array.from(seenKeys.values());
+
+        // Background cleanup: soft-delete all identified duplicate clones in Supabase
+        if (duplicateIdsToDeactivate.length > 0 && isConfigured) {
+          const validIds = duplicateIdsToDeactivate.map(toValidUuidOrNull).filter(Boolean);
+          if (validIds.length > 0) {
+            (async () => {
+              try {
+                await supabase
+                  .from('farm_tasks')
+                  .update({ is_active: false })
+                  .in('id', validIds);
+                console.log(`Auto-cleaned ${validIds.length} duplicate cloned tasks from Supabase.`);
+              } catch (err) {
+                console.warn('Background cleanup of duplicate tasks:', err);
+              }
+            })();
+          }
+        }
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('kandang_tasks', JSON.stringify(uniqueTasks));
+        }
+        return uniqueTasks;
       }
     } catch (err) {
       console.error('Exception fetching farm_tasks from Supabase:', err);
@@ -1392,7 +1453,17 @@ export async function fetchAllTasks(): Promise<FarmTask[]> {
   if (stored) {
     try {
       const parsed: FarmTask[] = JSON.parse(stored);
-      if (parsed.length > 0) return parsed;
+      if (parsed.length > 0) {
+        // Also deduplicate local
+        const seen = new Set<string>();
+        const unique = parsed.filter((t) => {
+          const sig = `${(t.title || '').trim().toLowerCase()}|${t.task_type}|${t.recurrence_type}|${t.start_date || ''}`;
+          if (seen.has(sig)) return false;
+          seen.add(sig);
+          return true;
+        });
+        return unique;
+      }
     } catch (e) {}
   }
 
@@ -1455,8 +1526,20 @@ export async function updateFarmTask(id: string, updates: Partial<FarmTask>): Pr
         console.error('Failed update in supabase farm_tasks:', err);
       }
     } else {
-      // If task ID is non-UUID (e.g. from local storage seed or offline creation), insert it into Supabase!
+      // If task ID is non-UUID, check if an existing task with same title already exists before creating
       try {
+        const { data: existing } = await supabase
+          .from('farm_tasks')
+          .select('id')
+          .eq('is_active', true)
+          .eq('title', updates.title || 'Tugas Baru')
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          await supabase.from('farm_tasks').update(cleanPayload).eq('id', existing[0].id);
+          return { id: existing[0].id, ...cleanPayload } as FarmTask;
+        }
+
         const created = await createFarmTask({
           title: updates.title || 'Tugas Baru',
           description: updates.description,

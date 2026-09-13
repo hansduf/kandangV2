@@ -171,41 +171,51 @@ export default function TasksPage() {
     setIsTaskModalOpen(true);
   };
 
+  const [isSavingTask, setIsSavingTask] = useState(false);
+  const [taskFilter, setTaskFilter] = useState<'active' | 'all'>('active');
+
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskTitle.trim()) return;
+    if (!taskTitle.trim() || isSavingTask) return;
 
-    const primaryFlockId = taskFlockIds.length === 1 ? taskFlockIds[0] : null;
-    const primaryAssignedTo = taskAssignedToIds.length === 1 ? taskAssignedToIds[0] : null;
+    setIsSavingTask(true);
+    try {
+      const primaryFlockId = taskFlockIds.length === 1 ? taskFlockIds[0] : null;
+      const primaryAssignedTo = taskAssignedToIds.length === 1 ? taskAssignedToIds[0] : null;
 
-    const taskPayload = {
-      title: taskTitle.trim(),
-      description: taskDesc.trim() || null,
-      task_type: taskType,
-      flock_id: primaryFlockId,
-      flock_ids: taskFlockIds.length > 0 ? taskFlockIds : null,
-      assigned_to: primaryAssignedTo,
-      assigned_to_ids: taskAssignedToIds.length > 0 ? taskAssignedToIds : null,
-      recurrence_type: recurrenceType,
-      recurrence_interval: recurrenceType === 'interval' ? Number(recurrenceInterval) || 1 : 1,
-      days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
-      due_time: dueTime || '16:00',
-      start_date: startDate,
-      end_date: endDate.trim() || null,
-      color: taskColor,
-    };
+      const taskPayload = {
+        title: taskTitle.trim(),
+        description: taskDesc.trim() || null,
+        task_type: taskType,
+        flock_id: primaryFlockId,
+        flock_ids: taskFlockIds.length > 0 ? taskFlockIds : null,
+        assigned_to: primaryAssignedTo,
+        assigned_to_ids: taskAssignedToIds.length > 0 ? taskAssignedToIds : null,
+        recurrence_type: recurrenceType,
+        recurrence_interval: recurrenceType === 'interval' ? Number(recurrenceInterval) || 1 : 1,
+        days_of_week: recurrenceType === 'days_of_week' ? selectedDays : [],
+        due_time: dueTime || '16:00',
+        start_date: startDate,
+        end_date: endDate.trim() || null,
+        color: taskColor,
+      };
 
-    if (editingTask) {
-      await updateFarmTask(editingTask.id, taskPayload);
-    } else {
-      await createFarmTask(taskPayload);
+      if (editingTask) {
+        await updateFarmTask(editingTask.id, taskPayload);
+      } else {
+        await createFarmTask(taskPayload);
+      }
+
+      setEditingTask(null);
+      setTaskTitle('');
+      setTaskDesc('');
+      setIsTaskModalOpen(false);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to save task:', err);
+    } finally {
+      setIsSavingTask(false);
     }
-
-    setEditingTask(null);
-    setTaskTitle('');
-    setTaskDesc('');
-    setIsTaskModalOpen(false);
-    await loadData();
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -304,29 +314,33 @@ export default function TasksPage() {
     }
   };
 
+  const isTaskOngoing = (t: FarmTask) => {
+    if (t.end_date && t.end_date < todayStr) return false;
+    if (t.recurrence_type === 'once' && t.start_date < todayStr) return false;
+    return true;
+  };
+
+  const activeTasksList = tasks.filter(isTaskOngoing);
+  const displayedTasks = taskFilter === 'active' ? activeTasksList : tasks;
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
+    <div className="min-h-screen bg-slate-100 flex flex-col pb-24 font-sans antialiased text-slate-900">
       <Navbar onOpenNewFlockModal={() => setIsFlockModalOpen(true)} />
 
-      <main className="max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-3 py-3.5 sm:px-4 sm:py-4 space-y-4">
-        {/* Header Section */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#00684a] border border-emerald-200 flex items-center justify-center shadow-xs">
-              <CheckSquare className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-black text-slate-900">
-                Manajemen Tugas & Akun Pengguna
-              </h2>
-              <p className="text-[11px] font-semibold text-slate-500">
-                Buat tugas berulang (alarm), checklist harian & kelola akun pengguna
-              </p>
-            </div>
+      <main className="flex-1 w-full max-w-5xl mx-auto p-4 sm:p-6 space-y-5">
+        {/* Top Header & Tab Navigation */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-3xl p-4 shadow-sm">
+          <div>
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <CheckSquare className="w-5 h-5 text-[#00684a]" />
+              <span>Manajemen Tugas & Akun</span>
+            </h1>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">
+              Kelola tugas operasional harian dan pengguna kandang
+            </p>
           </div>
 
-          {/* Tab Pill Buttons */}
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 ml-auto">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 self-start sm:self-auto">
             <button
               onClick={() => setActiveTab('tasks')}
               className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
@@ -335,8 +349,8 @@ export default function TasksPage() {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <Bell className="w-3.5 h-3.5" />
-              <span>Tugas & Alarm</span>
+              <CheckSquare className="w-3.5 h-3.5" />
+              <span>Daftar Tugas & Jadwal</span>
             </button>
             <button
               onClick={() => setActiveTab('workers')}
@@ -356,28 +370,58 @@ export default function TasksPage() {
         {activeTab === 'tasks' && (
           <div className="space-y-4 animate-in fade-in duration-200">
             {/* Action Bar */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-3.5 flex items-center justify-between gap-2 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-3xl p-3.5 flex items-center justify-between gap-3 shadow-sm flex-wrap">
               <div>
                 <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                  Daftar Tugas Berulang (Alarm Kandang)
+                  Daftar Tugas Kandang
                 </h3>
                 <p className="text-[10px] text-slate-500 font-semibold">
-                  Tugas otomatis muncul pada floating edge & kalender pengguna
+                  {taskFilter === 'active'
+                    ? `Menampilkan ${activeTasksList.length} tugas yang sedang aktif berjalan`
+                    : `Menampilkan semua ${tasks.length} tugas (termasuk riwayat yang sudah selesai)`}
                 </p>
               </div>
 
-              <button
-                onClick={() => handleOpenCreateTask()}
-                className="bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-md transition-all shrink-0"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Buat Tugas Baru</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Active vs All Filter Toggle */}
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setTaskFilter('active')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      taskFilter === 'active'
+                        ? 'bg-white text-[#00684a] shadow-2xs font-black'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Aktif Saja ({activeTasksList.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaskFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${
+                      taskFilter === 'all'
+                        ? 'bg-white text-slate-800 shadow-2xs font-black'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Semua ({tasks.length})
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => handleOpenCreateTask()}
+                  className="bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-md transition-all shrink-0"
+                >
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Buat Tugas Baru</span>
+                </button>
+              </div>
             </div>
 
-            {/* List of Recurring Tasks */}
+            {/* List of Tasks */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {tasks.map((t) => {
+              {displayedTasks.map((t) => {
                 const coopLabel = t.flock_ids && t.flock_ids.length > 0
                   ? t.flock_ids.map((fid) => flocks.find((f) => f.id === fid)?.coop_name).filter(Boolean).join(', ')
                   : t.flock_id
@@ -390,10 +434,14 @@ export default function TasksPage() {
                   ? workers.find((w) => w.id === t.assigned_to)?.name || 'Pengguna'
                   : 'Semua Pengguna';
 
+                const isEnded = Boolean((t.end_date && t.end_date < todayStr) || (t.recurrence_type === 'once' && t.start_date < todayStr));
+
                 return (
                   <div
                     key={t.id}
-                    className="bg-white border border-slate-200 rounded-3xl p-3.5 space-y-2 shadow-sm flex flex-col justify-between"
+                    className={`bg-white border rounded-3xl p-3.5 space-y-2 shadow-sm flex flex-col justify-between transition-all ${
+                      isEnded ? 'border-slate-200/60 opacity-75' : 'border-slate-200'
+                    }`}
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2">
@@ -404,9 +452,9 @@ export default function TasksPage() {
                           />
                           <span className="text-xs font-black text-slate-900 truncate">{t.title}</span>
                         </div>
-                        {Boolean(t.end_date && t.end_date < todayStr) ? (
+                        {isEnded ? (
                           <span className="text-[9.5px] font-extrabold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-300 shrink-0">
-                            🛑 Selesai / Dicabut
+                            🛑 Selesai / Lewat
                           </span>
                         ) : (
                           <span className="text-[9.5px] font-extrabold bg-emerald-50 text-[#00684a] px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
@@ -465,9 +513,22 @@ export default function TasksPage() {
                 );
               })}
 
-              {tasks.length === 0 && !loading && (
-                <div className="col-span-full text-center py-8 bg-white border border-slate-200 rounded-3xl text-slate-400 text-xs font-semibold">
-                  Belum ada tugas yang dibuat. Klik "Buat Tugas Baru" untuk menambahkan.
+              {displayedTasks.length === 0 && !loading && (
+                <div className="col-span-full text-center py-8 bg-white border border-slate-200 rounded-3xl text-slate-400 text-xs font-semibold space-y-2">
+                  <p>
+                    {taskFilter === 'active' && tasks.length > 0
+                      ? 'Semua tugas sebelumnya sudah selesai / lewat tanggal.'
+                      : 'Belum ada tugas yang dibuat. Klik "Buat Tugas Baru" untuk menambahkan.'}
+                  </p>
+                  {taskFilter === 'active' && tasks.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setTaskFilter('all')}
+                      className="text-xs font-bold text-[#00684a] hover:underline"
+                    >
+                      Lihat Semua Riwayat Tugas Selesai ({tasks.length})
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -993,10 +1054,17 @@ export default function TasksPage() {
               <button
                 type="submit"
                 form="taskForm"
-                className="px-6 py-2.5 bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black rounded-xl shadow-md text-xs transition-all flex items-center justify-center gap-2"
+                disabled={isSavingTask}
+                className="px-6 py-2.5 bg-[#00684a] hover:bg-emerald-800 disabled:opacity-50 active:scale-95 text-white font-black rounded-xl shadow-md text-xs transition-all flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4 stroke-[3]" />
-                <span>{editingTask ? 'Simpan Perubahan' : 'Simpan Tugas'}</span>
+                <span>
+                  {isSavingTask
+                    ? 'Menyimpan...'
+                    : editingTask
+                    ? 'Simpan Perubahan'
+                    : 'Simpan Tugas'}
+                </span>
               </button>
             </div>
           </div>

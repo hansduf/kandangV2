@@ -327,9 +327,20 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
           isSubmitting={isSubmittingConfirm}
           title={
             confirmTaskModal.task.is_completed
-              ? 'Konfirmasi Batalkan Status Selesai'
-              : 'Konfirmasi Selesaikan Tugas'
+              ? 'Konfirmasi Batalkan Selesai'
+              : 'Konfirmasi Pengerjaan Tugas'
           }
+          confirmQuestion={
+            confirmTaskModal.task.is_completed
+              ? 'Apakah Anda ingin membatalkan status selesai pada tugas ini?'
+              : 'Apakah tugas ini sudah benar-benar diselesaikan di kandang?'
+          }
+          confirmButtonText={
+            confirmTaskModal.task.is_completed
+              ? 'Ya, Batalkan'
+              : 'Ya, Sudah Selesai'
+          }
+          cancelButtonText="Belum / Periksa Lagi"
           coopName={
             confirmTaskModal.task.coop_name ||
             (confirmTaskModal.task.flock_ids && confirmTaskModal.task.flock_ids.length > 0

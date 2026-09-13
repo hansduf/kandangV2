@@ -1372,54 +1372,12 @@ export async function fetchAllTasks(): Promise<FarmTask[]> {
       if (error) {
         console.error('Failed to fetch from supabase farm_tasks:', error.message || error);
       } else if (data) {
-        // Auto-sync any local tasks that haven't been pushed to Supabase
         if (typeof window !== 'undefined') {
-          try {
-            const stored = localStorage.getItem('kandang_tasks');
-            if (stored) {
-              const localTasks: FarmTask[] = JSON.parse(stored);
-              const unsynced = localTasks.filter(
-                (lt) => lt.is_active && (!toValidUuidOrNull(lt.id) || !data.some((st) => st.id === lt.id))
-              );
-
-              for (const ut of unsynced) {
-                // If it's default egg record and supabase already has one, skip
-                if (ut.id === 'task-egg-default' && data.some((st) => st.task_type === 'daily_record')) {
-                  continue;
-                }
-                const cleanFlock = toValidUuidOrNull(ut.flock_id);
-                const cleanAssigned = toValidUuidOrNull(ut.assigned_to);
-
-                const { data: created, error: pushErr } = await supabase
-                  .from('farm_tasks')
-                  .insert({
-                    title: ut.title,
-                    description: ut.description,
-                    task_type: ut.task_type || 'custom',
-                    flock_id: cleanFlock,
-                    assigned_to: cleanAssigned,
-                    recurrence_type: ut.recurrence_type || 'daily',
-                    recurrence_interval: ut.recurrence_interval || 1,
-                    days_of_week: ut.days_of_week || [],
-                    start_date: ut.start_date || new Date().toISOString().split('T')[0],
-                    end_date: ut.end_date || null,
-                    due_time: ut.due_time || '16:00',
-                    color: ut.color || '#10b981',
-                    is_active: true,
-                  })
-                  .select()
-                  .single();
-
-                if (!pushErr && created) {
-                  data.unshift(created);
-                }
-              }
-            }
-          } catch (syncErr) {
-            console.warn('Auto-sync unsynced local tasks error:', syncErr);
-          }
-
-          localStorage.setItem('kandang_tasks', JSON.stringify(data));
+          // Read deleted task IDs to ensure deleted tasks are never resurrected
+          const deletedIds = new Set<string>(JSON.parse(localStorage.getItem('kandang_deleted_tasks') || '[]'));
+          const cleanData = data.filter((t) => !deletedIds.has(t.id));
+          localStorage.setItem('kandang_tasks', JSON.stringify(cleanData));
+          return cleanData;
         }
         return data;
       }
@@ -1544,7 +1502,11 @@ export async function updateFarmTask(id: string, updates: Partial<FarmTask>): Pr
   return { id, title: updates.title || '', task_type: updates.task_type || 'custom', recurrence_type: updates.recurrence_type || 'daily', start_date: '', color: updates.color || '#06b6d4', is_active: true } as FarmTask;
 }
 
-export async function deleteTask(id: string, asOfDate?: string): Promise<{ preservedPast: boolean }> {
+export async function deleteTask(
+  id: string,
+  asOfDate?: string,
+  forceDelete: boolean = false
+): Promise<{ preservedPast: boolean }> {
   const validUuid = toValidUuidOrNull(id);
   const today = new Date().toISOString().split('T')[0];
   const cutoff = asOfDate || today;
@@ -1569,73 +1531,82 @@ export async function deleteTask(id: string, asOfDate?: string): Promise<{ prese
     }
   }
 
-  const hasStarted = existingTask && existingTask.start_date && existingTask.start_date <= cutoff;
-  const isRecurring = existingTask ? existingTask.recurrence_type !== 'once' : true;
-  const isPastOnce = existingTask && existingTask.recurrence_type === 'once' && existingTask.start_date < cutoff;
+  // If NOT forceDelete and asOfDate is specified (calendar revocation mode)
+  if (!forceDelete && asOfDate) {
+    const hasStarted = existingTask && existingTask.start_date && existingTask.start_date <= cutoff;
+    const isRecurring = existingTask ? existingTask.recurrence_type !== 'once' : true;
+    const isPastOnce = existingTask && existingTask.recurrence_type === 'once' && existingTask.start_date < cutoff;
 
-  // 2. If single task in the past, preserve it without deleting
-  if (isPastOnce) {
-    return { preservedPast: true };
-  }
-
-  // 3. If recurring task that has already started, clamp end_date to cutoff to preserve past calendar history!
-  if (hasStarted && isRecurring) {
-    preservedPast = true;
-    if (isConfigured && validUuid) {
-      try {
-        const { error } = await supabase
-          .from('farm_tasks')
-          .update({ end_date: cutoff, is_active: true })
-          .eq('id', validUuid);
-        if (error) {
-          console.error('Supabase update end_date error:', error.message || error);
-        }
-      } catch (err) {
-        console.error('Failed to update end_date in supabase:', err);
-      }
+    if (isPastOnce) {
+      return { preservedPast: true };
     }
 
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('kandang_tasks');
-      if (stored) {
-        const tasks: FarmTask[] = JSON.parse(stored);
-        const updated = tasks.map((t) => {
-          if (t.id === id || (validUuid && t.id === validUuid)) {
-            return { ...t, end_date: cutoff, is_active: true };
+    if (hasStarted && isRecurring) {
+      preservedPast = true;
+      if (isConfigured && validUuid) {
+        try {
+          const { error } = await supabase
+            .from('farm_tasks')
+            .update({ end_date: cutoff, is_active: true })
+            .eq('id', validUuid);
+          if (error) {
+            console.error('Supabase update end_date error:', error.message || error);
           }
-          return t;
-        });
-        localStorage.setItem('kandang_tasks', JSON.stringify(updated));
-      }
-    }
-  } else {
-    // Hasn't started yet or future: soft delete
-    if (isConfigured && validUuid) {
-      try {
-        const { error } = await supabase
-          .from('farm_tasks')
-          .update({ is_active: false })
-          .eq('id', validUuid);
-        if (error) {
-          console.error('Supabase soft-delete farm_tasks error:', error.message || error);
+        } catch (err) {
+          console.error('Failed to update end_date in supabase:', err);
         }
-      } catch (err) {
-        console.error('Failed soft-delete in supabase farm_tasks:', err);
       }
-    }
 
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('kandang_tasks');
-      if (stored) {
-        const tasks: FarmTask[] = JSON.parse(stored);
-        const filtered = tasks.filter((t) => t.id !== id && (!validUuid || t.id !== validUuid));
-        localStorage.setItem('kandang_tasks', JSON.stringify(filtered));
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('kandang_tasks');
+        if (stored) {
+          const tasks: FarmTask[] = JSON.parse(stored);
+          const updated = tasks.map((t) => {
+            if (t.id === id || (validUuid && t.id === validUuid)) {
+              return { ...t, end_date: cutoff, is_active: true };
+            }
+            return t;
+          });
+          localStorage.setItem('kandang_tasks', JSON.stringify(updated));
+        }
       }
+
+      return { preservedPast: true };
     }
   }
 
-  return { preservedPast };
+  // Full soft-delete (from task manager CRUD list or unstarted task)
+  if (isConfigured && validUuid) {
+    try {
+      const { error } = await supabase
+        .from('farm_tasks')
+        .update({ is_active: false })
+        .eq('id', validUuid);
+      if (error) {
+        console.error('Supabase soft-delete farm_tasks error:', error.message || error);
+      }
+    } catch (err) {
+      console.error('Failed soft-delete in supabase farm_tasks:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    // 1. Remove from local active tasks cache
+    const stored = localStorage.getItem('kandang_tasks');
+    if (stored) {
+      const tasks: FarmTask[] = JSON.parse(stored);
+      const filtered = tasks.filter((t) => t.id !== id && (!validUuid || t.id !== validUuid));
+      localStorage.setItem('kandang_tasks', JSON.stringify(filtered));
+    }
+
+    // 2. Add to deleted IDs set so it will NEVER be resurrected on page refresh
+    try {
+      const deletedList: string[] = JSON.parse(localStorage.getItem('kandang_deleted_tasks') || '[]');
+      if (!deletedList.includes(id)) deletedList.push(id);
+      if (validUuid && !deletedList.includes(validUuid)) deletedList.push(validUuid);
+      localStorage.setItem('kandang_deleted_tasks', JSON.stringify(deletedList));
+    } catch (e) {}
+  }
+
+  return { preservedPast: false };
 }
-
-
-

@@ -211,23 +211,28 @@ export default function TasksPage() {
   const todayStr = new Date().toISOString().split('T')[0];
 
   const handleDeleteTask = async (id: string, asOfDate?: string) => {
-    const cutoff = asOfDate || todayStr;
     const taskToDelete = tasks.find((t) => t.id === id);
+    const taskTitle = taskToDelete?.title || 'ini';
 
-    if (taskToDelete && taskToDelete.start_date <= cutoff && taskToDelete.recurrence_type !== 'once') {
+    if (asOfDate) {
+      // Called from Calendar on a specific date: stop task from that date onwards
       const ok = confirm(
-        `Cabut tugas "${taskToDelete.title}"?\n\n` +
-        `Tugas ini berjalan mulai ${taskToDelete.start_date}.\n` +
-        `Riwayat pada tanggal lampau s/d tanggal ${cutoff} TETAP TERSIMPAN di kalender, ` +
-        `sedangkan jadwal hari esok ke depan akan dihentikan.`
+        `Cabut jadwal tugas "${taskTitle}" dari kalender?\n\n` +
+        `Jadwal tugas ini pada tanggal ${asOfDate} dan tanggal lampau tetap tercatat di kalender, ` +
+        `sedangkan jadwal berikutnya akan dihentikan.`
       );
       if (!ok) return;
+      await deleteTask(id, asOfDate, false);
     } else {
-      const ok = confirm(`Hapus tugas "${taskToDelete?.title || 'ini'}"? Tugas ini akan dihapus dari daftar.`);
+      // Called from Task List (CRUD): permanent delete from active tasks
+      const ok = confirm(
+        `Hapus tugas "${taskTitle}" dari daftar tugas kandang?\n\n` +
+        `Tugas ini akan dinonaktifkan dan dihapus permanen dari daftar tugas.`
+      );
       if (!ok) return;
+      await deleteTask(id, undefined, true);
     }
 
-    await deleteTask(id, cutoff);
     await loadData();
   };
 
@@ -606,31 +611,40 @@ export default function TasksPage() {
 
       {/* CREATE / EDIT TASK MODAL */}
       {isTaskModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-slate-200 rounded-3xl p-5 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00684a] flex items-center justify-center border border-emerald-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg sm:max-w-2xl max-h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header (Sticky at top) */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 bg-white shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#00684a] flex items-center justify-center border border-emerald-200 shadow-xs">
                   <CheckSquare className="w-4 h-4" />
                 </div>
-                <h3 className="text-sm font-black text-slate-900">
-                  {editingTask ? 'Edit Tugas & Alarm' : 'Buat Tugas Baru'}
-                </h3>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">
+                    {editingTask ? 'Edit Tugas & Jadwal' : 'Buat Tugas Baru'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Atur rincian tugas, kandang target, petugas, dan frekuensi jadwal
+                  </p>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsTaskModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 bg-slate-100"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-800 bg-slate-100 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveTask} className="space-y-3">
+            {/* Scrollable Form Body */}
+            <form id="taskForm" onSubmit={handleSaveTask} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+              {/* Kategori Tugas */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-1.5">
                   Kategori Tugas
                 </label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {[
                     { id: 'daily_record' as const, label: 'Produksi Telur', icon: '🥚', defaultColor: '#10b981' },
                     { id: 'vaccine' as const, label: 'Vaksinasi', icon: '💉', defaultColor: '#8b5cf6' },
@@ -656,163 +670,167 @@ export default function TasksPage() {
                           }
                         }
                       }}
-                      className={`p-2 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                      className={`p-2.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
                         taskType === cat.id
-                          ? 'bg-emerald-50 border-[#00684a] text-[#00684a] font-black shadow-xs ring-1 ring-[#00684a]'
+                          ? 'bg-emerald-50 border-[#00684a] text-[#00684a] font-black shadow-xs ring-2 ring-[#00684a]/20'
                           : 'bg-slate-50 border-slate-200 text-slate-600 font-semibold hover:bg-slate-100'
                       }`}
                     >
-                      <span className="text-base">{cat.icon}</span>
+                      <span className="text-xl">{cat.icon}</span>
                       <span className="text-[10px] leading-tight">{cat.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  Nama Tugas
-                </label>
-                <input
-                  type="text"
-                  value={taskTitle}
-                  onChange={(e) => setTaskTitle(e.target.value)}
-                  placeholder="e.g. Semprot Disinfektan & Vitamin"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  Keterangan / SOP
-                </label>
-                <textarea
-                  value={taskDesc}
-                  onChange={(e) => setTaskDesc(e.target.value)}
-                  placeholder="Petunjuk pengerjaan..."
-                  rows={2}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-                />
-              </div>
-
-
-              {/* Multi-Flock Selector */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase">
-                    Pilih Kandang {taskFlockIds.length > 0 ? `(${taskFlockIds.length} dipilih)` : '(Semua Kandang)'}
+              {/* Nama & SOP / Keterangan in 2 columns on tablet/desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-1">
+                    Nama Tugas
                   </label>
-                  {taskFlockIds.length > 0 && (
+                  <input
+                    type="text"
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    placeholder="e.g. Semprot Disinfektan & Vitamin"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a] focus:bg-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-1">
+                    Keterangan / SOP
+                  </label>
+                  <input
+                    type="text"
+                    value={taskDesc}
+                    onChange={(e) => setTaskDesc(e.target.value)}
+                    placeholder="Petunjuk pengerjaan (opsional)..."
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Multi-Flock & Multi-Worker selectors */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Multi-Flock Selector */}
+                <div className="bg-slate-50/70 border border-slate-200 rounded-2xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                      Pilih Kandang {taskFlockIds.length > 0 ? `(${taskFlockIds.length})` : '(Semua)'}
+                    </label>
+                    {taskFlockIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setTaskFlockIds([])}
+                        className="text-[10px] font-bold text-[#00684a] hover:underline"
+                      >
+                        Pilih Semua
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => setTaskFlockIds([])}
-                      className="text-[10px] font-bold text-[#00684a] hover:underline"
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
+                        taskFlockIds.length === 0
+                          ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
                     >
-                      Pilih Semua
+                      Semua Kandang
                     </button>
-                  )}
+                    {flocks.map((f) => {
+                      const isSelected = taskFlockIds.includes(f.id);
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setTaskFlockIds(taskFlockIds.filter((id) => id !== f.id));
+                            } else {
+                              setTaskFlockIds([...taskFlockIds, f.id]);
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
+                            isSelected
+                              ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                          <span>{f.coop_name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-2xl">
-                  <button
-                    type="button"
-                    onClick={() => setTaskFlockIds([])}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
-                      taskFlockIds.length === 0
-                        ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Semua Kandang
-                  </button>
-                  {flocks.map((f) => {
-                    const isSelected = taskFlockIds.includes(f.id);
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setTaskFlockIds(taskFlockIds.filter((id) => id !== f.id));
-                          } else {
-                            setTaskFlockIds([...taskFlockIds, f.id]);
-                          }
-                        }}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
-                          isSelected
-                            ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                        <span>{f.coop_name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
-              {/* Multi-Worker Selector */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase">
-                    Ditugaskan Ke {taskAssignedToIds.length > 0 ? `(${taskAssignedToIds.length} dipilih)` : '(Semua Pengguna)'}
-                  </label>
-                  {taskAssignedToIds.length > 0 && (
+                {/* Multi-Worker Selector */}
+                <div className="bg-slate-50/70 border border-slate-200 rounded-2xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                      Petugas {taskAssignedToIds.length > 0 ? `(${taskAssignedToIds.length})` : '(Semua)'}
+                    </label>
+                    {taskAssignedToIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setTaskAssignedToIds([])}
+                        className="text-[10px] font-bold text-[#00684a] hover:underline"
+                      >
+                        Pilih Semua
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
                     <button
                       type="button"
                       onClick={() => setTaskAssignedToIds([])}
-                      className="text-[10px] font-bold text-[#00684a] hover:underline"
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
+                        taskAssignedToIds.length === 0
+                          ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
                     >
-                      Pilih Semua
+                      Semua Petugas
                     </button>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-2xl">
-                  <button
-                    type="button"
-                    onClick={() => setTaskAssignedToIds([])}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
-                      taskAssignedToIds.length === 0
-                        ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Semua Pengguna
-                  </button>
-                  {workers.map((w) => {
-                    const isSelected = taskAssignedToIds.includes(w.id);
-                    return (
-                      <button
-                        key={w.id}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setTaskAssignedToIds(taskAssignedToIds.filter((id) => id !== w.id));
-                          } else {
-                            setTaskAssignedToIds([...taskAssignedToIds, w.id]);
-                          }
-                        }}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
-                          isSelected
-                            ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                        <span>{w.name}</span>
-                      </button>
-                    );
-                  })}
+                    {workers.map((w) => {
+                      const isSelected = taskAssignedToIds.includes(w.id);
+                      return (
+                        <button
+                          key={w.id}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setTaskAssignedToIds(taskAssignedToIds.filter((id) => id !== w.id));
+                            } else {
+                              setTaskAssignedToIds([...taskAssignedToIds, w.id]);
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
+                            isSelected
+                              ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                          <span>{w.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
               {/* Recurrence Selector */}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide">
                   Pengulangan Jadwal (Alarm)
                 </label>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
                     { id: 'daily' as const, label: 'Setiap Hari' },
                     { id: 'interval' as const, label: 'Interval (Tiap N Hari)' },
@@ -823,85 +841,86 @@ export default function TasksPage() {
                       key={r.id}
                       type="button"
                       onClick={() => setRecurrenceType(r.id)}
-                      className={`p-2 rounded-xl text-[10px] font-black border transition-all ${
+                      className={`p-2.5 rounded-xl text-xs font-black border transition-all ${
                         recurrenceType === r.id
                           ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       {r.label}
                     </button>
                   ))}
                 </div>
+
+                {/* If Interval */}
+                {recurrenceType === 'interval' && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between text-xs font-bold">
+                    <span>Ulangi tugas setiap:</span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={recurrenceInterval}
+                        onChange={(e) => setRecurrenceInterval(Number(e.target.value) || 1)}
+                        className="w-16 text-center bg-white border border-slate-300 rounded-xl py-1.5 text-xs font-black text-slate-900 focus:border-[#00684a] outline-none"
+                      />
+                      <span className="text-slate-600 font-bold">hari sekali</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* If Days of Week */}
+                {recurrenceType === 'days_of_week' && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+                    <span className="text-[11px] font-bold text-slate-600 block">Pilih Hari Pelaksanaan:</span>
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {[
+                        { d: 1, l: 'Sen' },
+                        { d: 2, l: 'Sel' },
+                        { d: 3, l: 'Rab' },
+                        { d: 4, l: 'Kam' },
+                        { d: 5, l: 'Jum' },
+                        { d: 6, l: 'Sab' },
+                        { d: 0, l: 'Min' },
+                      ].map((day) => {
+                        const isSel = selectedDays.includes(day.d);
+                        return (
+                          <button
+                            key={day.d}
+                            type="button"
+                            onClick={() => handleDayToggle(day.d)}
+                            className={`py-2 rounded-xl text-xs font-black border transition-all text-center ${
+                              isSel
+                                ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs'
+                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                            }`}
+                          >
+                            {day.l}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* If Interval */}
-              {recurrenceType === 'interval' && (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between text-xs font-bold">
-                  <span>Ulangi setiap:</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min={1}
-                      max={30}
-                      value={recurrenceInterval}
-                      onChange={(e) => setRecurrenceInterval(Number(e.target.value) || 1)}
-                      className="w-14 text-center bg-white border border-slate-300 rounded-lg py-1 text-xs font-black text-slate-900"
-                    />
-                    <span className="text-slate-500 font-bold">hari</span>
-                  </div>
-                </div>
-              )}
-
-              {/* If Days of Week */}
-              {recurrenceType === 'days_of_week' && (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2 space-y-1">
-                  <span className="text-[10px] font-bold text-slate-500 block">Pilih Hari:</span>
-                  <div className="flex gap-1 justify-between">
-                    {[
-                      { d: 1, l: 'Sen' },
-                      { d: 2, l: 'Sel' },
-                      { d: 3, l: 'Rab' },
-                      { d: 4, l: 'Kam' },
-                      { d: 5, l: 'Jum' },
-                      { d: 6, l: 'Sab' },
-                      { d: 0, l: 'Min' },
-                    ].map((day) => {
-                      const isSel = selectedDays.includes(day.d);
-                      return (
-                        <button
-                          key={day.d}
-                          type="button"
-                          onClick={() => handleDayToggle(day.d)}
-                          className={`w-9 h-8 rounded-xl text-xs font-black border transition-all ${
-                            isSel
-                              ? 'bg-[#00684a] text-white border-[#00684a]'
-                              : 'bg-white text-slate-700 border-slate-300'
-                          }`}
-                        >
-                          {day.l}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
+              {/* Dates & Time Grid (3 cols on tablet/desktop) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-1">
                     Mulai Tanggal
                   </label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a] focus:bg-white"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-1">
                     Sampai Tanggal (Opsional)
                   </label>
                   <input
@@ -909,30 +928,35 @@ export default function TasksPage() {
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     min={startDate}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
+                    placeholder="Selamanya"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a] focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-1">
+                    Target Jam (Due)
+                  </label>
+                  <input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a] focus:bg-white"
+                    required
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  Target Jam (Due)
-                </label>
-                <input
-                  type="time"
-                  value={dueTime}
-                  onChange={(e) => setDueTime(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a]"
-                  required
-                />
-              </div>
-
               {/* Task Color Picker */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
-                  Warna Indikator Kalender
-                </label>
-                <div className="grid grid-cols-5 gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                    Warna Indikator Kalender
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    *Warna penanda bintik tanggal kalender
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
                   {TASK_COLOR_PALETTE.map((pal) => {
                     const isSelected = taskColor.toLowerCase() === pal.hex.toLowerCase();
 
@@ -954,19 +978,27 @@ export default function TasksPage() {
                     );
                   })}
                 </div>
-                <span className="text-[9.5px] text-slate-400 font-semibold mt-1 block">
-                  *Warna bintik indikator di kalender. Boleh memilih warna yang sama atau berbeda untuk setiap tugas.
-                </span>
               </div>
+            </form>
 
+            {/* Sticky Footer */}
+            <div className="shrink-0 p-4 sm:p-5 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setIsTaskModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors"
+              >
+                Batal
+              </button>
               <button
                 type="submit"
-                className="w-full bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black py-3 rounded-2xl shadow-md text-xs transition-all flex items-center justify-center gap-2 mt-2"
+                form="taskForm"
+                className="px-6 py-2.5 bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black rounded-xl shadow-md text-xs transition-all flex items-center justify-center gap-2"
               >
                 <Save className="w-4 h-4 stroke-[3]" />
-                <span>{editingTask ? 'SIMPAN PERUBAHAN TUGAS' : 'SIMPAN TUGAS'}</span>
+                <span>{editingTask ? 'Simpan Perubahan' : 'Simpan Tugas'}</span>
               </button>
-            </form>
+            </div>
           </div>
         </div>
       )}

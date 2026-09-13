@@ -16,6 +16,9 @@ interface SaveConfirmationModalProps {
   onConfirm: () => void;
   isSubmitting?: boolean;
   title?: string;
+  confirmQuestion?: string;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
   coopName: string;
   flockName?: string;
   recordDate: string;
@@ -30,6 +33,9 @@ export const SaveConfirmationModal: React.FC<SaveConfirmationModalProps> = ({
   onConfirm,
   isSubmitting = false,
   title = 'Konfirmasi Penyimpanan Data',
+  confirmQuestion,
+  confirmButtonText = 'Ya, Simpan',
+  cancelButtonText = 'Periksa Lagi',
   coopName,
   flockName,
   recordDate,
@@ -68,10 +74,22 @@ export const SaveConfirmationModal: React.FC<SaveConfirmationModalProps> = ({
           </button>
         </div>
 
+        {/* QUESTION PROMPT BANNER (IF SPECIFIED) */}
+        {confirmQuestion && (
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-3 text-center shadow-xs">
+            <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-700 block mb-0.5">
+              KONFIRMASI PERIKSA
+            </span>
+            <p className="text-sm font-black text-amber-950">
+              {confirmQuestion}
+            </p>
+          </div>
+        )}
+
         {/* HIGH CONTRAST COOP VERIFICATION BANNER */}
         <div className="bg-emerald-50 border-2 border-[#00684a] rounded-2xl p-3.5 text-center shadow-xs space-y-1">
           <span className="text-[9.5px] font-black uppercase tracking-wider text-emerald-800 block">
-            📍 KANDANG TUJUAN PENCATATAN
+            📍 KANDANG TUJUAN
           </span>
           <div className="flex items-center justify-center gap-1.5 text-base font-black text-[#00684a]">
             <Home className="w-4 h-4 shrink-0" />
@@ -142,7 +160,7 @@ export const SaveConfirmationModal: React.FC<SaveConfirmationModalProps> = ({
             className="w-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-black py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
           >
             <X className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Periksa Lagi</span>
+            <span>{cancelButtonText}</span>
           </button>
 
           <button
@@ -152,11 +170,11 @@ export const SaveConfirmationModal: React.FC<SaveConfirmationModalProps> = ({
             className="w-full bg-[#00684a] hover:bg-emerald-800 active:scale-95 text-white font-black py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
           >
             {isSubmitting ? (
-              <span>Menyimpan...</span>
+              <span>Memproses...</span>
             ) : (
               <>
                 <Check className="w-3.5 h-3.5 stroke-[3]" />
-                <span>Ya, Simpan</span>
+                <span>{confirmButtonText}</span>
               </>
             )}
           </button>

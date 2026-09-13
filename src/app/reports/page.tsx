@@ -200,9 +200,9 @@ export default function ReportsPage() {
           return acc + val;
         }, 0);
         period_avg_hdp = Number((sumHdp / filteredRecs.length).toFixed(1));
-      } else if (flock.current_population > 0 && period_egg_good_pcs > 0) {
+      } else if (flock.current_population > 0 && (period_egg_good_pcs + period_egg_bad_pcs) > 0) {
         period_avg_hdp = Number(
-          ((period_egg_good_pcs / flock.current_population) * 100).toFixed(1)
+          (((period_egg_good_pcs + period_egg_bad_pcs) / flock.current_population) * 100).toFixed(1)
         );
       }
 
@@ -381,11 +381,12 @@ export default function ReportsPage() {
     const sortedDates = Array.from(dateMap.keys()).sort((a, b) => b.localeCompare(a));
     return sortedDates.map((date) => {
       const item = dateMap.get(date)!;
+      const totalProducedPcs = (item.egg_good_pcs || 0) + (item.egg_bad_pcs || 0);
       const hdp =
-        item.pop_sum > 0 ? Number(((item.egg_good_pcs / item.pop_sum) * 100).toFixed(2)) : 0;
+        item.pop_sum > 0 ? Number(((totalProducedPcs / item.pop_sum) * 100).toFixed(2)) : 0;
       const hhp =
         item.initial_pop_sum > 0
-          ? Number(((item.egg_good_pcs / item.initial_pop_sum) * 100).toFixed(2))
+          ? Number(((totalProducedPcs / item.initial_pop_sum) * 100).toFixed(2))
           : 0;
 
       return {

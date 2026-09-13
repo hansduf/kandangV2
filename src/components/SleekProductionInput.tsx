@@ -93,7 +93,9 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
     }
   }
 
-  const liveHd = currentPopulation > 0 ? ((goodPcsNum / currentPopulation) * 100).toFixed(1) : '0.0';
+  const badPcsNum = Number(eggBadPcs) || 0;
+  const totalProducedPcs = goodPcsNum + badPcsNum;
+  const liveHd = currentPopulation > 0 ? ((totalProducedPcs / currentPopulation) * 100).toFixed(1) : '0.0';
 
   const adjustPcs = (amount: number) => {
     const current = Number(eggGoodPcs) || 0;
@@ -408,10 +410,14 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
         flockName={activeFlock?.name}
         recordDate={recordDate}
         items={[
-          { label: 'Telur Utuh', value: `${goodPcsNum.toLocaleString('id-ID')} butir`, highlight: true },
-          { label: 'Berat Telur Utuh', value: `${finalKg} kg` },
-          { label: 'Telur Retak / Rusak', value: `${Number(eggBadPcs) || 0} butir` },
-          { label: 'Est. Hen-Day', value: `${liveHd}%` },
+          {
+            label: 'Total Telur Dihasilkan',
+            value: `${totalProducedPcs.toLocaleString('id-ID')} butir (Utuh: ${goodPcsNum} + Retak: ${badPcsNum})`,
+            highlight: true,
+          },
+          { label: 'Telur Utuh (Normal)', value: `${goodPcsNum.toLocaleString('id-ID')} butir (${finalKg} kg)` },
+          { label: 'Telur Retak / Rusak', value: `${badPcsNum} butir` },
+          { label: 'Est. Hen-Day (HDP)', value: `${liveHd}%` },
           { label: 'Rata-rata Butir/Kg', value: `${finalRatio.toFixed(1)} btr/kg (${avgWeightG}g/btr)` },
         ]}
       />

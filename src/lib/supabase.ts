@@ -106,11 +106,15 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
     const initialPop = flock.initial_population || currentPop || 1;
 
     const todayGoodPcs = todayRecord?.egg_good_pcs || 0;
-    const todayHdp = currentPop > 0 ? Number(((todayGoodPcs / currentPop) * 100).toFixed(2)) : 0;
-    const todayHhp = initialPop > 0 ? Number(((todayGoodPcs / initialPop) * 100).toFixed(2)) : 0;
+    const todayBadPcs = todayRecord?.egg_bad_pcs || 0;
+    const todayTotalEggs = todayGoodPcs + todayBadPcs;
 
-    const overallHdp = records.length > 0 && currentPop > 0 ? Number(((totalEggGoodPcs / (currentPop * records.length)) * 100).toFixed(2)) : 0;
-    const overallHhp = records.length > 0 && initialPop > 0 ? Number(((totalEggGoodPcs / (initialPop * records.length)) * 100).toFixed(2)) : 0;
+    const todayHdp = currentPop > 0 ? Number(((todayTotalEggs / currentPop) * 100).toFixed(2)) : 0;
+    const todayHhp = initialPop > 0 ? Number(((todayTotalEggs / initialPop) * 100).toFixed(2)) : 0;
+
+    const totalAllEggs = totalEggGoodPcs + totalEggBadPcs;
+    const overallHdp = records.length > 0 && currentPop > 0 ? Number(((totalAllEggs / (currentPop * records.length)) * 100).toFixed(2)) : 0;
+    const overallHhp = records.length > 0 && initialPop > 0 ? Number(((totalAllEggs / (initialPop * records.length)) * 100).toFixed(2)) : 0;
     const mortRate = initialPop > 0 ? Number(((totalMort / initialPop) * 100).toFixed(2)) : 0;
     const overallFCR = totalEggGoodKg > 0 ? totalFeedKg / totalEggGoodKg : 0;
 
@@ -192,8 +196,9 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
     const activePop = flock?.current_population || 1000;
     const initialPop = flock?.initial_population || activePop || 1000;
 
-    const hdp = activePop > 0 ? Number(((record.egg_good_pcs / activePop) * 100).toFixed(2)) : 0;
-    const hhp = initialPop > 0 ? Number(((record.egg_good_pcs / initialPop) * 100).toFixed(2)) : 0;
+    const totalEggs = (record.egg_good_pcs || 0) + (record.egg_bad_pcs || 0);
+    const hdp = activePop > 0 ? Number(((totalEggs / activePop) * 100).toFixed(2)) : 0;
+    const hhp = initialPop > 0 ? Number(((totalEggs / initialPop) * 100).toFixed(2)) : 0;
     const fcr = record.egg_good_kg > 0 ? Number((record.feed_kg / record.egg_good_kg).toFixed(2)) : 0;
     const avgW = record.egg_good_pcs > 0 ? Number(((record.egg_good_kg * 1000) / record.egg_good_pcs).toFixed(2)) : 0;
 

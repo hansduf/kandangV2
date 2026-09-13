@@ -28,8 +28,8 @@ export interface DailyRecord {
   culling_pcs: number;
   feed_kg: number;
   hd_percent?: number; // Hen-Day Production % (HDP)
-  hdp_percent?: number; // Hen-Day Production % = (Telur Utuh / Populasi Hidup) * 100
-  hhp_percent?: number; // Hen-Housed Production % = (Telur Utuh / Populasi Awal) * 100
+  hdp_percent?: number; // Hen-Day Production % = ((Telur Utuh + Telur Rusak) / Populasi Hidup) * 100
+  hhp_percent?: number; // Hen-Housed Production % = ((Telur Utuh + Telur Rusak) / Populasi Awal) * 100
   fcr?: number;
   avg_egg_weight_g?: number;
   notes?: string;

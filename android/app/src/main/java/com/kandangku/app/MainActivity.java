@@ -62,9 +62,28 @@ public class MainActivity extends BridgeActivity {
 
                 editor.apply();
 
-                // Trigger update intent for all widgets
-                Intent updateIntent = new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-                context.sendBroadcast(updateIntent);
+                // Directly update all active widget instances
+                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+
+                int[] prodIds = appWidgetManager.getAppWidgetIds(new android.content.ComponentName(context, ProductionWidgetProvider.class));
+                for (int id : prodIds) {
+                    ProductionWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+                }
+
+                int[] chartIds = appWidgetManager.getAppWidgetIds(new android.content.ComponentName(context, ChartWidgetProvider.class));
+                for (int id : chartIds) {
+                    ChartWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+                }
+
+                int[] calIds = appWidgetManager.getAppWidgetIds(new android.content.ComponentName(context, CalendarWidgetProvider.class));
+                for (int id : calIds) {
+                    CalendarWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+                }
+
+                int[] actIds = appWidgetManager.getAppWidgetIds(new android.content.ComponentName(context, ActionsWidgetProvider.class));
+                for (int id : actIds) {
+                    ActionsWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

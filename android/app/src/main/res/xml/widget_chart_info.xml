@@ -6,8 +6,8 @@
     android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
     android:description="@string/app_name"
-    android:previewImage="@mipmap/ic_launcher"
     android:initialLayout="@layout/widget_chart"
+    android:previewLayout="@layout/widget_chart"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen">
 </appwidget-provider>

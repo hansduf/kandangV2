@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { Flock, DailyRecord, HealthRecord, DashboardSummary, AppProfile, FarmTask, TaskCompletion, DailyTaskView } from '@/types/database';
+import { addToSyncQueue } from './syncQueue';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummykey';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const isConfigured = !!(
+export const isConfigured = !!(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
   !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('xyzcompany')
@@ -62,7 +63,11 @@ export async function fetchFlocks(): Promise<Flock[]> {
   try {
     const { data, error } = await supabase.rpc('get_flocks');
     if (error) throw error;
-    return (data || []).filter((f: any) => f && f.id && !f.id.startsWith('flock-demo'));
+    const clean = (data || []).filter((f: any) => f && f.id && !f.id.startsWith('flock-demo'));
+    if (typeof window !== 'undefined' && clean.length > 0) {
+      localStorage.setItem('kandang_flocks_v3', JSON.stringify(clean));
+    }
+    return clean;
   } catch (err) {
     console.warn('Using local fallback for get_flocks:', err);
     return getLocalFlocks();
@@ -179,6 +184,9 @@ export async function fetchDailyHistory(flockId: string, limit: number = 30): Pr
   try {
     const { data, error } = await supabase.rpc('get_flock_daily_history', { p_flock_id: flockId, p_limit: limit });
     if (error) throw error;
+    if (typeof window !== 'undefined' && data && data.length > 0) {
+      localStorage.setItem(`kandang_daily_${flockId}`, JSON.stringify(data));
+    }
     return data || [];
   } catch (err) {
     console.warn('Using local fallback for daily history:', err);
@@ -187,54 +195,65 @@ export async function fetchDailyHistory(flockId: string, limit: number = 30): Pr
 }
 
 export async function saveDailyRecord(record: DailyRecord): Promise<void> {
-  if (!isConfigured) {
-    const records = getLocalDailyRecords(record.flock_id);
-    const existingIndex = records.findIndex((r) => r.record_date === record.record_date);
+  const records = getLocalDailyRecords(record.flock_id);
+  const existingIndex = records.findIndex((r) => r.record_date === record.record_date);
 
-    const flocks = getLocalFlocks();
-    const flock = flocks.find((f) => f.id === record.flock_id);
-    const activePop = flock?.current_population || 1000;
-    const initialPop = flock?.initial_population || activePop || 1000;
+  const flocks = getLocalFlocks();
+  const flock = flocks.find((f) => f.id === record.flock_id);
+  const activePop = flock?.current_population || 1000;
+  const initialPop = flock?.initial_population || activePop || 1000;
 
-    const totalEggs = (record.egg_good_pcs || 0) + (record.egg_bad_pcs || 0);
-    const hdp = activePop > 0 ? Number(((totalEggs / activePop) * 100).toFixed(2)) : 0;
-    const hhp = initialPop > 0 ? Number(((totalEggs / initialPop) * 100).toFixed(2)) : 0;
-    const fcr = record.egg_good_kg > 0 ? Number((record.feed_kg / record.egg_good_kg).toFixed(2)) : 0;
-    const avgW = record.egg_good_pcs > 0 ? Number(((record.egg_good_kg * 1000) / record.egg_good_pcs).toFixed(2)) : 0;
+  const totalEggs = (record.egg_good_pcs || 0) + (record.egg_bad_pcs || 0);
+  const hdp = activePop > 0 ? Number(((totalEggs / activePop) * 100).toFixed(2)) : 0;
+  const hhp = initialPop > 0 ? Number(((totalEggs / initialPop) * 100).toFixed(2)) : 0;
+  const fcr = record.egg_good_kg > 0 ? Number((record.feed_kg / record.egg_good_kg).toFixed(2)) : 0;
+  const avgW = record.egg_good_pcs > 0 ? Number(((record.egg_good_kg * 1000) / record.egg_good_pcs).toFixed(2)) : 0;
 
-    const fullRecord: DailyRecord = {
-      ...record,
-      hd_percent: hdp,
-      hdp_percent: hdp,
-      hhp_percent: hhp,
-      fcr: fcr,
-      avg_egg_weight_g: avgW
-    };
+  const fullRecord: DailyRecord = {
+    ...record,
+    hd_percent: hdp,
+    hdp_percent: hdp,
+    hhp_percent: hhp,
+    fcr: fcr,
+    avg_egg_weight_g: avgW
+  };
 
-    if (existingIndex >= 0) {
-      records[existingIndex] = fullRecord;
-    } else {
-      records.unshift(fullRecord);
-    }
+  if (existingIndex >= 0) {
+    records[existingIndex] = fullRecord;
+  } else {
+    records.unshift(fullRecord);
+  }
+  if (typeof window !== 'undefined') {
     localStorage.setItem(`kandang_daily_${record.flock_id}`, JSON.stringify(records));
-    await checkAndSyncDailyEggTasks(record.record_date, record.flock_id);
+  }
+  await checkAndSyncDailyEggTasks(record.record_date, record.flock_id);
+
+  const isOffline = !isConfigured || (typeof navigator !== 'undefined' && !navigator.onLine);
+  if (isOffline) {
+    addToSyncQueue({ type: 'DAILY_RECORD', payload: record });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
     return;
   }
 
-  const { error } = await supabase.rpc('upsert_daily_record', {
-    p_flock_id: record.flock_id,
-    p_record_date: record.record_date,
-    p_egg_good_pcs: record.egg_good_pcs,
-    p_egg_good_kg: record.egg_good_kg,
-    p_egg_bad_pcs: record.egg_bad_pcs,
-    p_egg_bad_kg: record.egg_bad_kg,
-    p_mortality_pcs: record.mortality_pcs,
-    p_culling_pcs: record.culling_pcs,
-    p_feed_kg: record.feed_kg,
-    p_notes: record.notes || ''
-  });
-  if (error) throw error;
-  await checkAndSyncDailyEggTasks(record.record_date, record.flock_id);
+  try {
+    const { error } = await supabase.rpc('upsert_daily_record', {
+      p_flock_id: record.flock_id,
+      p_record_date: record.record_date,
+      p_egg_good_pcs: record.egg_good_pcs,
+      p_egg_good_kg: record.egg_good_kg,
+      p_egg_bad_pcs: record.egg_bad_pcs,
+      p_egg_bad_kg: record.egg_bad_kg,
+      p_mortality_pcs: record.mortality_pcs,
+      p_culling_pcs: record.culling_pcs,
+      p_feed_kg: record.feed_kg,
+      p_notes: record.notes || ''
+    });
+    if (error) throw error;
+  } catch (err) {
+    console.warn('Network error saving daily record, queued for sync:', err);
+    addToSyncQueue({ type: 'DAILY_RECORD', payload: record });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
+  }
 }
 
 export async function fetchHealthRecords(flockId: string): Promise<HealthRecord[]> {
@@ -244,6 +263,9 @@ export async function fetchHealthRecords(flockId: string): Promise<HealthRecord[
   try {
     const { data, error } = await supabase.rpc('get_flock_health_records', { p_flock_id: flockId });
     if (error) throw error;
+    if (typeof window !== 'undefined' && data && data.length > 0) {
+      localStorage.setItem(`kandang_health_${flockId}`, JSON.stringify(data));
+    }
     return data || [];
   } catch (err) {
     console.warn('Using local fallback for health records:', err);
@@ -252,27 +274,38 @@ export async function fetchHealthRecords(flockId: string): Promise<HealthRecord[
 }
 
 export async function saveHealthRecord(record: HealthRecord): Promise<void> {
-  if (!isConfigured) {
-    const records = getLocalHealthRecords(record.flock_id);
-    const newRecord = { ...record, id: `h-${Date.now()}` };
-    records.unshift(newRecord);
+  const records = getLocalHealthRecords(record.flock_id);
+  const newRecord = { ...record, id: record.id || `h-${Date.now()}` };
+  records.unshift(newRecord);
+  if (typeof window !== 'undefined') {
     localStorage.setItem(`kandang_health_${record.flock_id}`, JSON.stringify(records));
-    await checkAndSyncHealthTasks(record.record_date, record.flock_id, record.category);
+  }
+  await checkAndSyncHealthTasks(record.record_date, record.flock_id, record.category);
+
+  const isOffline = !isConfigured || (typeof navigator !== 'undefined' && !navigator.onLine);
+  if (isOffline) {
+    addToSyncQueue({ type: 'HEALTH_RECORD', payload: record });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
     return;
   }
 
-  const { error } = await supabase.rpc('add_health_record', {
-    p_flock_id: record.flock_id,
-    p_record_date: record.record_date,
-    p_category: record.category,
-    p_item_name: record.item_name,
-    p_dosage: record.dosage || '',
-    p_vaccinated_birds_count: record.vaccinated_birds_count || 0,
-    p_method: record.method || '',
-    p_notes: record.notes || ''
-  });
-  if (error) throw error;
-  await checkAndSyncHealthTasks(record.record_date, record.flock_id, record.category);
+  try {
+    const { error } = await supabase.rpc('add_health_record', {
+      p_flock_id: record.flock_id,
+      p_record_date: record.record_date,
+      p_category: record.category,
+      p_item_name: record.item_name,
+      p_dosage: record.dosage || '',
+      p_vaccinated_birds_count: record.vaccinated_birds_count || 0,
+      p_method: record.method || '',
+      p_notes: record.notes || ''
+    });
+    if (error) throw error;
+  } catch (err) {
+    console.warn('Network error saving health record, queued for sync:', err);
+    addToSyncQueue({ type: 'HEALTH_RECORD', payload: record });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
+  }
 }
 
 export async function createFlock(flock: Partial<Flock>): Promise<Flock> {
@@ -871,8 +904,9 @@ export async function toggleTaskCompletion(
 ): Promise<boolean> {
   const validTaskId = toValidUuidOrNull(taskId);
   const validWorkerId = toValidUuidOrNull(workerId);
+  const isOffline = !isConfigured || !validTaskId || (typeof navigator !== 'undefined' && !navigator.onLine);
 
-  if (isConfigured && validTaskId) {
+  if (!isOffline && validTaskId) {
     try {
       const { data, error } = await supabase.rpc('toggle_task_completion', {
         p_task_id: validTaskId,
@@ -886,7 +920,7 @@ export async function toggleTaskCompletion(
         return Boolean(data);
       }
     } catch (err) {
-      console.warn('RPC toggle_task_completion failed, updating locally:', err);
+      console.warn('RPC toggle_task_completion failed, updating locally & queueing:', err);
     }
   }
 
@@ -894,10 +928,10 @@ export async function toggleTaskCompletion(
     const stored = localStorage.getItem('kandang_task_completions');
     let completions: TaskCompletion[] = stored ? JSON.parse(stored) : [];
     const index = completions.findIndex((c) => c.task_id === taskId && c.task_date === date);
+    let newCompletedState = false;
     if (index >= 0) {
       completions.splice(index, 1);
-      localStorage.setItem('kandang_task_completions', JSON.stringify(completions));
-      return false;
+      newCompletedState = false;
     } else {
       completions.push({
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `tc-${Date.now()}`,
@@ -907,9 +941,15 @@ export async function toggleTaskCompletion(
         completed_at: new Date().toISOString(),
         notes: notes || null,
       });
-      localStorage.setItem('kandang_task_completions', JSON.stringify(completions));
-      return true;
+      newCompletedState = true;
     }
+    localStorage.setItem('kandang_task_completions', JSON.stringify(completions));
+    addToSyncQueue({
+      type: 'TASK_COMPLETION',
+      payload: { taskId, date, isCompleted: newCompletedState, workerId, notes },
+    });
+    window.dispatchEvent(new Event('sync-queue-updated'));
+    return newCompletedState;
   }
   return true;
 }
@@ -923,37 +963,6 @@ export async function setTaskCompletion(
 ): Promise<void> {
   const validTaskId = toValidUuidOrNull(taskId);
   const validWorkerId = toValidUuidOrNull(workerId);
-
-  if (isConfigured && validTaskId) {
-    try {
-      if (isCompleted) {
-        const { error } = await supabase.from('task_completions').upsert(
-          {
-            task_id: validTaskId,
-            task_date: date,
-            completed_by: validWorkerId,
-            notes: notes || null,
-            completed_at: new Date().toISOString(),
-          },
-          { onConflict: 'task_id,task_date' }
-        );
-        if (error) {
-          console.error('Supabase setTaskCompletion error:', error.message || error);
-        }
-      } else {
-        const { error } = await supabase
-          .from('task_completions')
-          .delete()
-          .match({ task_id: validTaskId, task_date: date });
-        if (error) {
-          console.error('Supabase delete task_completion error:', error.message || error);
-        }
-      }
-      return;
-    } catch (err) {
-      console.warn('Supabase setTaskCompletion failed, using local:', err);
-    }
-  }
 
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('kandang_task_completions');
@@ -977,6 +986,45 @@ export async function setTaskCompletion(
       }
     }
     localStorage.setItem('kandang_task_completions', JSON.stringify(completions));
+  }
+
+  const isOffline = !isConfigured || !validTaskId || (typeof navigator !== 'undefined' && !navigator.onLine);
+  if (isOffline) {
+    addToSyncQueue({
+      type: 'TASK_COMPLETION',
+      payload: { taskId, date, isCompleted, workerId, notes },
+    });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
+    return;
+  }
+
+  try {
+    if (isCompleted) {
+      const { error } = await supabase.from('task_completions').upsert(
+        {
+          task_id: validTaskId,
+          task_date: date,
+          completed_by: validWorkerId,
+          notes: notes || null,
+          completed_at: new Date().toISOString(),
+        },
+        { onConflict: 'task_id,task_date' }
+      );
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from('task_completions')
+        .delete()
+        .match({ task_id: validTaskId, task_date: date });
+      if (error) throw error;
+    }
+  } catch (err) {
+    console.warn('Network error setting task completion, queued for sync:', err);
+    addToSyncQueue({
+      type: 'TASK_COMPLETION',
+      payload: { taskId, date, isCompleted, workerId, notes },
+    });
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
   }
 }
 

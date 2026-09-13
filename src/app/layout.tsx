@@ -22,6 +22,8 @@ export const viewport: Viewport = {
 
 import { ProfileProvider } from '@/context/ProfileContext';
 import { ProfileSwitcherModal } from '@/components/ProfileSwitcherModal';
+import { SyncProvider } from '@/context/SyncContext';
+import { SyncStatusModal } from '@/components/SyncStatusModal';
 
 export default function RootLayout({
   children,
@@ -39,8 +41,11 @@ export default function RootLayout({
       </head>
       <body className="bg-slate-50 text-slate-900 antialiased min-h-screen font-sans selection:bg-emerald-600 selection:text-white">
         <ProfileProvider>
-          {children}
-          <ProfileSwitcherModal />
+          <SyncProvider>
+            {children}
+            <ProfileSwitcherModal />
+            <SyncStatusModal />
+          </SyncProvider>
         </ProfileProvider>
       </body>
     </html>

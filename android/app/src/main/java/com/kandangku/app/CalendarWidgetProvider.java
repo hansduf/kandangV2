@@ -153,7 +153,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
             context, 404, tasksPageIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         views.setOnClickPendingIntent(R.id.widget_calendar_task_card, piTasks);
-        views.setOnClickPendingIntent(R.id.widget_calendar_image, tasksPageIntent);
+        views.setOnClickPendingIntent(R.id.widget_calendar_image, piTasks);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }

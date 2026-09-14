@@ -1,6 +1,7 @@
 package com.kandangku.app;
 
 import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -23,12 +24,15 @@ public class MainActivity extends BridgeActivity {
         if (this.bridge != null && this.bridge.getWebView() != null) {
             this.bridge.getWebView().addJavascriptInterface(new WidgetDataBridge(this), "AndroidWidgetBridge");
         }
+
+        refreshAllWidgets(this);
     }
 
     @Override
     public void onResume() {
         super.onResume();
         handleWidgetIntent(getIntent());
+        refreshAllWidgets(this);
     }
 
     @Override
@@ -36,6 +40,34 @@ public class MainActivity extends BridgeActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleWidgetIntent(intent);
+    }
+
+    public static void refreshAllWidgets(Context context) {
+        try {
+            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+
+            int[] prodIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, ProductionWidgetProvider.class));
+            for (int id : prodIds) {
+                ProductionWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+            }
+
+            int[] chartIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, ChartWidgetProvider.class));
+            for (int id : chartIds) {
+                ChartWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+            }
+
+            int[] calIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, CalendarWidgetProvider.class));
+            for (int id : calIds) {
+                CalendarWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+            }
+
+            int[] actIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, ActionsWidgetProvider.class));
+            for (int id : actIds) {
+                ActionsWidgetProvider.updateAppWidget(context, appWidgetManager, id);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void handleWidgetIntent(Intent intent) {
@@ -134,27 +166,7 @@ public class MainActivity extends BridgeActivity {
                 editor.apply();
 
                 // Directly update all active widget instances
-                AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
-
-                int[] prodIds = appWidgetManager.getAppWidgetIds(new android.content.ComponentName(context, ProductionWidgetProvider.class));
-                for (int id : prodIds) {
-                    ProductionWidgetProvider.updateAppWidget(context, appWidgetManager, id);
-                }
-
-                int[] chartIds = appWidgetManager.getAppWidgetIds(new android.content.ComponentName(context, ChartWidgetProvider.class));
-                for (int id : chartIds) {
-                    ChartWidgetProvider.updateAppWidget(context, appWidgetManager, id);
-                }
-
-                int[] calIds = appWidgetManager.getAppWidgetIds(new android.content.ComponentName(context, CalendarWidgetProvider.class));
-                for (int id : calIds) {
-                    CalendarWidgetProvider.updateAppWidget(context, appWidgetManager, id);
-                }
-
-                int[] actIds = appWidgetManager.getAppWidgetIds(new android.content.ComponentName(context, ActionsWidgetProvider.class));
-                for (int id : actIds) {
-                    ActionsWidgetProvider.updateAppWidget(context, appWidgetManager, id);
-                }
+                refreshAllWidgets(context);
             } catch (Exception e) {
                 e.printStackTrace();
             }

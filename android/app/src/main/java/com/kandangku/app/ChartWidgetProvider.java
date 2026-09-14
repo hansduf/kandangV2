@@ -41,6 +41,12 @@ public class ChartWidgetProvider extends AppWidgetProvider {
                     updateAppWidget(context, appWidgetManager, id);
                 }
             }
+        } else if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) {
+            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+            int[] appWidgetIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, ChartWidgetProvider.class));
+            for (int id : appWidgetIds) {
+                updateAppWidget(context, appWidgetManager, id);
+            }
         }
     }
 
@@ -176,10 +182,17 @@ public class ChartWidgetProvider extends AppWidgetProvider {
                 JSONArray arr = new JSONArray(jsonStr);
                 for (int i = 0; i < arr.length(); i++) {
                     JSONObject obj = arr.getJSONObject(i);
+                    int good = obj.optInt("good", 0);
+                    int bad = obj.optInt("bad", 0);
+                    int val = obj.optInt("val", good + bad);
+                    if (val > (good + bad)) {
+                        good = val;
+                        bad = 0;
+                    }
                     points.add(new ChartPoint(
                         obj.optString("date", ""),
-                        obj.optInt("good", obj.optInt("val", 0)),
-                        obj.optInt("bad", 0)
+                        good,
+                        bad
                     ));
                 }
             } catch (Exception e) {
@@ -192,7 +205,7 @@ public class ChartWidgetProvider extends AppWidgetProvider {
             points.add(new ChartPoint("11/09", 10, 0));
             points.add(new ChartPoint("12/09", 9, 0));
             points.add(new ChartPoint("13/09", 8, 0));
-            points.add(new ChartPoint("14/09", 6, 2)); // 6 utuh + 2 rusak = 8
+            points.add(new ChartPoint("14/09", 6, 2)); // 6 utuh + 2 retak = 8
         }
 
         int count = points.size();
@@ -306,7 +319,7 @@ public class ChartWidgetProvider extends AppWidgetProvider {
             canvas.drawCircle(cx, cy, 7.5f, dotOuter);
             canvas.drawCircle(cx, cy, 5f, dotInner);
 
-            // Display total eggs value
+            // Display total eggs value (good + bad)
             canvas.drawText(String.valueOf(points.get(i).total()), cx, cy - 10f, valText);
             canvas.drawText(points.get(i).date, cx, height - 10f, dateText);
         }

@@ -21,7 +21,7 @@
             android:layout_weight="1"
             android:text="September 2026"
             android:textColor="#0F172A"
-            android:textSize="14sp"
+            android:textSize="15.5sp"
             android:textStyle="bold" />
 
         <!-- Prev Month Button -->
@@ -41,7 +41,7 @@
             android:id="@+id/btn_cal_next"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="5dp"
             android:background="@drawable/widget_tab_inactive_bg"
             android:gravity="center"
             android:text="›"
@@ -49,29 +49,30 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <!-- Quick Add Button -->
+        <!-- Quick Add Button (Black pill matching screenshot) -->
         <TextView
             android:id="@+id/btn_cal_add"
             android:layout_width="wrap_content"
             android:layout_height="28dp"
             android:layout_marginStart="6dp"
-            android:background="@drawable/widget_badge_emerald"
+            android:background="@drawable/widget_btn_add_black"
             android:gravity="center"
-            android:paddingHorizontal="8dp"
+            android:paddingHorizontal="10dp"
             android:text="+ Catat"
-            android:textColor="#00684A"
-            android:textSize="10.5sp"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Monthly Calendar Grid Canvas -->
+    <!-- Monthly Calendar Grid Canvas (Fixed DP height to avoid 0dp RemoteViews collapse) -->
     <ImageView
         android:id="@+id/widget_calendar_image"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginVertical="6dp"
-        android:layout_weight="1.6"
-        android:scaleType="fitXY" />
+        android:layout_height="210dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="4dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/widget_calendar_preview" />
 
     <!-- Bottom: Task Explanation Card -->
     <LinearLayout

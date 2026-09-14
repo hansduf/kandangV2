@@ -49,60 +49,56 @@
     <LinearLayout
         android:id="@+id/widget_chart_tabs"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="28dp"
         android:layout_marginTop="6dp"
         android:orientation="horizontal">
 
         <TextView
             android:id="@+id/btn_tab_all"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginEnd="3dp"
             android:layout_weight="1"
             android:background="@drawable/widget_tab_active_bg"
             android:gravity="center"
-            android:paddingVertical="4dp"
             android:text="Semua"
             android:textColor="#FFFFFF"
-            android:textSize="10sp"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/btn_tab_w"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginHorizontal="2dp"
             android:layout_weight="1"
             android:background="@drawable/widget_tab_inactive_bg"
             android:gravity="center"
-            android:paddingVertical="4dp"
             android:text="Kandang W"
             android:textColor="#64748B"
-            android:textSize="10sp"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/btn_tab_1"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_marginStart="3dp"
             android:layout_weight="1"
             android:background="@drawable/widget_tab_inactive_bg"
             android:gravity="center"
-            android:paddingVertical="4dp"
             android:text="Kandang 1"
             android:textColor="#64748B"
-            android:textSize="10sp"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Dynamic Area Chart Canvas Image -->
+    <!-- Dynamic Area Chart Canvas Image (Fixed DP height) -->
     <ImageView
         android:id="@+id/widget_chart_image"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="90dp"
         android:layout_marginVertical="4dp"
-        android:layout_weight="1"
         android:scaleType="fitXY"
         android:src="@drawable/widget_chart_preview" />
 
@@ -120,7 +116,7 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="Total: 8 btr (6 utuh + 2 rusak)"
+            android:text="Total: 8 btr (6 utuh + 2 retak)"
             android:textColor="#64748B"
             android:textSize="10sp"
             android:textStyle="bold" />

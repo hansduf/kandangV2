@@ -3,6 +3,7 @@ package com.kandangku.app;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,6 +12,18 @@ import android.widget.RemoteViews;
 public class ProductionWidgetProvider extends AppWidgetProvider {
 
     private static final String PREFS_NAME = "KandangKuWidgetPrefs";
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        super.onReceive(context, intent);
+        if (Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) {
+            AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+            int[] appWidgetIds = appWidgetManager.getAppWidgetIds(new ComponentName(context, ProductionWidgetProvider.class));
+            for (int id : appWidgetIds) {
+                updateAppWidget(context, appWidgetManager, id);
+            }
+        }
+    }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {

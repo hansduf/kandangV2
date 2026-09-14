@@ -10,14 +10,56 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
-    private static final String PREFS_NAME = "KandangKuWidgetPrefs";
+    public static final String PREFS_NAME = "KandangKuWidgetPrefs";
+    private static String pendingQuickAction = null;
+    private static String pendingFlockId = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        handleWidgetIntent(getIntent());
+
         if (this.bridge != null && this.bridge.getWebView() != null) {
             this.bridge.getWebView().addJavascriptInterface(new WidgetDataBridge(this), "AndroidWidgetBridge");
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        handleWidgetIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleWidgetIntent(intent);
+    }
+
+    private void handleWidgetIntent(Intent intent) {
+        if (intent != null && intent.hasExtra("quick_action")) {
+            String action = intent.getStringExtra("quick_action");
+            String flockId = intent.getStringExtra("flock_id");
+            pendingQuickAction = action;
+            pendingFlockId = flockId;
+            intent.removeExtra("quick_action");
+
+            dispatchQuickActionToWeb(action, flockId);
+        }
+    }
+
+    private void dispatchQuickActionToWeb(final String action, final String flockId) {
+        if (this.bridge != null && this.bridge.getWebView() != null) {
+            this.bridge.getWebView().post(new Runnable() {
+                @Override
+                public void run() {
+                    String script = "if (window.handleKandangQuickAction) { window.handleKandangQuickAction('" + action + "', '" + (flockId != null ? flockId : "") + "'); } " +
+                                    "else { window.dispatchEvent(new CustomEvent('kandang_quick_action', { detail: { action: '" + action + "', flockId: '" + (flockId != null ? flockId : "") + "' } })); }";
+                    bridge.getWebView().evaluateJavascript(script, null);
+                }
+            });
         }
     }
 
@@ -29,6 +71,20 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public String getPendingQuickAction() {
+            String action = pendingQuickAction;
+            pendingQuickAction = null;
+            return action != null ? action : "";
+        }
+
+        @JavascriptInterface
+        public String getPendingFlockId() {
+            String flockId = pendingFlockId;
+            pendingFlockId = null;
+            return flockId != null ? flockId : "";
+        }
+
+        @JavascriptInterface
         public void updateWidgetData(String jsonData) {
             try {
                 org.json.JSONObject obj = new org.json.JSONObject(jsonData);
@@ -36,28 +92,25 @@ public class MainActivity extends BridgeActivity {
                 SharedPreferences.Editor editor = prefs.edit();
 
                 if (obj.has("flockName")) editor.putString("flock_name", obj.getString("flockName"));
-                if (obj.has("todayEggTotal")) editor.putString("today_egg_total", obj.getString("todayEggTotal"));
+                if (obj.has("todayEggGood")) editor.putString("today_egg_good", obj.getString("todayEggGood"));
+                if (obj.has("todayEggGoodKg")) editor.putString("today_egg_good_kg", obj.getString("todayEggGoodKg"));
+                if (obj.has("todayEggBad")) editor.putString("today_egg_bad", obj.getString("todayEggBad"));
                 if (obj.has("todayHdp")) editor.putString("today_hdp", obj.getString("todayHdp"));
-                if (obj.has("todayFeed")) editor.putString("today_feed", obj.getString("todayFeed"));
+                if (obj.has("todayHhp")) editor.putString("today_hhp", obj.getString("todayHhp"));
                 if (obj.has("todayMort")) editor.putString("today_mort", obj.getString("todayMort"));
+                if (obj.has("coopBreakdown")) editor.putString("coop_breakdown", obj.getString("coopBreakdown"));
                 if (obj.has("chartStats")) editor.putString("chart_stats", obj.getString("chartStats"));
                 if (obj.has("activeProfileName")) editor.putString("active_profile_name", obj.getString("activeProfileName"));
                 if (obj.has("activeProfileRole")) editor.putString("active_profile_role", obj.getString("activeProfileRole"));
 
-                if (obj.has("dayValues")) {
-                    org.json.JSONArray arr = obj.getJSONArray("dayValues");
-                    for (int i = 0; i < arr.length() && i < 7; i++) {
-                        editor.putInt("day_val_" + i, arr.getInt(i));
-                    }
+                if (obj.has("history7Days")) {
+                    editor.putString("history_7_days_json", obj.getString("history7Days"));
                 }
-
+                if (obj.has("calendarWeek")) {
+                    editor.putString("calendar_week_json", obj.getString("calendarWeek"));
+                }
                 if (obj.has("tasks")) {
-                    org.json.JSONArray tasksArr = obj.getJSONArray("tasks");
-                    for (int i = 0; i < tasksArr.length() && i < 3; i++) {
-                        org.json.JSONObject t = tasksArr.getJSONObject(i);
-                        editor.putString("task_" + (i + 1), t.optString("text", ""));
-                        editor.putBoolean("task_" + (i + 1) + "_done", t.optBoolean("done", false));
-                    }
+                    editor.putString("tasks_json", obj.getString("tasks"));
                 }
 
                 editor.apply();

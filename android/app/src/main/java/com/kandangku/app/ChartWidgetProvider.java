@@ -9,9 +9,15 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
-import android.graphics.RectF;
+import android.graphics.Path;
+import android.graphics.Shader;
 import android.widget.RemoteViews;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ChartWidgetProvider extends AppWidgetProvider {
 
@@ -28,18 +34,26 @@ public class ChartWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_chart);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String flockName = prefs.getString("flock_name", "Kandang 1");
-        String statsText = prefs.getString("chart_stats", "Rata-rata: 1.350 btr • Peak HDP: 91.2%");
+        String flockName = prefs.getString("flock_name", "Total Farm");
+        String statsText = prefs.getString("chart_stats", "Rata-rata: 19 btr • HDP: 95%");
+        String profileName = prefs.getString("active_profile_name", "Petugas");
+        String profileRole = prefs.getString("active_profile_role", "worker");
+
+        String roleBadge = "owner".equalsIgnoreCase(profileRole) ? "Owner: " + profileName : "Pekerja: " + profileName;
 
         views.setTextViewText(R.id.widget_chart_flock, flockName);
+        views.setTextViewText(R.id.widget_chart_role, roleBadge);
         views.setTextViewText(R.id.widget_chart_stats, statsText);
 
-        // Render Dynamic Bitmap Bar Chart
-        Bitmap chartBitmap = renderBarChartBitmap(prefs);
-        views.setImageViewBitmap(R.id.widget_chart_image, chartBitmap);
+        // Render dynamic Area Chart Bitmap
+        Bitmap chartBitmap = renderAreaChartBitmap(prefs);
+        if (chartBitmap != null) {
+            views.setImageViewBitmap(R.id.widget_chart_image, chartBitmap);
+        }
 
-        // Click to open app
+        // Click to open Reports / Performance Chart in App
         Intent intent = new Intent(context, MainActivity.class);
+        intent.putExtra("quick_action", "reports");
         PendingIntent pendingIntent = PendingIntent.getActivity(
             context,
             101,
@@ -51,75 +65,170 @@ public class ChartWidgetProvider extends AppWidgetProvider {
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 
-    private static Bitmap renderBarChartBitmap(SharedPreferences prefs) {
-        int width = 480;
-        int height = 160;
+    private static class ChartPoint {
+        String date;
+        int value;
+        ChartPoint(String d, int v) {
+            this.date = d;
+            this.value = v;
+        }
+    }
+
+    private static Bitmap renderAreaChartBitmap(SharedPreferences prefs) {
+        int width = 520;
+        int height = 180;
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
 
-        // Background grid lines
-        Paint gridPaint = new Paint();
-        gridPaint.setColor(Color.parseColor("#22FFFFFF"));
-        gridPaint.setStrokeWidth(2f);
-        canvas.drawLine(20, height - 35, width - 20, height - 35, gridPaint);
-        canvas.drawLine(20, height / 2, width - 20, height / 2, gridPaint);
+        // Clean white background
+        canvas.drawColor(Color.WHITE);
 
-        // 7 days data
-        int[] values = new int[7];
-        String[] days = {"Sn", "Sl", "Rb", "Km", "Jm", "Sb", "Mg"};
-        int maxVal = 100;
+        // Read real data points
+        List<ChartPoint> points = new ArrayList<>();
+        String jsonStr = prefs.getString("history_7_days_json", null);
 
-        for (int i = 0; i < 7; i++) {
-            values[i] = prefs.getInt("day_val_" + i, (int) (65 + Math.sin(i * 0.8) * 25));
-            if (values[i] > maxVal) maxVal = values[i];
+        if (jsonStr != null && !jsonStr.isEmpty()) {
+            try {
+                JSONArray arr = new JSONArray(jsonStr);
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject obj = arr.getJSONObject(i);
+                    points.add(new ChartPoint(obj.optString("date", ""), obj.optInt("val", 0)));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
-        Paint barPaint = new Paint();
-        barPaint.setAntiAlias(true);
-        barPaint.setColor(Color.parseColor("#10B981")); // Emerald bar
+        // Fallback default sample matching Screenshot 3 & 4
+        if (points.isEmpty()) {
+            points.add(new ChartPoint("11/09", 20));
+            points.add(new ChartPoint("12/09", 19));
+            points.add(new ChartPoint("13/09", 16));
+        }
 
-        Paint peakBarPaint = new Paint();
-        peakBarPaint.setAntiAlias(true);
-        peakBarPaint.setColor(Color.parseColor("#FDE047")); // Yellow peak bar
+        int count = points.size();
+        if (count < 2) {
+            // Need at least 2 points to draw an area
+            points.add(0, new ChartPoint("10/09", points.get(0).value));
+            count = points.size();
+        }
 
-        Paint textPaint = new Paint();
-        textPaint.setAntiAlias(true);
-        textPaint.setColor(Color.parseColor("#D1FAE5"));
-        textPaint.setTextSize(20f);
-        textPaint.setTextAlign(Paint.Align.CENTER);
+        int maxVal = 10;
+        for (ChartPoint pt : points) {
+            if (pt.value > maxVal) maxVal = pt.value;
+        }
+        maxVal = (int) Math.ceil(maxVal * 1.25); // headroom for labels
 
-        Paint valTextPaint = new Paint();
-        valTextPaint.setAntiAlias(true);
-        valTextPaint.setColor(Color.WHITE);
-        valTextPaint.setTextSize(17f);
+        // Grid lines
+        Paint gridPaint = new Paint();
+        gridPaint.setColor(Color.parseColor("#F1F5F9"));
+        gridPaint.setStrokeWidth(1.5f);
+
+        float paddingLeft = 36f;
+        float paddingRight = 36f;
+        float paddingTop = 32f;
+        float paddingBottom = 34f;
+        float chartBaseY = height - paddingBottom;
+        float chartUsableHeight = chartBaseY - paddingTop;
+
+        canvas.drawLine(paddingLeft, chartBaseY, width - paddingRight, chartBaseY, gridPaint);
+        canvas.drawLine(paddingLeft, chartBaseY - (chartUsableHeight * 0.5f), width - paddingRight, chartBaseY - (chartUsableHeight * 0.5f), gridPaint);
+        canvas.drawLine(paddingLeft, paddingTop, width - paddingRight, paddingTop, gridPaint);
+
+        // Calculate X and Y for each point
+        float[] posX = new float[count];
+        float[] posY = new float[count];
+        float stepX = (width - paddingLeft - paddingRight) / (count - 1);
+
+        for (int i = 0; i < count; i++) {
+            posX[i] = paddingLeft + (i * stepX);
+            float ratio = (float) points.get(i).value / (float) maxVal;
+            posY[i] = chartBaseY - (ratio * chartUsableHeight);
+        }
+
+        // 1. Draw Gradient Filled Area Under Curve
+        Path areaPath = new Path();
+        areaPath.moveTo(posX[0], chartBaseY);
+        areaPath.lineTo(posX[0], posY[0]);
+
+        for (int i = 1; i < count; i++) {
+            float prevX = posX[i - 1];
+            float prevY = posY[i - 1];
+            float currX = posX[i];
+            float currY = posY[i];
+            float midX = (prevX + currX) / 2f;
+            areaPath.cubicTo(midX, prevY, midX, currY, currX, currY);
+        }
+
+        areaPath.lineTo(posX[count - 1], chartBaseY);
+        areaPath.close();
+
+        Paint areaPaint = new Paint();
+        areaPaint.setAntiAlias(true);
+        areaPaint.setStyle(Paint.Style.FILL);
+        areaPaint.setShader(new LinearGradient(
+            0, paddingTop, 0, chartBaseY,
+            Color.parseColor("#4000684A"), // Semi-transparent emerald
+            Color.parseColor("#0500684A"), // Soft fade to white
+            Shader.TileMode.CLAMP
+        ));
+        canvas.drawPath(areaPath, areaPaint);
+
+        // 2. Draw Curve Stroke
+        Path linePath = new Path();
+        linePath.moveTo(posX[0], posY[0]);
+        for (int i = 1; i < count; i++) {
+            float prevX = posX[i - 1];
+            float prevY = posY[i - 1];
+            float currX = posX[i];
+            float currY = posY[i];
+            float midX = (prevX + currX) / 2f;
+            linePath.cubicTo(midX, prevY, midX, currY, currX, currY);
+        }
+
+        Paint linePaint = new Paint();
+        linePaint.setAntiAlias(true);
+        linePaint.setColor(Color.parseColor("#00684A"));
+        linePaint.setStrokeWidth(4.5f);
+        linePaint.setStyle(Paint.Style.STROKE);
+        linePaint.setStrokeCap(Paint.Cap.ROUND);
+        linePaint.setStrokeJoin(Paint.Join.ROUND);
+        canvas.drawPath(linePath, linePaint);
+
+        // 3. Draw Dots & Text Values
+        Paint dotOuterPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dotOuterPaint.setColor(Color.WHITE);
+        dotOuterPaint.setStyle(Paint.Style.FILL);
+
+        Paint dotInnerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dotInnerPaint.setColor(Color.parseColor("#00684A"));
+        dotInnerPaint.setStyle(Paint.Style.FILL);
+
+        Paint valTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        valTextPaint.setColor(Color.parseColor("#0F172A"));
+        valTextPaint.setTextSize(18f);
         valTextPaint.setTextAlign(Paint.Align.CENTER);
+        valTextPaint.setFakeBoldText(true);
 
-        float spacing = (float) (width - 40) / 7;
-        float barWidth = spacing * 0.55f;
-        float chartBaseY = height - 35;
-        float maxBarHeight = height - 70;
+        Paint dateTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        dateTextPaint.setColor(Color.parseColor("#64748B"));
+        dateTextPaint.setTextSize(16f);
+        dateTextPaint.setTextAlign(Paint.Align.CENTER);
 
-        for (int i = 0; i < 7; i++) {
-            float centerX = 20 + (i * spacing) + (spacing / 2);
-            float barHeight = (values[i] / (float) maxVal) * maxBarHeight;
-            float left = centerX - (barWidth / 2);
-            float right = centerX + (barWidth / 2);
-            float top = chartBaseY - barHeight;
+        for (int i = 0; i < count; i++) {
+            float cx = posX[i];
+            float cy = posY[i];
 
-            RectF rect = new RectF(left, top, right, chartBaseY);
-            if (values[i] == maxVal) {
-                canvas.drawRoundRect(rect, 8f, 8f, peakBarPaint);
-            } else {
-                canvas.drawRoundRect(rect, 8f, 8f, barPaint);
-            }
+            // Outer white ring
+            canvas.drawCircle(cx, cy, 7.5f, dotOuterPaint);
+            // Inner green dot
+            canvas.drawCircle(cx, cy, 5f, dotInnerPaint);
 
-            // Day label
-            canvas.drawText(days[i], centerX, height - 12, textPaint);
+            // Value text above dot
+            canvas.drawText(String.valueOf(points.get(i).value), cx, cy - 10f, valTextPaint);
 
-            // Value label above bar
-            if (barHeight > 30) {
-                canvas.drawText(String.valueOf(values[i]), centerX, top - 6, valTextPaint);
-            }
+            // Date label below baseline
+            canvas.drawText(points.get(i).date, cx, height - 10f, dateTextPaint);
         }
 
         return bitmap;

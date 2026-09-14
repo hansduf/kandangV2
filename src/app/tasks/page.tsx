@@ -25,6 +25,7 @@ import {
   checkAndSyncDailyEggTasks,
   TASK_COLOR_PALETTE,
 } from '@/lib/supabase';
+import { pushLiveStateToWidgets } from '@/lib/widgetBridge';
 import {
   CheckSquare,
   Users,
@@ -117,6 +118,7 @@ export default function TasksPage() {
       setFlocks(flockList);
       setTasks(taskList);
       setWorkers(profileList);
+      pushLiveStateToWidgets(activeProfile);
     } catch (err) {
       console.error(err);
     } finally {

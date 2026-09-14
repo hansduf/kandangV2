@@ -26,6 +26,7 @@ import { FloatingTaskEdge } from '@/components/FloatingTaskEdge';
 import { TaskCalendarCard } from '@/components/TaskCalendarCard';
 import { useProfile } from '@/context/ProfileContext';
 import { syncDataToWidgets } from '@/lib/widgetBridge';
+import { useRouter } from 'next/navigation';
 import {
   Egg,
   TrendingUp,
@@ -44,6 +45,7 @@ import {
 } from 'lucide-react';
 
 export default function DashboardHomePage() {
+  const router = useRouter();
   const { activeProfile, isOwner, isWorker, setIsProfileModalOpen } = useProfile();
   const [flocks, setFlocks] = useState<Flock[]>([]);
   const [activeFlockId, setActiveFlockId] = useState<string>('');
@@ -79,10 +81,58 @@ export default function DashboardHomePage() {
     setIsInputModalOpen(true);
   };
 
+  const handleWidgetQuickAction = (action: string, flockId?: string) => {
+    if (flockId) {
+      setActiveFlockId(flockId);
+    }
+    if (action === 'egg') {
+      handleOpenQuickInputCustom(flockId, 'daily');
+    } else if (action === 'health') {
+      handleOpenQuickInputCustom(flockId, 'health', 'Obat');
+    } else if (action === 'mortality') {
+      handleOpenQuickInputCustom(flockId, 'mortality');
+    } else if (action === 'tasks') {
+      router.push('/tasks');
+    } else if (action === 'reports' || action === 'chart') {
+      router.push('/reports');
+    } else if (action === 'dashboard') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    // Check pending quick action from Android Widget cold-start
+    if (typeof window !== 'undefined') {
+      const bridge = (window as any).AndroidWidgetBridge;
+      if (bridge && typeof bridge.getPendingQuickAction === 'function') {
+        const pending = bridge.getPendingQuickAction();
+        const pendingFlock = typeof bridge.getPendingFlockId === 'function' ? bridge.getPendingFlockId() : '';
+        if (pending) {
+          handleWidgetQuickAction(pending, pendingFlock);
+        }
+      }
+
+      // Attach global handler for warm-start / background resume
+      (window as any).handleKandangQuickAction = (action: string, flockId?: string) => {
+        handleWidgetQuickAction(action, flockId);
+      };
+
+      const handleCustomEvent = (e: any) => {
+        if (e.detail?.action) {
+          handleWidgetQuickAction(e.detail.action, e.detail.flockId);
+        }
+      };
+
+      window.addEventListener('kandang_quick_action', handleCustomEvent);
+      return () => {
+        window.removeEventListener('kandang_quick_action', handleCustomEvent);
+      };
+    }
+  }, []);
+
   useEffect(() => {
     loadFlocks();
   }, []);
-
 
   useEffect(() => {
     if (activeFlockId) {
@@ -95,10 +145,11 @@ export default function DashboardHomePage() {
       syncDataToWidgets({
         summary,
         history,
+        flocks,
         profile: activeProfile,
       });
     }
-  }, [summary, history, activeProfile]);
+  }, [summary, history, flocks, activeProfile]);
 
   const loadFlocks = async () => {
     try {

@@ -3,11 +3,11 @@
     android:id="@+id/widget_prod_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg_emerald"
+    android:background="@drawable/widget_bg_card_white"
     android:orientation="vertical"
     android:padding="12dp">
 
-    <!-- Header -->
+    <!-- Top Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -15,125 +15,229 @@
         android:orientation="horizontal">
 
         <ImageView
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
             android:src="@mipmap/ic_launcher" />
 
         <TextView
             android:id="@+id/widget_prod_flock"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="6dp"
             android:layout_weight="1"
-            android:text="KandangKu • Kandang 1"
-            android:textColor="#FFFFFF"
-            android:textSize="12.5sp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="PRODUKSI TELUR &amp; PERFORMA"
+            android:textColor="#0F172A"
+            android:textSize="11.5sp"
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/widget_prod_date"
+            android:id="@+id/widget_prod_hdp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Hari Ini"
-            android:textColor="#A7F3D0"
+            android:background="@drawable/widget_badge_emerald"
+            android:paddingHorizontal="7dp"
+            android:paddingVertical="3dp"
+            android:text="100% HDP"
+            android:textColor="#00684A"
             android:textSize="10.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- 4 Stats Cards Grid -->
+    <!-- 4 Stats Boxes in 1 Row -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="7dp"
         android:orientation="horizontal">
 
-        <!-- Col 1: Telur & Pakan -->
+        <!-- Box 1: Telur Utuh -->
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1.2"
-            android:gravity="center_vertical"
-            android:orientation="vertical">
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_metric_box_bg"
+            android:orientation="vertical"
+            android:padding="6dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="TOTAL TELUR"
-                android:textColor="#D1FAE5"
-                android:textSize="9sp"
+                android:text="TELUR UTUH"
+                android:textColor="#64748B"
+                android:textSize="8sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/widget_prod_egg"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="1.420 Butir"
-                android:textColor="#FFFFFF"
-                android:textSize="17sp"
+                android:layout_marginTop="1dp"
+                android:text="19 btr"
+                android:textColor="#00684A"
+                android:textSize="13sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/widget_prod_feed"
+                android:id="@+id/widget_prod_egg_kg"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="🌾 Pakan: 120 kg"
-                android:textColor="#D1FAE5"
-                android:textSize="10sp" />
+                android:text="1.19 kg"
+                android:textColor="#64748B"
+                android:textSize="8.5sp" />
         </LinearLayout>
 
-        <!-- Divider Line -->
-        <View
-            android:layout_width="1dp"
-            android:layout_height="match_parent"
-            android:layout_marginHorizontal="10dp"
-            android:background="#00875a" />
-
-        <!-- Col 2: HDP & Kematian -->
+        <!-- Box 2: Telur Retak -->
         <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
             android:layout_weight="1"
-            android:gravity="center_vertical"
-            android:orientation="vertical">
+            android:background="@drawable/widget_metric_box_bg"
+            android:orientation="vertical"
+            android:padding="6dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="HEN-DAY (HDP)"
-                android:textColor="#D1FAE5"
-                android:textSize="9sp"
+                android:text="TELUR RETAK"
+                android:textColor="#64748B"
+                android:textSize="8sp"
                 android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/widget_prod_hdp"
+                android:id="@+id/widget_prod_bad_egg"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="89.5%"
-                android:textColor="#FDE047"
-                android:textSize="17sp"
+                android:layout_marginTop="1dp"
+                android:text="0 btr"
+                android:textColor="#0F172A"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 kg"
+                android:textColor="#94A3B8"
+                android:textSize="8.5sp" />
+        </LinearLayout>
+
+        <!-- Box 3: HHP % -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_metric_box_bg"
+            android:orientation="vertical"
+            android:padding="6dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="HHP %"
+                android:textColor="#64748B"
+                android:textSize="8sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_prod_hhp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="95%"
+                android:textColor="#0F172A"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pop. Awal"
+                android:textColor="#94A3B8"
+                android:textSize="8.5sp" />
+        </LinearLayout>
+
+        <!-- Box 4: Kematian -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_metric_box_bg"
+            android:orientation="vertical"
+            android:padding="6dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MATI / AFKIR"
+                android:textColor="#64748B"
+                android:textSize="8sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/widget_prod_mort"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="💀 Mati: 0 ekor"
-                android:textColor="#FECACA"
-                android:textSize="10sp" />
+                android:layout_marginTop="1dp"
+                android:text="1 mati"
+                android:textColor="#DC2626"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 afkir"
+                android:textColor="#94A3B8"
+                android:textSize="8.5sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Bottom Footer -->
+    <!-- Coop Breakdown Line (Screenshot 4 & 5) -->
     <TextView
-        android:id="@+id/widget_prod_footer"
+        android:id="@+id/widget_prod_breakdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/widget_badge_subtle"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingHorizontal="7dp"
+        android:paddingVertical="4dp"
+        android:text="● W (W): 9 btr (100% HDP) +1 mati  •  ● 1 (1): 10 btr"
+        android:textColor="#334155"
+        android:textSize="9.5sp"
+        android:textStyle="bold" />
+
+    <!-- Bottom Action Footer -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:text="Data tersinkron • Ketuk untuk catat data ↗"
-        android:textColor="#A7F3D0"
-        android:textSize="9sp" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_prod_footer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Data tersinkron otomatis"
+            android:textColor="#64748B"
+            android:textSize="9sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Buka Dashboard ↗"
+            android:textColor="#00684A"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
 </LinearLayout>

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppProfile } from '@/types/database';
 import { fetchProfiles, verifyOwnerPin as apiVerifyOwnerPin, updateProfile as apiUpdateProfile } from '@/lib/supabase';
+import { pushLiveStateToWidgets } from '@/lib/widgetBridge';
 
 interface ProfileContextType {
   profiles: AppProfile[];
@@ -49,6 +50,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const found = profileList.find((p) => p.id === parsed.id && p.is_active);
           if (found) {
             setActiveProfile(found);
+            pushLiveStateToWidgets(found);
             setLoading(false);
             return;
           }
@@ -70,6 +72,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (typeof window !== 'undefined') {
       localStorage.setItem('kandang_active_profile', JSON.stringify(profile));
     }
+    pushLiveStateToWidgets(profile);
     setIsProfileModalOpen(false);
   };
 
@@ -81,6 +84,7 @@ export const ProfileProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (typeof window !== 'undefined') {
         localStorage.setItem('kandang_active_profile', JSON.stringify(owner));
       }
+      pushLiveStateToWidgets(owner);
       setIsProfileModalOpen(false);
       return true;
     }

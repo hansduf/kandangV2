@@ -19,7 +19,7 @@ public class ActionsWidgetProvider extends AppWidgetProvider {
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_actions);
 
-        // Action 1: Catat Telur
+        // Action 1: Catat Telur (Direct into Egg Input Modal)
         Intent eggIntent = new Intent(context, MainActivity.class);
         eggIntent.putExtra("quick_action", "egg");
         PendingIntent piEgg = PendingIntent.getActivity(
@@ -27,23 +27,23 @@ public class ActionsWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(R.id.btn_action_egg, piEgg);
 
-        // Action 2: Catat Pakan
-        Intent feedIntent = new Intent(context, MainActivity.class);
-        feedIntent.putExtra("quick_action", "feed");
-        PendingIntent piFeed = PendingIntent.getActivity(
-            context, 202, feedIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-        views.setOnClickPendingIntent(R.id.btn_action_feed, piFeed);
-
-        // Action 3: Catat Obat
+        // Action 2: Catat Obat & Vaksin (Direct into Health Modal)
         Intent healthIntent = new Intent(context, MainActivity.class);
         healthIntent.putExtra("quick_action", "health");
         PendingIntent piHealth = PendingIntent.getActivity(
-            context, 203, healthIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            context, 202, healthIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         views.setOnClickPendingIntent(R.id.btn_action_health, piHealth);
 
-        // Action 4: Buka Tugas
+        // Action 3: Catat Kematian & Afkir (Direct into Mortality Modal)
+        Intent mortIntent = new Intent(context, MainActivity.class);
+        mortIntent.putExtra("quick_action", "mortality");
+        PendingIntent piMort = PendingIntent.getActivity(
+            context, 203, mortIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        views.setOnClickPendingIntent(R.id.btn_action_mort, piMort);
+
+        // Action 4: Buka Agenda Tugas
         Intent tasksIntent = new Intent(context, MainActivity.class);
         tasksIntent.putExtra("quick_action", "tasks");
         PendingIntent piTasks = PendingIntent.getActivity(

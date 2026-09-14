@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_actions_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg_emerald"
+    android:background="@drawable/widget_bg_card_white"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:padding="8dp">
 
-    <!-- Action 1: + Telur -->
+    <!-- Action 1: Catat Telur -->
     <LinearLayout
         android:id="@+id/btn_action_egg"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_marginEnd="4dp"
+        android:layout_marginEnd="3dp"
         android:layout_weight="1"
-        android:background="@drawable/widget_btn_action"
+        android:background="@drawable/widget_btn_egg_bg"
+        android:clickable="true"
+        android:focusable="true"
         android:gravity="center"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="6dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -27,48 +31,26 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:text="+ Telur"
-            android:textColor="#FFFFFF"
-            android:textSize="9.5sp"
+            android:textColor="#00684A"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Action 2: + Pakan -->
-    <LinearLayout
-        android:id="@+id/btn_action_feed"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_marginHorizontal="3dp"
-        android:layout_weight="1"
-        android:background="@drawable/widget_btn_action"
-        android:gravity="center"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🌾"
-            android:textSize="14sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="+ Pakan"
-            android:textColor="#FFFFFF"
-            android:textSize="9.5sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- Action 3: + Obat -->
+    <!-- Action 2: Catat Obat & Vaksin -->
     <LinearLayout
         android:id="@+id/btn_action_health"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_marginHorizontal="3dp"
+        android:layout_marginHorizontal="2dp"
         android:layout_weight="1"
-        android:background="@drawable/widget_btn_action"
+        android:background="@drawable/widget_btn_health_bg"
+        android:clickable="true"
+        android:focusable="true"
         android:gravity="center"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="6dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -79,22 +61,56 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:text="+ Obat"
-            android:textColor="#FFFFFF"
-            android:textSize="9.5sp"
+            android:textColor="#6D28D9"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Action 4: Tugas -->
+    <!-- Action 3: Catat Kematian & Afkir -->
+    <LinearLayout
+        android:id="@+id/btn_action_mort"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginHorizontal="2dp"
+        android:layout_weight="1"
+        android:background="@drawable/widget_btn_mort_bg"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="6dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💀"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="+ Mati"
+            android:textColor="#BE123C"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Action 4: Agenda Tugas -->
     <LinearLayout
         android:id="@+id/btn_action_tasks"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_marginStart="4dp"
+        android:layout_marginStart="3dp"
         android:layout_weight="1"
-        android:background="@drawable/widget_btn_action"
+        android:background="@drawable/widget_btn_tasks_bg"
+        android:clickable="true"
+        android:focusable="true"
         android:gravity="center"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="6dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -105,9 +121,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:text="Tugas"
-            android:textColor="#FFFFFF"
-            android:textSize="9.5sp"
+            android:textColor="#B45309"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 

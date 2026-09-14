@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.widget.RemoteViews;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.Calendar;
 
 public class CalendarWidgetProvider extends AppWidgetProvider {
@@ -25,7 +27,7 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_calendar);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String roleName = prefs.getString("active_profile_name", "Petugas");
+        String roleName = prefs.getString("active_profile_name", "P roni");
         String roleType = prefs.getString("active_profile_role", "worker");
         String roleBadge = "owner".equalsIgnoreCase(roleType) ? "Owner: " + roleName : "Pekerja: " + roleName;
 
@@ -37,46 +39,81 @@ public class CalendarWidgetProvider extends AppWidgetProvider {
         // Convert to Monday=0 .. Sunday=6
         int todayIdx = (todayDayOfWeek + 5) % 7;
 
-        cal.add(Calendar.DAY_OF_MONTH, -todayIdx);
-        int[] dayViewIds = {R.id.day_0, R.id.day_1, R.id.day_2, R.id.day_3, R.id.day_4, R.id.day_5, R.id.day_6};
+        cal.add(Calendar.DAY_OF_MONTH, -todayIdx); // Move to Monday of current week
+
+        int[] dayViewIds = {
+            R.id.day_0, R.id.day_1, R.id.day_2, R.id.day_3, R.id.day_4, R.id.day_5, R.id.day_6
+        };
         String[] dayNames = {"Sn", "Sl", "Rb", "Km", "Jm", "Sb", "Mg"};
 
         for (int i = 0; i < 7; i++) {
-            int dNum = cal.get(Calendar.DAY_OF_MONTH);
-            String text = dayNames[i] + "\n" + dNum;
-            views.setTextViewText(dayViewIds[i], text);
+            int d = cal.get(Calendar.DAY_OF_MONTH);
+            String dayLabel = dayNames[i] + "\n" + d;
+            views.setTextViewText(dayViewIds[i], dayLabel);
+
             if (i == todayIdx) {
-                views.setTextColor(dayViewIds[i], Color.parseColor("#10B981")); // Highlight today
+                views.setTextColor(dayViewIds[i], Color.parseColor("#00684A"));
             } else if (i == 6) {
-                views.setTextColor(dayViewIds[i], Color.parseColor("#F87171")); // Sunday
+                views.setTextColor(dayViewIds[i], Color.parseColor("#EF4444")); // Sunday
             } else {
-                views.setTextColor(dayViewIds[i], Color.parseColor("#94A3B8"));
+                views.setTextColor(dayViewIds[i], Color.parseColor("#64748B"));
             }
+
             cal.add(Calendar.DAY_OF_MONTH, 1);
         }
 
-        // Tasks checklist
-        String t1 = prefs.getString("task_1", "07:00 Panen Telur Pagi (Kandang 1)");
-        boolean d1 = prefs.getBoolean("task_1_done", true);
-        String t2 = prefs.getString("task_2", "08:30 Beri Pakan Pagi & Cek Air Minum");
-        boolean d2 = prefs.getBoolean("task_2_done", false);
-        String t3 = prefs.getString("task_3", "10:00 Vaksinasi ND & Pembersihan");
-        boolean d3 = prefs.getBoolean("task_3_done", false);
+        // Render real tasks from JSON
+        String tasksJson = prefs.getString("tasks_json", null);
+        int taskCount = 0;
 
-        views.setTextViewText(R.id.task_text_1, t1);
-        views.setTextViewText(R.id.task_check_1, d1 ? "✓" : "○");
-        views.setTextColor(R.id.task_check_1, d1 ? Color.parseColor("#10B981") : Color.parseColor("#FDE047"));
+        if (tasksJson != null && !tasksJson.isEmpty()) {
+            try {
+                JSONArray arr = new JSONArray(tasksJson);
+                taskCount = arr.length();
 
-        views.setTextViewText(R.id.task_text_2, t2);
-        views.setTextViewText(R.id.task_check_2, d2 ? "✓" : "○");
-        views.setTextColor(R.id.task_check_2, d2 ? Color.parseColor("#10B981") : Color.parseColor("#FDE047"));
+                int[] checkIds = {R.id.task_check_1, R.id.task_check_2, R.id.task_check_3};
+                int[] textIds = {R.id.task_text_1, R.id.task_text_2, R.id.task_text_3};
 
-        views.setTextViewText(R.id.task_text_3, t3);
-        views.setTextViewText(R.id.task_check_3, d3 ? "✓" : "○");
-        views.setTextColor(R.id.task_check_3, d3 ? Color.parseColor("#10B981") : Color.parseColor("#94A3B8"));
+                for (int i = 0; i < 3; i++) {
+                    if (i < taskCount) {
+                        JSONObject t = arr.getJSONObject(i);
+                        String title = t.optString("text", "");
+                        boolean done = t.optBoolean("done", false);
 
-        // Pending Intent to open app
+                        views.setTextViewText(textIds[i], title);
+                        if (done) {
+                            views.setTextViewText(checkIds[i], "✓");
+                            views.setTextColor(checkIds[i], Color.parseColor("#00684A"));
+                            views.setTextColor(textIds[i], Color.parseColor("#64748B"));
+                        } else {
+                            views.setTextViewText(checkIds[i], "○");
+                            views.setTextColor(checkIds[i], Color.parseColor("#D97706"));
+                            views.setTextColor(textIds[i], Color.parseColor("#0F172A"));
+                        }
+                    } else {
+                        // Empty slot
+                        views.setTextViewText(checkIds[i], "");
+                        views.setTextViewText(textIds[i], "");
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        if (taskCount == 0) {
+            views.setTextViewText(R.id.task_check_1, "✓");
+            views.setTextColor(R.id.task_check_1, Color.parseColor("#00684A"));
+            views.setTextViewText(R.id.task_text_1, "Semua tugas kandang hari ini beres!");
+            views.setTextViewText(R.id.task_check_2, "");
+            views.setTextViewText(R.id.task_text_2, "");
+            views.setTextViewText(R.id.task_check_3, "");
+            views.setTextViewText(R.id.task_text_3, "");
+        }
+
+        // Click to open Tasks page in App
         Intent intent = new Intent(context, MainActivity.class);
+        intent.putExtra("quick_action", "tasks");
         PendingIntent pendingIntent = PendingIntent.getActivity(
             context,
             102,

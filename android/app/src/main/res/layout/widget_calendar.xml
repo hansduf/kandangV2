@@ -3,7 +3,7 @@
     android:id="@+id/widget_calendar_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg_slate"
+    android:background="@drawable/widget_bg_card_white"
     android:orientation="vertical"
     android:padding="12dp">
 
@@ -14,24 +14,33 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@mipmap/ic_launcher" />
+
         <TextView
+            android:id="@+id/widget_calendar_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
             android:layout_weight="1"
-            android:text="📅 Kalender &amp; Tugas"
-            android:textColor="#FFFFFF"
-            android:textSize="12.5sp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="KALENDER &amp; TUGAS"
+            android:textColor="#0F172A"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_calendar_worker"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="#1E293B"
-            android:paddingHorizontal="6dp"
-            android:paddingVertical="2dp"
-            android:text="Pekerja: Budi"
-            android:textColor="#FDE047"
+            android:background="@drawable/widget_badge_amber"
+            android:paddingHorizontal="7dp"
+            android:paddingVertical="3dp"
+            android:text="Pekerja: P roni"
+            android:textColor="#92400E"
             android:textSize="9.5sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -42,9 +51,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:background="#1E293B"
+        android:background="@drawable/widget_badge_subtle"
         android:gravity="center"
         android:orientation="horizontal"
+        android:paddingHorizontal="2dp"
         android:paddingVertical="4dp">
 
         <TextView
@@ -53,9 +63,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Sn\n12"
-            android:textColor="#94A3B8"
-            android:textSize="9sp" />
+            android:text="Sn\n14"
+            android:textColor="#64748B"
+            android:textSize="9.5sp" />
 
         <TextView
             android:id="@+id/day_1"
@@ -63,10 +73,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Sl\n13"
-            android:textColor="#FFFFFF"
-            android:textSize="9sp"
-            android:textStyle="bold" />
+            android:text="Sl\n15"
+            android:textColor="#64748B"
+            android:textSize="9.5sp" />
 
         <TextView
             android:id="@+id/day_2"
@@ -74,9 +83,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Rb\n14"
-            android:textColor="#94A3B8"
-            android:textSize="9sp" />
+            android:text="Rb\n16"
+            android:textColor="#64748B"
+            android:textSize="9.5sp" />
 
         <TextView
             android:id="@+id/day_3"
@@ -84,9 +93,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Km\n15"
-            android:textColor="#94A3B8"
-            android:textSize="9sp" />
+            android:text="Km\n17"
+            android:textColor="#64748B"
+            android:textSize="9.5sp" />
 
         <TextView
             android:id="@+id/day_4"
@@ -94,9 +103,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Jm\n16"
-            android:textColor="#94A3B8"
-            android:textSize="9sp" />
+            android:text="Jm\n18"
+            android:textColor="#64748B"
+            android:textSize="9.5sp" />
 
         <TextView
             android:id="@+id/day_5"
@@ -104,9 +113,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Sb\n17"
-            android:textColor="#94A3B8"
-            android:textSize="9sp" />
+            android:text="Sb\n19"
+            android:textColor="#64748B"
+            android:textSize="9.5sp" />
 
         <TextView
             android:id="@+id/day_6"
@@ -114,16 +123,17 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="Mg\n18"
-            android:textColor="#F87171"
-            android:textSize="9sp" />
+            android:text="Mg\n20"
+            android:textColor="#EF4444"
+            android:textSize="9.5sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <!-- Task List Rows -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="5dp"
+        android:layout_marginTop="6dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -140,7 +150,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="✓"
-                android:textColor="#10B981"
+                android:textColor="#00684A"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -152,8 +162,8 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="07:00 Panen Telur Pagi (Kandang 1)"
-                android:textColor="#E2E8F0"
+                android:text="07:00 Panen Telur (Kandang W)"
+                android:textColor="#1E293B"
                 android:textSize="10.5sp" />
         </LinearLayout>
 
@@ -170,8 +180,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="○"
-                android:textColor="#FDE047"
-                android:textSize="12sp" />
+                android:textColor="#D97706"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/task_text_2"
@@ -181,8 +192,8 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="08:30 Beri Pakan Pagi &amp; Cek Air"
-                android:textColor="#FFFFFF"
+                android:text="09:00 Cek Kesehatan Ayam &amp; Vaksin"
+                android:textColor="#0F172A"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -211,20 +222,35 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="10:00 Vaksinasi ND &amp; Pembersihan"
-                android:textColor="#CBD5E1"
+                android:text="Pembersihan &amp; Sanitasi Kandang"
+                android:textColor="#64748B"
                 android:textSize="10.5sp" />
         </LinearLayout>
     </LinearLayout>
 
     <!-- Bottom Footer -->
-    <TextView
-        android:id="@+id/widget_calendar_footer"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="Semua tugas sinkron • Ketuk untuk checklist"
-        android:textColor="#94A3B8"
-        android:textSize="9sp" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_calendar_footer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Data tersinkron otomatis"
+            android:textColor="#64748B"
+            android:textSize="9.5sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Buka Tugas ↗"
+            android:textColor="#00684A"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
 </LinearLayout>

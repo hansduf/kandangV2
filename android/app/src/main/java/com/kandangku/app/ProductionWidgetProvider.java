@@ -23,19 +23,26 @@ public class ProductionWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_production);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String flockName = prefs.getString("flock_name", "Kandang 1");
-        String eggText = prefs.getString("today_egg_total", "1.420 Butir");
-        String hdpText = prefs.getString("today_hdp", "89.5%");
-        String feedText = prefs.getString("today_feed", "🌾 Pakan: 120 kg");
-        String mortText = prefs.getString("today_mort", "💀 Mati: 0 ekor");
+        String flockName = prefs.getString("flock_name", "Total Farm");
+        String eggGood = prefs.getString("today_egg_good", "19 btr");
+        String eggGoodKg = prefs.getString("today_egg_good_kg", "1.19 kg");
+        String eggBad = prefs.getString("today_egg_bad", "0 btr");
+        String hdpText = prefs.getString("today_hdp", "100% HDP");
+        String hhpText = prefs.getString("today_hhp", "95%");
+        String mortText = prefs.getString("today_mort", "1 mati");
+        String breakdown = prefs.getString("coop_breakdown", "● W (W): 9 btr (100% HDP) +1 mati  •  ● 1 (1): 10 btr");
 
-        views.setTextViewText(R.id.widget_prod_flock, "KandangKu • " + flockName);
-        views.setTextViewText(R.id.widget_prod_egg, eggText);
+        views.setTextViewText(R.id.widget_prod_flock, "PRODUKSI TELUR • " + flockName);
         views.setTextViewText(R.id.widget_prod_hdp, hdpText);
-        views.setTextViewText(R.id.widget_prod_feed, feedText);
+        views.setTextViewText(R.id.widget_prod_egg, eggGood);
+        views.setTextViewText(R.id.widget_prod_egg_kg, eggGoodKg);
+        views.setTextViewText(R.id.widget_prod_bad_egg, eggBad);
+        views.setTextViewText(R.id.widget_prod_hhp, hhpText);
         views.setTextViewText(R.id.widget_prod_mort, mortText);
+        views.setTextViewText(R.id.widget_prod_breakdown, breakdown);
 
         Intent intent = new Intent(context, MainActivity.class);
+        intent.putExtra("quick_action", "dashboard");
         PendingIntent pendingIntent = PendingIntent.getActivity(
             context,
             103,

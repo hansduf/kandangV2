@@ -3,7 +3,7 @@
     android:id="@+id/widget_chart_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg_emerald"
+    android:background="@drawable/widget_bg_card_white"
     android:orientation="vertical"
     android:padding="12dp">
 
@@ -25,8 +25,10 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Grafik Produksi 7 Hari"
-            android:textColor="#FFFFFF"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="GRAFIK TREN PERFORMA"
+            android:textColor="#0F172A"
             android:textSize="12sp"
             android:textStyle="bold" />
 
@@ -34,16 +36,29 @@
             android:id="@+id/widget_chart_flock"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="#00684a"
-            android:paddingHorizontal="6dp"
-            android:paddingVertical="2dp"
-            android:text="Kandang 1"
-            android:textColor="#A7F3D0"
+            android:background="@drawable/widget_badge_emerald"
+            android:paddingHorizontal="7dp"
+            android:paddingVertical="3dp"
+            android:text="Total Farm"
+            android:textColor="#00684A"
             android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_chart_role"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/widget_badge_amber"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="3dp"
+            android:text="Pekerja"
+            android:textColor="#92400E"
+            android:textSize="9.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Dynamic Chart Canvas Image -->
+    <!-- Dynamic Area Chart Canvas Image -->
     <ImageView
         android:id="@+id/widget_chart_image"
         android:layout_width="match_parent"
@@ -67,17 +82,17 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="Rata-rata: 1.350 btr • Peak HDP: 91.2%"
-            android:textColor="#D1FAE5"
-            android:textSize="10sp"
+            android:text="Rata-rata: 19 btr • HDP: 95%"
+            android:textColor="#64748B"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Buka ↗"
-            android:textColor="#FDE047"
-            android:textSize="10sp"
+            android:text="Buka Detail ↗"
+            android:textColor="#00684A"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 

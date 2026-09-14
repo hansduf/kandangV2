@@ -1,53 +1,43 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="480dp"
-    android:height="160dp"
-    android:viewportWidth="480"
-    android:viewportHeight="160">
+    android:width="400dp"
+    android:height="150dp"
+    android:viewportWidth="400"
+    android:viewportHeight="150">
 
-    <!-- Baseline -->
+    <!-- Card Background -->
     <path
-        android:pathData="M20,125 L460,125"
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,0 H384 A16,16 0 0,1 400,16 V134 A16,16 0 0,1 384,150 H16 A16,16 0 0,1 0,134 V16 A16,16 0 0,1 16,0 Z" />
+
+    <!-- Grid Horizontal Lines -->
+    <path
+        android:strokeColor="#F1F5F9"
         android:strokeWidth="1.5"
-        android:strokeColor="#33FFFFFF" />
+        android:pathData="M24,40 H376 M24,80 H376 M24,120 H376" />
 
-    <!-- Midline -->
+    <!-- Area Chart Gradient Fill Under Curve -->
     <path
-        android:pathData="M20,70 L460,70"
-        android:strokeWidth="1.5"
-        android:strokeColor="#22FFFFFF" />
+        android:fillColor="#1500684A"
+        android:pathData="M40,120 L40,85 C90,65 130,55 180,45 C230,35 280,50 330,60 L360,65 L360,120 Z" />
 
-    <!-- Bar 1 (Sn) -->
+    <!-- Trend Line Stroke -->
     <path
-        android:fillColor="#10B981"
-        android:pathData="M35,60 L65,60 A4,4 0 0,1 69,64 L69,125 L31,125 L31,64 A4,4 0 0,1 35,60 Z" />
+        android:strokeColor="#00684A"
+        android:strokeWidth="3.5"
+        android:pathData="M40,85 C90,65 130,55 180,45 C230,35 280,50 330,60 L360,65" />
 
-    <!-- Bar 2 (Sl) -->
+    <!-- Data Points -->
     <path
-        android:fillColor="#10B981"
-        android:pathData="M100,45 L130,45 A4,4 0 0,1 134,49 L134,125 L96,125 L96,49 A4,4 0 0,1 100,45 Z" />
+        android:fillColor="#00684A"
+        android:pathData="M40,85 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path
+        android:fillColor="#00684A"
+        android:pathData="M180,45 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path
+        android:fillColor="#00684A"
+        android:pathData="M330,60 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path
+        android:fillColor="#00684A"
+        android:pathData="M360,65 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
 
-    <!-- Bar 3 (Rb) -->
-    <path
-        android:fillColor="#10B981"
-        android:pathData="M165,55 L195,55 A4,4 0 0,1 199,59 L199,125 L161,125 L161,59 A4,4 0 0,1 165,55 Z" />
-
-    <!-- Bar 4 (Km) - Peak Yellow -->
-    <path
-        android:fillColor="#FDE047"
-        android:pathData="M230,25 L260,25 A4,4 0 0,1 264,29 L264,125 L226,125 L226,29 A4,4 0 0,1 230,25 Z" />
-
-    <!-- Bar 5 (Jm) -->
-    <path
-        android:fillColor="#10B981"
-        android:pathData="M295,40 L325,40 A4,4 0 0,1 329,44 L329,125 L291,125 L291,44 A4,4 0 0,1 295,40 Z" />
-
-    <!-- Bar 6 (Sb) -->
-    <path
-        android:fillColor="#10B981"
-        android:pathData="M360,50 L390,50 A4,4 0 0,1 394,54 L394,125 L356,125 L356,54 A4,4 0 0,1 360,50 Z" />
-
-    <!-- Bar 7 (Mg) -->
-    <path
-        android:fillColor="#10B981"
-        android:pathData="M425,35 L455,35 A4,4 0 0,1 459,39 L459,125 L421,125 L421,39 A4,4 0 0,1 425,35 Z" />
 </vector>

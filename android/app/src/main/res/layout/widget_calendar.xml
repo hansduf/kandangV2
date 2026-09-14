@@ -7,141 +7,114 @@
     android:orientation="vertical"
     android:padding="12dp">
 
-    <!-- Header: Title & Role Profile -->
+    <!-- Header: Month Title & Navigation -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <ImageView
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:src="@mipmap/ic_launcher" />
-
         <TextView
-            android:id="@+id/widget_calendar_title"
+            android:id="@+id/widget_calendar_month"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
             android:layout_weight="1"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="KALENDER &amp; TUGAS"
+            android:text="September 2026"
             android:textColor="#0F172A"
-            android:textSize="12sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
+        <!-- Prev Month Button -->
         <TextView
-            android:id="@+id/widget_calendar_worker"
+            android:id="@+id/btn_cal_prev"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="@drawable/widget_tab_inactive_bg"
+            android:gravity="center"
+            android:text="‹"
+            android:textColor="#334155"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <!-- Next Month Button -->
+        <TextView
+            android:id="@+id/btn_cal_next"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/widget_tab_inactive_bg"
+            android:gravity="center"
+            android:text="›"
+            android:textColor="#334155"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <!-- Quick Add Button -->
+        <TextView
+            android:id="@+id/btn_cal_add"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/widget_badge_amber"
-            android:paddingHorizontal="7dp"
-            android:paddingVertical="3dp"
-            android:text="Pekerja: P roni"
-            android:textColor="#92400E"
-            android:textSize="9.5sp"
+            android:layout_height="28dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/widget_badge_emerald"
+            android:gravity="center"
+            android:paddingHorizontal="8dp"
+            android:text="+ Catat"
+            android:textColor="#00684A"
+            android:textSize="10.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- 7-Day Calendar Strip Row -->
-    <LinearLayout
-        android:id="@+id/widget_days_row"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:background="@drawable/widget_badge_subtle"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:paddingHorizontal="2dp"
-        android:paddingVertical="4dp">
-
-        <TextView
-            android:id="@+id/day_0"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="Sn\n14"
-            android:textColor="#64748B"
-            android:textSize="9.5sp" />
-
-        <TextView
-            android:id="@+id/day_1"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="Sl\n15"
-            android:textColor="#64748B"
-            android:textSize="9.5sp" />
-
-        <TextView
-            android:id="@+id/day_2"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="Rb\n16"
-            android:textColor="#64748B"
-            android:textSize="9.5sp" />
-
-        <TextView
-            android:id="@+id/day_3"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="Km\n17"
-            android:textColor="#64748B"
-            android:textSize="9.5sp" />
-
-        <TextView
-            android:id="@+id/day_4"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="Jm\n18"
-            android:textColor="#64748B"
-            android:textSize="9.5sp" />
-
-        <TextView
-            android:id="@+id/day_5"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="Sb\n19"
-            android:textColor="#64748B"
-            android:textSize="9.5sp" />
-
-        <TextView
-            android:id="@+id/day_6"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="Mg\n20"
-            android:textColor="#EF4444"
-            android:textSize="9.5sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- Task List Rows -->
-    <LinearLayout
+    <!-- Monthly Calendar Grid Canvas -->
+    <ImageView
+        android:id="@+id/widget_calendar_image"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="6dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:layout_marginVertical="6dp"
+        android:layout_weight="1.6"
+        android:scaleType="fitXY" />
+
+    <!-- Bottom: Task Explanation Card -->
+    <LinearLayout
+        android:id="@+id/widget_calendar_task_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/widget_metric_box_bg"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="📋 TUGAS HARI INI"
+                android:textColor="#0F172A"
+                android:textSize="10.5sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_calendar_worker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/widget_badge_amber"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2dp"
+                android:text="Pekerja: P roni"
+                android:textColor="#92400E"
+                android:textSize="9.5sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
         <!-- Task 1 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="1.5dp"
+            android:layout_marginTop="4dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -162,16 +135,16 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="07:00 Panen Telur (Kandang W)"
+                android:text="16:30 Catat Produksi Telur (Kandang W)"
                 android:textColor="#1E293B"
-                android:textSize="10.5sp" />
+                android:textSize="10sp" />
         </LinearLayout>
 
         <!-- Task 2 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginVertical="1.5dp"
+            android:layout_marginTop="2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -192,64 +165,19 @@
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="09:00 Cek Kesehatan Ayam &amp; Vaksin"
-                android:textColor="#0F172A"
-                android:textSize="10.5sp"
-                android:textStyle="bold" />
+                android:text="Cek Sanitasi &amp; Sekam (Kandang 1)"
+                android:textColor="#1E293B"
+                android:textSize="10sp" />
         </LinearLayout>
 
-        <!-- Task 3 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginVertical="1.5dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/task_check_3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="○"
-                android:textColor="#94A3B8"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/task_text_3"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="Pembersihan &amp; Sanitasi Kandang"
-                android:textColor="#64748B"
-                android:textSize="10.5sp" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- Bottom Footer -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/widget_calendar_footer"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Data tersinkron otomatis"
-            android:textColor="#64748B"
-            android:textSize="9.5sp" />
-
+        <!-- Footer Link -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Buka Tugas ↗"
+            android:layout_marginTop="4dp"
+            android:text="Buka Agenda Tugas ↗"
             android:textColor="#00684A"
-            android:textSize="10sp"
+            android:textSize="9.5sp"
             android:textStyle="bold" />
     </LinearLayout>
 

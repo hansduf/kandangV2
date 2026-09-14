@@ -1,0 +1,40 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Subtle Glow Behind Egg -->
+    <path
+        android:fillColor="#2510B981"
+        android:pathData="M54,54 m-28,0 a28,28 0 1,0 56,0 a28,28 0 1,0 -56,0" />
+
+    <!-- Rooster Crown / Jengger Ayam Modern (Red) -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M50,28 C50,23 54,21 56,23 C58,21 62,23 62,27 C64,25 68,27 67,31 L50,33 Z" />
+
+    <!-- Modern Golden Egg Body (Center 54, 56) -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,32 C41,32 34,46 34,60 C34,74 43,82 54,82 C65,82 74,74 74,60 C74,46 67,32 54,32 Z" />
+
+    <!-- Golden Egg Shadow & 3D Depth (Amber) -->
+    <path
+        android:fillColor="#D97706"
+        android:pathData="M54,82 C65,82 74,74 74,60 C74,51 70,41 64,35 C69,43 71,52 71,60 C71,71 63,78 54,79 C47,79 41,75 37,70 C40,78 47,82 54,82 Z" />
+
+    <!-- Egg Shine / Glossy Highlight (White) -->
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M43,42 C40,46 38,52 38,58 C38,61 39,63 41,63 C42,63 43,60 43,58 C43,53 45,47 48,43 C49,41 48,40 46,40 C45,40 44,41 43,42 Z" />
+
+    <!-- Modern Smart Farm Tech Pulse Wave (Emerald White) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M42,65 L48,65 L52,58 L56,71 L60,65 L66,65" />
+
+</vector>

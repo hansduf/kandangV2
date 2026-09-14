@@ -15,46 +15,84 @@
         android:orientation="horizontal">
 
         <ImageView
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
             android:src="@mipmap/ic_launcher" />
 
         <TextView
             android:id="@+id/widget_chart_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="6dp"
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="GRAFIK TREN PERFORMA"
+            android:text="GRAFIK TREN TELUR"
             android:textColor="#0F172A"
-            android:textSize="12sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_chart_flock"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/widget_badge_emerald"
-            android:paddingHorizontal="7dp"
-            android:paddingVertical="3dp"
-            android:text="Total Farm"
-            android:textColor="#00684A"
-            android:textSize="10sp"
+            android:textSize="11.5sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_chart_role"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
             android:background="@drawable/widget_badge_amber"
             android:paddingHorizontal="6dp"
-            android:paddingVertical="3dp"
-            android:text="Pekerja"
+            android:paddingVertical="2dp"
+            android:text="Owner: Pitik"
             android:textColor="#92400E"
             android:textSize="9.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Interactive Tabs Bar: [ Semua ] [ Kandang W ] [ Kandang 1 ] -->
+    <LinearLayout
+        android:id="@+id/widget_chart_tabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/btn_tab_all"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tab_active_bg"
+            android:gravity="center"
+            android:paddingVertical="4dp"
+            android:text="Semua"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_tab_w"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tab_inactive_bg"
+            android:gravity="center"
+            android:paddingVertical="4dp"
+            android:text="Kandang W"
+            android:textColor="#64748B"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btn_tab_1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tab_inactive_bg"
+            android:gravity="center"
+            android:paddingVertical="4dp"
+            android:text="Kandang 1"
+            android:textColor="#64748B"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -63,7 +101,7 @@
         android:id="@+id/widget_chart_image"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginVertical="6dp"
+        android:layout_marginVertical="4dp"
         android:layout_weight="1"
         android:scaleType="fitXY"
         android:src="@drawable/widget_chart_preview" />
@@ -82,17 +120,18 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="Rata-rata: 19 btr • HDP: 95%"
+            android:text="Total: 8 btr (6 utuh + 2 rusak)"
             android:textColor="#64748B"
-            android:textSize="10.5sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/btn_chart_open"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Buka Detail ↗"
             android:textColor="#00684A"
-            android:textSize="10.5sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
 

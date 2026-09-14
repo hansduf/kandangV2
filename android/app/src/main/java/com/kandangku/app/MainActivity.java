@@ -106,6 +106,24 @@ public class MainActivity extends BridgeActivity {
                 if (obj.has("history7Days")) {
                     editor.putString("history_7_days_json", obj.getString("history7Days"));
                 }
+                if (obj.has("historyAll")) {
+                    editor.putString("history_all_json", obj.getString("historyAll"));
+                }
+                if (obj.has("historyW")) {
+                    editor.putString("history_w_json", obj.getString("historyW"));
+                }
+                if (obj.has("history1")) {
+                    editor.putString("history_1_json", obj.getString("history1"));
+                }
+                if (obj.has("statsAll")) {
+                    editor.putString("stats_all", obj.getString("statsAll"));
+                }
+                if (obj.has("statsW")) {
+                    editor.putString("stats_w", obj.getString("statsW"));
+                }
+                if (obj.has("stats1")) {
+                    editor.putString("stats_1", obj.getString("stats1"));
+                }
                 if (obj.has("calendarWeek")) {
                     editor.putString("calendar_week_json", obj.getString("calendarWeek"));
                 }

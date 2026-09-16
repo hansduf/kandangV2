@@ -762,6 +762,7 @@ export default function ReportsPage() {
             monthlyMortality={displayedMonthlyMort}
             totalMortality={displayedTotalMort}
             mortalityRate={displayedMortRate}
+            activePopulation={viewFlockId === 'all' ? farmAggregates.totalActivePop : (activeFlockSummary?.flock.current_population || 1000)}
           />
         </div>
 

@@ -202,19 +202,51 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
 }
 
 export async function fetchDailyHistory(flockId: string, limit: number = 30): Promise<DailyRecord[]> {
+  const flocks = getLocalFlocks();
+  const flock = flocks.find((f) => f.id === flockId);
+  const activePop = flock?.current_population || 0;
+
+  const enrichRecords = (recs: DailyRecord[]): DailyRecord[] => {
+    return recs.map((r) => {
+      let totalEggKg = (r.egg_good_kg || 0) + (r.egg_bad_kg || 0);
+      if ((r.egg_bad_kg || 0) === 0 && (r.egg_bad_pcs || 0) > 0 && (r.egg_good_pcs || 0) > 0 && (r.egg_good_kg || 0) > 0) {
+        totalEggKg += ((r.egg_bad_pcs || 0) * (r.egg_good_kg / r.egg_good_pcs));
+      }
+      const calculatedFcr = totalEggKg > 0 && (r.feed_kg || 0) > 0 ? Number(((r.feed_kg || 0) / totalEggKg).toFixed(2)) : 0;
+
+      let pop = activePop;
+      const totalEggs = (r.egg_good_pcs || 0) + (r.egg_bad_pcs || 0);
+      const hdp = r.hdp_percent !== undefined && r.hdp_percent !== null ? r.hdp_percent : (r.hd_percent || 0);
+      if (pop <= 0 && hdp > 0 && totalEggs > 0) {
+        pop = Math.round((totalEggs / hdp) * 100);
+      }
+      if (pop <= 0 && (r.feed_kg || 0) > 0) {
+        pop = 1000;
+      }
+      const calculatedIntake = pop > 0 && (r.feed_kg || 0) > 0 ? Number(((r.feed_kg * 1000) / pop).toFixed(1)) : 0;
+
+      return {
+        ...r,
+        fcr: r.fcr || calculatedFcr,
+        feed_intake_g: (r.feed_intake_g && r.feed_intake_g > 0) ? r.feed_intake_g : calculatedIntake,
+      };
+    });
+  };
+
   if (!isConfigured) {
-    return getLocalDailyRecords(flockId).slice(0, limit);
+    return enrichRecords(getLocalDailyRecords(flockId).slice(0, limit));
   }
   try {
     const { data, error } = await supabase.rpc('get_flock_daily_history', { p_flock_id: flockId, p_limit: limit });
     if (error) throw error;
-    if (typeof window !== 'undefined' && data && data.length > 0) {
-      localStorage.setItem(`kandang_daily_${flockId}`, JSON.stringify(data));
+    const enriched = enrichRecords(data || []);
+    if (typeof window !== 'undefined' && enriched.length > 0) {
+      localStorage.setItem(`kandang_daily_${flockId}`, JSON.stringify(enriched));
     }
-    return data || [];
+    return enriched;
   } catch (err) {
     console.warn('Using local fallback for daily history:', err);
-    return getLocalDailyRecords(flockId).slice(0, limit);
+    return enrichRecords(getLocalDailyRecords(flockId).slice(0, limit));
   }
 }
 

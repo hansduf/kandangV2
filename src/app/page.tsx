@@ -606,6 +606,7 @@ export default function DashboardHomePage() {
                   monthlyMortality={summary?.totals.monthly_mortality}
                   totalMortality={summary?.totals.total_mortality}
                   mortalityRate={summary?.totals.mortality_rate_percent}
+                  activePopulation={activeFlock?.current_population || activeFlock?.initial_population}
                 />
 
                 {/* DAILY CALENDAR CARD: PRODUKSI, KEMATIAN & VAKSIN/OBAT */}

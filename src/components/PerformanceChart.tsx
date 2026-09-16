@@ -32,6 +32,7 @@ interface PerformanceChartProps {
   monthlyMortality?: number;
   totalMortality?: number;
   mortalityRate?: number;
+  activePopulation?: number;
 }
 
 const COOP_COLORS = [
@@ -56,6 +57,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   monthlyMortality = 0,
   totalMortality = 0,
   mortalityRate = 0,
+  activePopulation,
 }) => {
   // Metrics: pcs (Telur Utuh Butir), bad (Telur Rusak Butir), kg, hdp, hhp, mortality, fcr
   const [metric, setMetric] = useState<'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality' | 'fcr'>('pcs');
@@ -95,6 +97,25 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       totalEggKg += ((r.egg_bad_pcs || 0) * (r.egg_good_kg / r.egg_good_pcs));
     }
 
+    // Determine active population to calculate feed intake
+    let pop = activePopulation || (r as any).current_population || 0;
+    if (pop <= 0 && allHistories.length > 0) {
+      const match = allHistories.find((h) => h.flock.id === (r as any).flock_id);
+      if (match) pop = match.flock.current_population;
+    }
+    const totalEggs = (r.egg_good_pcs || 0) + (r.egg_bad_pcs || 0);
+    const hdp = r.hdp_percent !== undefined && r.hdp_percent !== null ? r.hdp_percent : (r.hd_percent || 0);
+    if (pop <= 0 && hdp > 0 && totalEggs > 0) {
+      pop = Math.round((totalEggs / hdp) * 100);
+    }
+    if (pop <= 0 && (r.feed_kg || 0) > 0) {
+      pop = 1000;
+    }
+
+    const calculatedIntake = (r.feed_intake_g && r.feed_intake_g > 0)
+      ? r.feed_intake_g
+      : (pop > 0 && (r.feed_kg || 0) > 0 ? Number(((r.feed_kg * 1000) / pop).toFixed(1)) : 0);
+
     return {
       date: displayDate,
       fullDate: r.record_date,
@@ -102,13 +123,10 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       egg_bad_pcs: r.egg_bad_pcs || 0,
       egg_kg: r.egg_good_kg || 0,
       total_egg_kg: Number(totalEggKg.toFixed(2)),
-      hdp:
-        r.hdp_percent !== undefined && r.hdp_percent !== null
-          ? r.hdp_percent
-          : r.hd_percent || 0,
+      hdp,
       hhp: r.hhp_percent || 0,
       feed_kg: r.feed_kg || 0,
-      feed_intake_g: r.feed_intake_g || 0,
+      feed_intake_g: calculatedIntake,
       fcr: r.fcr || (totalEggKg > 0 && (r.feed_kg || 0) > 0 ? Number(((r.feed_kg || 0) / totalEggKg).toFixed(2)) : 0),
       mortality: r.mortality_pcs || 0,
     };

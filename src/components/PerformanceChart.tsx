@@ -61,6 +61,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   const [metric, setMetric] = useState<'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality' | 'fcr'>('pcs');
   const [chartMode, setChartMode] = useState<'aggregate' | 'race'>('aggregate');
   const [mortView, setMortView] = useState<'chart' | '7d' | '30d' | 'total'>('chart');
+  const [fcrView, setFcrView] = useState<'both' | 'fcr' | 'intake'>('both');
 
   // Sort single/aggregate records chronologically ascending
   const sortedRecords = [...records].sort((a, b) => a.record_date.localeCompare(b.record_date));
@@ -112,6 +113,24 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       mortality: r.mortality_pcs || 0,
     };
   });
+
+  // Summary statistics for FCR and Feed Intake over the current period
+  const fcrAverages = React.useMemo(() => {
+    const validFcr = chartData.filter((d) => d.fcr > 0);
+    const avgFcr = validFcr.length > 0
+      ? Number((validFcr.reduce((acc, d) => acc + d.fcr, 0) / validFcr.length).toFixed(2))
+      : 0;
+
+    const validIntake = chartData.filter((d) => d.feed_intake_g > 0);
+    const avgIntake = validIntake.length > 0
+      ? Number((validIntake.reduce((acc, d) => acc + d.feed_intake_g, 0) / validIntake.length).toFixed(1))
+      : 0;
+
+    const totalFeed = Number(chartData.reduce((acc, d) => acc + (d.feed_kg || 0), 0).toFixed(2));
+    const totalEggs = Number(chartData.reduce((acc, d) => acc + (d.total_egg_kg || 0), 0).toFixed(2));
+
+    return { avgFcr, avgIntake, totalFeed, totalEggs };
+  }, [chartData]);
 
   // Prepare Multi-Line Race Data if allHistories is available
   const canShowRace = isAllView && allHistories.length > 1;
@@ -472,7 +491,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             { id: 'hdp' as const, label: '📈 HDP %' },
             { id: 'hhp' as const, label: '📊 HHP %' },
             { id: 'mortality' as const, label: '💀 Kematian' },
-            { id: 'fcr' as const, label: '🌾 FCR Pakan' },
+            { id: 'fcr' as const, label: '🌾 FCR & Porsi Makan' },
           ] as const
         ).map((m) => (
           <button
@@ -492,6 +511,54 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           </button>
         ))}
       </div>
+
+      {/* FCR & Feed Intake Sub-View Selector (only when fcr selected and not in race mode) */}
+      {metric === 'fcr' && chartMode === 'aggregate' && (
+        <div className="space-y-2">
+          <div className="flex gap-1 bg-amber-50/90 p-1 rounded-xl border border-amber-200">
+            {[
+              { key: 'both' as const, label: '📊 Dual (FCR & Porsi Makan)' },
+              { key: 'fcr' as const, label: '🌾 FCR Rasio Saja' },
+              { key: 'intake' as const, label: '🥣 Porsi Makan (g/ekor) Saja' },
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setFcrView(item.key)}
+                className={`flex-1 px-2 py-1 text-[10px] font-black rounded-lg transition-all ${
+                  fcrView === item.key
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-amber-800 hover:bg-amber-100'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Quick Summary Pill Bar: Avg FCR, Avg Feed Intake, Total Feed */}
+          <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-center">
+            <div>
+              <span className="block text-[8px] font-bold text-slate-500 uppercase">Rata-Rata FCR</span>
+              <span className="text-xs font-black text-amber-600">
+                {fcrAverages.avgFcr > 0 ? fcrAverages.avgFcr : '-'}
+              </span>
+            </div>
+            <div>
+              <span className="block text-[8px] font-bold text-slate-500 uppercase">Rata-Rata Porsi</span>
+              <span className="text-xs font-black text-emerald-600">
+                {fcrAverages.avgIntake > 0 ? `${fcrAverages.avgIntake} g/ekor` : '-'}
+              </span>
+            </div>
+            <div>
+              <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Pakan</span>
+              <span className="text-xs font-black text-slate-800">
+                {fcrAverages.totalFeed > 0 ? `${fcrAverages.totalFeed} kg` : '-'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mortality Sub-View Selector (only when mortality selected and not in race mode) */}
       {metric === 'mortality' && chartMode === 'aggregate' && (
@@ -648,23 +715,89 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                 tickLine={false}
                 axisLine={{ stroke: '#cbd5e1' }}
               />
-              <YAxis
-                tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip content={<AreaChartTooltip />} />
-              <Area
-                type="monotone"
-                dataKey={metricConfig.dataKey}
-                name={metricConfig.label}
-                stroke={metricConfig.color}
-                strokeWidth={3}
-                fillOpacity={1}
-                fill={`url(#${metricConfig.gradientId})`}
-                dot={{ r: 4, fill: metricConfig.color, strokeWidth: 2, stroke: '#ffffff' }}
-                activeDot={{ r: 7, fill: metricConfig.color, stroke: '#ffffff', strokeWidth: 2 }}
-              />
+              {metric === 'fcr' && fcrView === 'both' ? (
+                <>
+                  <YAxis
+                    yAxisId="left"
+                    tick={{ fontSize: 10, fill: '#d97706', fontWeight: 700 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tick={{ fontSize: 10, fill: '#059669', fontWeight: 700 }}
+                    tickLine={false}
+                    axisLine={false}
+                    unit="g"
+                  />
+                  <Tooltip content={<AreaChartTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: '11px', fontWeight: 700, paddingTop: 6 }} />
+                  <Area
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="fcr"
+                    name="🌾 FCR (Rasio)"
+                    stroke="#d97706"
+                    strokeWidth={3}
+                    fillOpacity={0.6}
+                    fill="url(#amberGrad)"
+                    dot={{ r: 3.5, fill: '#d97706', strokeWidth: 1.5, stroke: '#ffffff' }}
+                    activeDot={{ r: 6, fill: '#d97706', stroke: '#ffffff', strokeWidth: 2 }}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="feed_intake_g"
+                    name="🥣 Porsi Makan (g/ekor)"
+                    stroke="#059669"
+                    strokeWidth={3}
+                    dot={{ r: 3.5, fill: '#059669', strokeWidth: 1.5, stroke: '#ffffff' }}
+                    activeDot={{ r: 6, fill: '#059669', stroke: '#ffffff', strokeWidth: 2 }}
+                  />
+                </>
+              ) : metric === 'fcr' && fcrView === 'intake' ? (
+                <>
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#059669', fontWeight: 700 }}
+                    tickLine={false}
+                    axisLine={false}
+                    unit="g"
+                  />
+                  <Tooltip content={<AreaChartTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="feed_intake_g"
+                    name="🥣 Porsi Makan (g/ekor/hari)"
+                    stroke="#059669"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#tealGrad)"
+                    dot={{ r: 4, fill: '#059669', strokeWidth: 2, stroke: '#ffffff' }}
+                    activeDot={{ r: 7, fill: '#059669', stroke: '#ffffff', strokeWidth: 2 }}
+                  />
+                </>
+              ) : (
+                <>
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip content={<AreaChartTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey={metricConfig.dataKey}
+                    name={metricConfig.label}
+                    stroke={metricConfig.color}
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill={`url(#${metricConfig.gradientId})`}
+                    dot={{ r: 4, fill: metricConfig.color, strokeWidth: 2, stroke: '#ffffff' }}
+                    activeDot={{ r: 7, fill: metricConfig.color, stroke: '#ffffff', strokeWidth: 2 }}
+                  />
+                </>
+              )}
             </AreaChart>
           </ResponsiveContainer>
         ) : (

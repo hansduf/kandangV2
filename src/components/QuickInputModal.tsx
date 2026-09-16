@@ -17,6 +17,9 @@ import {
   Home,
   Users,
   AlertTriangle,
+  Wheat,
+  Scale,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface QuickInputModalProps {
@@ -27,9 +30,10 @@ interface QuickInputModalProps {
   onSelectFlock: (id: string) => void;
   onSaveDaily: (record: DailyRecord) => Promise<void>;
   onSaveHealth: (record: HealthRecord) => Promise<void>;
+  onSaveFeed?: (record: { flock_id: string; record_date: string; feed_morning_kg?: number; feed_afternoon_kg?: number; feed_kg: number; notes?: string }) => Promise<void>;
   previousEggPcs?: number;
   existingRecords?: DailyRecord[];
-  initialTab?: 'daily' | 'health' | 'mortality';
+  initialTab?: 'daily' | 'feed' | 'health' | 'mortality';
   initialHealthCategory?: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan';
 }
 
@@ -41,6 +45,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   onSelectFlock,
   onSaveDaily,
   onSaveHealth,
+  onSaveFeed,
   previousEggPcs = 0,
   existingRecords = [],
   initialTab = 'daily',
@@ -49,7 +54,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   const activeFlock = flocks.find((f) => f.id === activeFlockId) || flocks[0];
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'mortality'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'daily' | 'feed' | 'health' | 'mortality'>(initialTab);
 
   // Health State
   const [recordDate, setRecordDate] = useState(todayStr);
@@ -72,6 +77,13 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   const [mortalityPcs, setMortalityPcs] = useState<number | ''>('');
   const [cullingPcs, setCullingPcs] = useState<number | ''>('');
 
+  // Feed State
+  const [feedDate, setFeedDate] = useState(todayStr);
+  const [feedMorningKg, setFeedMorningKg] = useState<number | ''>('');
+  const [feedAfternoonKg, setFeedAfternoonKg] = useState<number | ''>('');
+  const [feedTotalKg, setFeedTotalKg] = useState<number | ''>('');
+  const [feedNotes, setFeedNotes] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -81,6 +93,18 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
     items: ConfirmationSummaryItem[];
     action: () => Promise<void>;
   } | null>(null);
+
+  // Auto pre-populate feed if record exists
+  React.useEffect(() => {
+    const existing = existingRecords.find(
+      (r) => r.record_date === feedDate && (r.flock_id === activeFlock?.id || !r.flock_id)
+    );
+    if (existing && existing.feed_kg > 0 && feedTotalKg === '' && feedMorningKg === '' && feedAfternoonKg === '') {
+      setFeedTotalKg(existing.feed_kg);
+      if (existing.feed_morning_kg) setFeedMorningKg(existing.feed_morning_kg);
+      if (existing.feed_afternoon_kg) setFeedAfternoonKg(existing.feed_afternoon_kg);
+    }
+  }, [feedDate, activeFlock?.id, existingRecords, activeTab]);
 
   // Auto pre-populate mortality if record exists
   React.useEffect(() => {
@@ -100,6 +124,33 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   if (!isOpen) return null;
 
   const currentPopulation = activeFlock?.current_population || 0;
+
+  // Real-time Feed & FCR Computations
+  const morningNum = Number(feedMorningKg) || 0;
+  const afternoonNum = Number(feedAfternoonKg) || 0;
+  const computedFeedSum = Number((morningNum + afternoonNum).toFixed(2));
+  const effectiveFeedTotal = feedTotalKg !== '' ? Number(feedTotalKg) || 0 : (computedFeedSum > 0 ? computedFeedSum : 0);
+
+  const currentFeedRecord = existingRecords.find(
+    (r) => r.record_date === feedDate && (r.flock_id === activeFlock?.id || !r.flock_id)
+  );
+  const existingGoodKg = currentFeedRecord?.egg_good_kg || 0;
+  const existingBadKg = currentFeedRecord?.egg_bad_kg || 0;
+  const existingBadPcs = currentFeedRecord?.egg_bad_pcs || 0;
+  const existingGoodPcs = currentFeedRecord?.egg_good_pcs || 0;
+  let totalEggKgToday = existingGoodKg + existingBadKg;
+  if (existingBadKg === 0 && existingBadPcs > 0 && existingGoodPcs > 0 && existingGoodKg > 0) {
+    totalEggKgToday += (existingBadPcs * (existingGoodKg / existingGoodPcs));
+  }
+  const totalEggPcsToday = existingGoodPcs + existingBadPcs;
+
+  const liveFeedIntake = currentPopulation > 0 && effectiveFeedTotal > 0 
+    ? Number(((effectiveFeedTotal * 1000) / currentPopulation).toFixed(1)) 
+    : 0;
+
+  const liveFcr = totalEggKgToday > 0 && effectiveFeedTotal > 0 
+    ? Number((effectiveFeedTotal / totalEggKgToday).toFixed(2)) 
+    : null;
 
   const executeSaveHealth = async () => {
     if (!activeFlock?.id) return;
@@ -208,6 +259,76 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
     setShowConfirmModal(true);
   };
 
+  const executeSaveFeed = async () => {
+    if (!activeFlock?.id) return;
+    setIsSubmitting(true);
+    try {
+      if (onSaveFeed) {
+        await onSaveFeed({
+          flock_id: activeFlock.id,
+          record_date: feedDate,
+          feed_morning_kg: morningNum > 0 ? morningNum : undefined,
+          feed_afternoon_kg: afternoonNum > 0 ? afternoonNum : undefined,
+          feed_kg: effectiveFeedTotal,
+          notes: feedNotes.trim(),
+        });
+      } else {
+        const existing = existingRecords.find(
+          (r) => r.record_date === feedDate && (r.flock_id === activeFlock?.id || !r.flock_id)
+        );
+        await onSaveDaily({
+          flock_id: activeFlock.id,
+          record_date: feedDate,
+          egg_good_pcs: existing?.egg_good_pcs || 0,
+          egg_good_kg: existing?.egg_good_kg || 0,
+          egg_bad_pcs: existing?.egg_bad_pcs || 0,
+          egg_bad_kg: existing?.egg_bad_kg || 0,
+          mortality_pcs: existing?.mortality_pcs || 0,
+          culling_pcs: existing?.culling_pcs || 0,
+          feed_kg: effectiveFeedTotal,
+          feed_morning_kg: morningNum > 0 ? morningNum : undefined,
+          feed_afternoon_kg: afternoonNum > 0 ? afternoonNum : undefined,
+          notes: feedNotes.trim() || existing?.notes || '',
+        });
+      }
+      setShowConfirmModal(false);
+      setToastMessage(`✅ PAKAN ${activeFlock.coop_name.toUpperCase()} BERHASIL DISIMPAN!`);
+      setTimeout(() => {
+        setToastMessage('');
+        onClose();
+      }, 1200);
+    } catch (err) {
+      alert('Gagal menyimpan data pakan.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveFeedSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeFlock?.id) return;
+    if (effectiveFeedTotal <= 0) {
+      alert('Masukkan jumlah pakan terlebih dahulu!');
+      return;
+    }
+
+    setConfirmConfig({
+      title: 'Konfirmasi Catatan Pemberian Pakan',
+      categoryBadge: 'Pakan',
+      items: [
+        { label: 'Tanggal', value: feedDate },
+        { label: 'Kandang', value: `${activeFlock.coop_name} (${activeFlock.name})` },
+        { label: 'Pakan Pagi', value: morningNum > 0 ? `${morningNum} kg` : '-' },
+        { label: 'Pakan Sore', value: afternoonNum > 0 ? `${afternoonNum} kg` : '-' },
+        { label: 'Total Pakan', value: `${effectiveFeedTotal} kg (~${(effectiveFeedTotal / 50).toFixed(2)} Sak)`, highlight: true },
+        { label: 'Porsi Makan (Feed Intake)', value: `${liveFeedIntake} g/ekor/hari` },
+        { label: 'FCR Hari Ini', value: liveFcr ? `${liveFcr}` : 'Menunggu panen telur sore' },
+      ],
+      action: executeSaveFeed,
+    });
+    setShowConfirmModal(true);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
       <div className="bg-white border border-slate-200 rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[92vh] overflow-y-auto shadow-2xl p-4 space-y-3.5 animate-in slide-in-from-bottom duration-300">
@@ -257,11 +378,12 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
           </div>
         )}
 
-        {/* 3 OPERATIONAL TABS */}
-        <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
+        {/* 4 OPERATIONAL TABS */}
+        <div className="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-inner">
           {[
-            { id: 'daily', label: 'Produksi', icon: Egg },
-            { id: 'health', label: 'Obat / Vaksin', icon: Syringe },
+            { id: 'daily', label: 'Telur', icon: Egg },
+            { id: 'feed', label: 'Pakan', icon: Wheat },
+            { id: 'health', label: 'Vaksin/Obat', icon: Syringe },
             { id: 'mortality', label: 'Kematian', icon: Skull },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -271,14 +393,14 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-2 flex items-center justify-center gap-1.5 rounded-xl text-xs font-black transition-all ${
+                className={`py-2 px-1 flex items-center justify-center gap-1 rounded-xl text-[11px] sm:text-xs font-black transition-all ${
                   isSelected
                     ? 'bg-[#00684a] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
+                <Icon className="w-3.5 h-3.5" />
+                <span className="truncate">{tab.label}</span>
               </button>
             );
           })}
@@ -304,7 +426,228 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
           />
         )}
 
-        {/* TAB 2: OBAT & VAKSIN */}
+        {/* TAB 2: CATAT PAKAN (FCR & FEED INTAKE) */}
+        {activeTab === 'feed' && (
+          <form onSubmit={handleSaveFeedSubmit} className="space-y-3">
+            {/* Tanggal & Info Kandang */}
+            <div className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                <span>📅 Tanggal:</span>
+                <input
+                  type="date"
+                  value={feedDate}
+                  onChange={(e) => setFeedDate(e.target.value)}
+                  className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-black text-slate-900 outline-none focus:border-[#00684a]"
+                  required
+                />
+              </div>
+              <div className="text-[11px] font-black text-[#00684a]">
+                {currentPopulation.toLocaleString('id-ID')} ekor ayam
+              </div>
+            </div>
+
+            {/* Input Pagi & Sore (Opsi B) */}
+            <div className="bg-amber-50/70 border border-amber-200/90 rounded-2xl p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-amber-900 uppercase tracking-wide flex items-center gap-1">
+                  <Wheat className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Rincian Pemberian Pakan</span>
+                </span>
+                <span className="text-[9.5px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full">
+                  Pagi &amp; Sore Dijumlahkan
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Pakan Pagi */}
+                <div className="bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-600">🌅 Pakan Pagi (Kg)</label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    value={feedMorningKg}
+                    onChange={(e) => {
+                      const v = e.target.value === '' ? '' : Number(e.target.value);
+                      setFeedMorningKg(v);
+                      const aft = Number(feedAfternoonKg) || 0;
+                      const mor = Number(v) || 0;
+                      if (mor + aft > 0) setFeedTotalKg(Number((mor + aft).toFixed(2)));
+                    }}
+                    placeholder="0.0"
+                    className="w-full text-base font-black text-amber-900 bg-transparent outline-none placeholder:text-slate-300"
+                  />
+                  <div className="flex gap-1 pt-1">
+                    {[0.5, 1, 5].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          const curr = Number(feedMorningKg) || 0;
+                          const next = Number((curr + amt).toFixed(2));
+                          setFeedMorningKg(next);
+                          const aft = Number(feedAfternoonKg) || 0;
+                          setFeedTotalKg(Number((next + aft).toFixed(2)));
+                        }}
+                        className="text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded hover:bg-amber-200 active:scale-95"
+                      >
+                        +{amt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pakan Sore */}
+                <div className="bg-white p-2.5 rounded-xl border border-amber-200 shadow-2xs space-y-1">
+                  <label className="block text-[10px] font-bold text-slate-600">🌇 Pakan Sore (Kg)</label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    value={feedAfternoonKg}
+                    onChange={(e) => {
+                      const v = e.target.value === '' ? '' : Number(e.target.value);
+                      setFeedAfternoonKg(v);
+                      const mor = Number(feedMorningKg) || 0;
+                      const aft = Number(v) || 0;
+                      if (mor + aft > 0) setFeedTotalKg(Number((mor + aft).toFixed(2)));
+                    }}
+                    placeholder="0.0"
+                    className="w-full text-base font-black text-amber-900 bg-transparent outline-none placeholder:text-slate-300"
+                  />
+                  <div className="flex gap-1 pt-1">
+                    {[0.5, 1, 5].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          const curr = Number(feedAfternoonKg) || 0;
+                          const next = Number((curr + amt).toFixed(2));
+                          setFeedAfternoonKg(next);
+                          const mor = Number(feedMorningKg) || 0;
+                          setFeedTotalKg(Number((mor + next).toFixed(2)));
+                        }}
+                        className="text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded hover:bg-amber-200 active:scale-95"
+                      >
+                        +{amt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Total Pakan Hari Ini */}
+              <div className="bg-white p-2.5 rounded-xl border border-amber-300 flex items-center justify-between">
+                <div>
+                  <span className="block text-[10px] font-extrabold text-slate-600 uppercase">Total Pakan Hari Ini</span>
+                  <span className="text-[9.5px] font-semibold text-slate-400">
+                    ~{(effectiveFeedTotal / 50).toFixed(2)} Sak (@50kg)
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    value={feedTotalKg}
+                    onChange={(e) => setFeedTotalKg(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="0.0"
+                    className="w-24 text-right text-lg font-black text-amber-900 bg-transparent outline-none border-b-2 border-amber-400 focus:border-amber-600"
+                    required
+                  />
+                  <span className="text-xs font-black text-amber-800">kg</span>
+                </div>
+              </div>
+            </div>
+
+            {/* LIVE SMART CALCULATION BANNER */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 text-white space-y-2 shadow-lg">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-xs font-black tracking-wide text-slate-200">Kalkulasi Otomatis Sistem</span>
+                </div>
+                <span className="text-[9.5px] font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-800">
+                  Real-Time
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                {/* Feed Intake */}
+                <div>
+                  <span className="block text-[9px] font-extrabold uppercase text-slate-400">Porsi Makan (Feed Intake)</span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    <span className="text-base font-black text-white">{liveFeedIntake}</span>
+                    <span className="text-[10px] font-bold text-slate-400">g / ekor</span>
+                  </div>
+                  <span className={`inline-block text-[8.5px] font-bold px-1.5 py-0.5 rounded mt-1 ${
+                    liveFeedIntake === 0
+                      ? 'text-slate-400 bg-slate-800'
+                      : liveFeedIntake >= 105 && liveFeedIntake <= 125
+                      ? 'text-emerald-300 bg-emerald-900/60'
+                      : liveFeedIntake < 105
+                      ? 'text-amber-300 bg-amber-900/60'
+                      : 'text-rose-300 bg-rose-900/60'
+                  }`}>
+                    {liveFeedIntake === 0
+                      ? 'Isi jumlah pakan'
+                      : liveFeedIntake >= 105 && liveFeedIntake <= 125
+                      ? '🟢 Porsi Ideal'
+                      : liveFeedIntake < 105
+                      ? '🟡 Porsi Rendah'
+                      : '🔴 Porsi Tinggi / Tercecer?'}
+                  </span>
+                </div>
+
+                {/* FCR */}
+                <div>
+                  <span className="block text-[9px] font-extrabold uppercase text-slate-400">FCR Hari Ini</span>
+                  <div className="flex items-baseline gap-1 mt-0.5">
+                    {liveFcr ? (
+                      <>
+                        <span className="text-base font-black text-emerald-400">{liveFcr}</span>
+                        <span className="text-[10px] font-bold text-slate-400">rasio</span>
+                      </>
+                    ) : (
+                      <span className="text-xs font-bold text-slate-400 mt-1">Belum panen</span>
+                    )}
+                  </div>
+                  <span className="block text-[9px] font-semibold text-slate-400 mt-1 truncate">
+                    {totalEggKgToday > 0 ? (
+                      `${totalEggPcsToday} btr (${totalEggKgToday.toFixed(2)} kg)`
+                    ) : (
+                      'Menunggu panen sore'
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Catatan Pakan (Opsional)</label>
+              <textarea
+                rows={2}
+                value={feedNotes}
+                onChange={(e) => setFeedNotes(e.target.value)}
+                placeholder="Merk pakan, batch ransum, atau kondisi talang..."
+                className="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs font-semibold text-slate-900 outline-none focus:border-[#00684a]"
+              />
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-[#00684a] hover:bg-emerald-800 active:scale-98 text-white font-black py-3 rounded-2xl shadow-md flex items-center justify-center gap-2 text-xs sm:text-sm transition-all"
+            >
+              <Save className="w-4 h-4 stroke-[3]" />
+              <span>{isSubmitting ? 'MENYIMPAN...' : 'SIMPAN CATATAN PAKAN'}</span>
+            </button>
+          </form>
+        )}
+
+        {/* TAB 3: OBAT & VAKSIN */}
         {activeTab === 'health' && (
           <form onSubmit={handleSaveHealthSubmit} className="space-y-3.5">
             {/* Tanggal Aplikasi */}

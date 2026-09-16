@@ -57,8 +57,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   totalMortality = 0,
   mortalityRate = 0,
 }) => {
-  // Metrics: pcs (Telur Utuh Butir), bad (Telur Rusak Butir), kg, hdp, hhp, mortality
-  const [metric, setMetric] = useState<'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality'>('pcs');
+  // Metrics: pcs (Telur Utuh Butir), bad (Telur Rusak Butir), kg, hdp, hhp, mortality, fcr
+  const [metric, setMetric] = useState<'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality' | 'fcr'>('pcs');
   const [chartMode, setChartMode] = useState<'aggregate' | 'race'>('aggregate');
   const [mortView, setMortView] = useState<'chart' | '7d' | '30d' | 'total'>('chart');
 
@@ -89,19 +89,26 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       }
     }
 
+    let totalEggKg = (r.egg_good_kg || 0) + (r.egg_bad_kg || 0);
+    if ((r.egg_bad_kg || 0) === 0 && (r.egg_bad_pcs || 0) > 0 && (r.egg_good_pcs || 0) > 0 && (r.egg_good_kg || 0) > 0) {
+      totalEggKg += ((r.egg_bad_pcs || 0) * (r.egg_good_kg / r.egg_good_pcs));
+    }
+
     return {
       date: displayDate,
       fullDate: r.record_date,
       egg_pcs: r.egg_good_pcs || 0,
       egg_bad_pcs: r.egg_bad_pcs || 0,
       egg_kg: r.egg_good_kg || 0,
+      total_egg_kg: Number(totalEggKg.toFixed(2)),
       hdp:
         r.hdp_percent !== undefined && r.hdp_percent !== null
           ? r.hdp_percent
           : r.hd_percent || 0,
       hhp: r.hhp_percent || 0,
       feed_kg: r.feed_kg || 0,
-      fcr: r.fcr || 0,
+      feed_intake_g: r.feed_intake_g || 0,
+      fcr: r.fcr || (totalEggKg > 0 && (r.feed_kg || 0) > 0 ? Number(((r.feed_kg || 0) / totalEggKg).toFixed(2)) : 0),
       mortality: r.mortality_pcs || 0,
     };
   });
@@ -152,6 +159,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
               : rec.hd_percent || 0;
         else if (metric === 'hhp') val = rec.hhp_percent || 0;
         else if (metric === 'mortality') val = rec.mortality_pcs || 0;
+        else if (metric === 'fcr') val = rec.fcr || 0;
       }
       row[key] = val;
     });
@@ -190,6 +198,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       totalVal = fFiltered.length > 0 ? Number((sum / fFiltered.length).toFixed(1)) : 0;
     } else if (metric === 'mortality') {
       totalVal = fFiltered.reduce((acc, r) => acc + (r.mortality_pcs || 0), 0);
+    } else if (metric === 'fcr') {
+      const sumFeed = fFiltered.reduce((acc, r) => acc + (r.feed_kg || 0), 0);
+      const sumEgg = fFiltered.reduce((acc, r) => {
+        let eggKg = (r.egg_good_kg || 0) + (r.egg_bad_kg || 0);
+        if ((r.egg_bad_kg || 0) === 0 && (r.egg_bad_pcs || 0) > 0 && (r.egg_good_pcs || 0) > 0 && (r.egg_good_kg || 0) > 0) {
+          eggKg += (r.egg_bad_pcs || 0) * (r.egg_good_kg / r.egg_good_pcs);
+        }
+        return acc + eggKg;
+      }, 0);
+      totalVal = sumEgg > 0 && sumFeed > 0 ? Number((sumFeed / sumEgg).toFixed(2)) : 0;
     }
 
     return {
@@ -199,7 +217,14 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       totalVal,
       color: COOP_COLORS[idx % COOP_COLORS.length],
     };
-  }).sort((a, b) => (metric === 'mortality' ? a.totalVal - b.totalVal : b.totalVal - a.totalVal));
+  }).sort((a, b) => {
+    if (metric === 'fcr') {
+      if (a.totalVal === 0) return 1;
+      if (b.totalVal === 0) return -1;
+      return a.totalVal - b.totalVal;
+    }
+    return metric === 'mortality' ? a.totalVal - b.totalVal : b.totalVal - a.totalVal;
+  });
 
   const metricConfig = {
     pcs: {
@@ -250,6 +275,14 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       gradientId: 'roseGrad',
       unit: 'ekor',
     },
+    fcr: {
+      label: 'Feed Conversion Ratio (FCR)',
+      shortLabel: 'FCR Pakan',
+      dataKey: 'fcr',
+      color: '#d97706',
+      gradientId: 'amberGrad',
+      unit: 'rasio',
+    },
   }[metric];
 
   // Mortality summary data for sub-view
@@ -262,9 +295,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   // Custom Tooltip for Race Chart with Rankings
   const RaceTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const sorted = [...payload].sort(
-        (a, b) => (Number(b.value) || 0) - (Number(a.value) || 0)
-      );
+      const sorted = [...payload].sort((a, b) => {
+        const valA = Number(a.value) || 0;
+        const valB = Number(b.value) || 0;
+        if (metric === 'fcr') {
+          if (valA === 0) return 1;
+          if (valB === 0) return -1;
+          return valA - valB;
+        }
+        return valB - valA;
+      });
       const medals = ['🥇', '🥈', '🥉'];
 
       return (
@@ -299,6 +339,73 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                 </div>
               );
             })}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Custom Tooltip for Standard Area Chart (Special FCR Details)
+  const AreaChartTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0]?.payload;
+      if (metric === 'fcr') {
+        const fcrVal = Number(payload[0]?.value) || 0;
+        const feedKg = data?.feed_kg || 0;
+        const totalEggKg = data?.total_egg_kg || 0;
+        const feedIntake = data?.feed_intake_g || 0;
+        const eggGoodPcs = data?.egg_pcs || 0;
+        const eggBadPcs = data?.egg_bad_pcs || 0;
+
+        return (
+          <div className="bg-white border border-amber-200/90 rounded-2xl p-3 shadow-xl text-xs space-y-2 min-w-[210px]">
+            <div className="text-[11px] font-black text-slate-800 border-b border-amber-100 pb-1.5 flex items-center justify-between">
+              <span>📅 {data?.fullDate || label}</span>
+              <span className="text-[9.5px] font-black text-amber-900 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                FCR &amp; Pakan
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-600 font-bold">FCR Rasio:</span>
+                <span className="text-sm font-black text-amber-600">
+                  {fcrVal > 0 ? fcrVal.toFixed(2) : '-'}
+                </span>
+              </div>
+              {feedIntake > 0 && (
+                <div className="flex items-center justify-between gap-3 text-slate-700">
+                  <span className="font-semibold text-slate-500">Porsi Makan:</span>
+                  <span className="font-black text-slate-900">{feedIntake} g/ekor/hari</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3 text-slate-700">
+                <span className="font-semibold text-slate-500">Total Pakan:</span>
+                <span className="font-black text-slate-900">{feedKg} kg</span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-slate-700">
+                <span className="font-semibold text-slate-500">Total Telur:</span>
+                <span className="font-black text-slate-900">{totalEggKg} kg</span>
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium text-right">
+                ({eggGoodPcs} utuh + {eggBadPcs} retak)
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Default metric tooltip
+      return (
+        <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xl text-xs space-y-1 min-w-[150px]">
+          <div className="text-[11px] font-black text-slate-700 border-b border-slate-100 pb-1">
+            📅 {data?.fullDate || label}
+          </div>
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <span className="font-bold text-slate-600">{metricConfig.label}:</span>
+            <span className="font-black text-slate-900">
+              {payload[0]?.value} {metricConfig.unit}
+            </span>
           </div>
         </div>
       );
@@ -365,6 +472,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
             { id: 'hdp' as const, label: '📈 HDP %' },
             { id: 'hhp' as const, label: '📊 HHP %' },
             { id: 'mortality' as const, label: '💀 Kematian' },
+            { id: 'fcr' as const, label: '🌾 FCR Pakan' },
           ] as const
         ).map((m) => (
           <button
@@ -545,19 +653,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
                 tickLine={false}
                 axisLine={false}
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#ffffff',
-                  borderRadius: '16px',
-                  borderColor: '#cbd5e1',
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-                  fontSize: '12px',
-                  color: '#0f172a',
-                  fontWeight: 700,
-                }}
-                formatter={(val: any) => [`${val} ${metricConfig.unit}`, metricConfig.label]}
-                labelFormatter={(lbl: any, payload: any) => payload?.[0]?.payload?.fullDate || lbl}
-              />
+              <Tooltip content={<AreaChartTooltip />} />
               <Area
                 type="monotone"
                 dataKey={metricConfig.dataKey}

@@ -14,6 +14,7 @@ import {
   fetchHealthRecords,
   createFlock,
   saveDailyRecord,
+  saveFeedRecord,
   saveHealthRecord,
 } from '@/lib/supabase';
 import { Flock, DashboardSummary, DailyRecord, HealthRecord } from '@/types/database';
@@ -166,6 +167,11 @@ export default function ReportsPage() {
 
   const handleSaveHealth = async (record: HealthRecord) => {
     await saveHealthRecord(record);
+    await loadAllData();
+  };
+
+  const handleSaveFeed = async (record: { flock_id: string; record_date: string; feed_morning_kg?: number; feed_afternoon_kg?: number; feed_kg: number; notes?: string }) => {
+    await saveFeedRecord(record);
     await loadAllData();
   };
 
@@ -959,6 +965,7 @@ export default function ReportsPage() {
         onSelectFlock={(id) => setViewFlockId(id)}
         onSaveDaily={handleSaveDaily}
         onSaveHealth={handleSaveHealth}
+        onSaveFeed={handleSaveFeed}
         existingRecords={displayedRecords}
       />
 

@@ -27,6 +27,9 @@ export interface DailyRecord {
   mortality_pcs: number;
   culling_pcs: number;
   feed_kg: number;
+  feed_morning_kg?: number;
+  feed_afternoon_kg?: number;
+  feed_intake_g?: number; // Gram per ekor per hari
   hd_percent?: number; // Hen-Day Production % (HDP)
   hdp_percent?: number; // Hen-Day Production % = ((Telur Utuh + Telur Rusak) / Populasi Hidup) * 100
   hhp_percent?: number; // Hen-Housed Production % = ((Telur Utuh + Telur Rusak) / Populasi Awal) * 100
@@ -61,6 +64,9 @@ export interface DashboardSummary {
     mortality_pcs: number;
     culling_pcs: number;
     feed_kg: number;
+    feed_morning_kg?: number;
+    feed_afternoon_kg?: number;
+    feed_intake_g?: number;
     hd_percent: number; // HDP
     hdp_percent: number;
     hhp_percent: number;

@@ -13,6 +13,7 @@ import {
   fetchDailyHistory,
   fetchHealthRecords,
   saveDailyRecord,
+  saveFeedRecord,
   saveHealthRecord,
   createFlock,
   updateFlock,
@@ -67,12 +68,12 @@ export default function DashboardHomePage() {
   const [isFlockModalOpen, setIsFlockModalOpen] = useState(false);
   const [editingFlock, setEditingFlock] = useState<Flock | null>(null);
 
-  const [modalTab, setModalTab] = useState<'daily' | 'health' | 'mortality'>('daily');
+  const [modalTab, setModalTab] = useState<'daily' | 'feed' | 'health' | 'mortality'>('daily');
   const [modalHealthCategory, setModalHealthCategory] = useState<'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'>('Vaksin');
 
   const handleOpenQuickInputCustom = (
     flockId?: string,
-    tab: 'daily' | 'health' | 'mortality' = 'daily',
+    tab: 'daily' | 'feed' | 'health' | 'mortality' = 'daily',
     healthCategory: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan' = 'Vaksin'
   ) => {
     if (flockId) setActiveFlockId(flockId);
@@ -87,6 +88,8 @@ export default function DashboardHomePage() {
     }
     if (action === 'egg') {
       handleOpenQuickInputCustom(flockId, 'daily');
+    } else if (action === 'feed') {
+      handleOpenQuickInputCustom(flockId, 'feed');
     } else if (action === 'health') {
       handleOpenQuickInputCustom(flockId, 'health', 'Obat');
     } else if (action === 'mortality') {
@@ -196,6 +199,13 @@ export default function DashboardHomePage() {
 
   const handleSaveHealth = async (record: HealthRecord) => {
     await saveHealthRecord(record);
+    if (activeFlockId) {
+      await loadDashboard(activeFlockId, timeMode);
+    }
+  };
+
+  const handleSaveFeed = async (record: { flock_id: string; record_date: string; feed_morning_kg?: number; feed_afternoon_kg?: number; feed_kg: number; notes?: string }) => {
+    await saveFeedRecord(record);
     if (activeFlockId) {
       await loadDashboard(activeFlockId, timeMode);
     }
@@ -674,6 +684,7 @@ export default function DashboardHomePage() {
         initialHealthCategory={modalHealthCategory}
         onSaveDaily={handleSaveDaily}
         onSaveHealth={handleSaveHealth}
+        onSaveFeed={handleSaveFeed}
         previousEggPcs={previousEggPcs}
         existingRecords={history}
       />

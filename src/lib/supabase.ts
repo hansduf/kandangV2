@@ -124,7 +124,25 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
     const overallHdp = records.length > 0 && currentPop > 0 ? Number(((totalAllEggs / (currentPop * records.length)) * 100).toFixed(2)) : 0;
     const overallHhp = records.length > 0 && initialPop > 0 ? Number(((totalAllEggs / (initialPop * records.length)) * 100).toFixed(2)) : 0;
     const mortRate = initialPop > 0 ? Number(((totalMort / initialPop) * 100).toFixed(2)) : 0;
-    const overallFCR = totalEggGoodKg > 0 ? totalFeedKg / totalEggGoodKg : 0;
+    
+    // Total All Eggs (Utuh + Retak) for biological FCR
+    const totalAllEggKg = totalEggGoodKg + totalEggBadKg;
+    const overallFCR = totalAllEggKg > 0 ? totalFeedKg / totalAllEggKg : 0;
+
+    // Today calculations
+    const todayGoodKg = todayRecord?.egg_good_kg || 0;
+    let todayBadKg = todayRecord?.egg_bad_kg || 0;
+    if (todayBadKg === 0 && (todayRecord?.egg_bad_pcs || 0) > 0 && todayGoodPcs > 0 && todayGoodKg > 0) {
+      todayBadKg = (todayRecord!.egg_bad_pcs * (todayGoodKg / todayGoodPcs));
+    }
+    const todayTotalEggKg = todayGoodKg + todayBadKg;
+    const todayFeedKg = todayRecord?.feed_kg || 0;
+    const todayFcr = todayTotalEggKg > 0 && todayFeedKg > 0 
+      ? Number((todayFeedKg / todayTotalEggKg).toFixed(2)) 
+      : (todayRecord?.fcr || 0);
+    const todayFeedIntake = currentPop > 0 && todayFeedKg > 0 
+      ? Number(((todayFeedKg * 1000) / currentPop).toFixed(1)) 
+      : (todayRecord?.feed_intake_g || 0);
 
     return {
       flock: { ...flock, current_population: currentPop },
@@ -132,16 +150,19 @@ export async function fetchDashboardSummary(flockId: string): Promise<DashboardS
         has_recorded: !!todayRecord,
         record_date: todayRecord?.record_date || todayStr,
         egg_good_pcs: todayGoodPcs,
-        egg_good_kg: todayRecord?.egg_good_kg || 0,
+        egg_good_kg: todayGoodKg,
         egg_bad_pcs: todayRecord?.egg_bad_pcs || 0,
         egg_bad_kg: todayRecord?.egg_bad_kg || 0,
         mortality_pcs: todayRecord?.mortality_pcs || 0,
         culling_pcs: todayRecord?.culling_pcs || 0,
-        feed_kg: todayRecord?.feed_kg || 0,
+        feed_kg: todayFeedKg,
+        feed_morning_kg: todayRecord?.feed_morning_kg || 0,
+        feed_afternoon_kg: todayRecord?.feed_afternoon_kg || 0,
+        feed_intake_g: todayFeedIntake,
         hd_percent: todayHdp,
         hdp_percent: todayHdp,
         hhp_percent: todayHhp,
-        fcr: todayRecord?.fcr || 0,
+        fcr: todayFcr,
         avg_egg_weight_g: todayRecord?.avg_egg_weight_g || 0,
         notes: todayRecord?.notes || ''
       },
@@ -209,7 +230,14 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
   const totalEggs = (record.egg_good_pcs || 0) + (record.egg_bad_pcs || 0);
   const hdp = activePop > 0 ? Number(((totalEggs / activePop) * 100).toFixed(2)) : 0;
   const hhp = initialPop > 0 ? Number(((totalEggs / initialPop) * 100).toFixed(2)) : 0;
-  const fcr = record.egg_good_kg > 0 ? Number((record.feed_kg / record.egg_good_kg).toFixed(2)) : 0;
+  
+  // Total egg weight (Utuh + Retak) for FCR
+  let totalEggKg = (record.egg_good_kg || 0) + (record.egg_bad_kg || 0);
+  if ((record.egg_bad_kg || 0) === 0 && (record.egg_bad_pcs || 0) > 0 && (record.egg_good_pcs || 0) > 0 && (record.egg_good_kg || 0) > 0) {
+    totalEggKg += ((record.egg_bad_pcs || 0) * (record.egg_good_kg / record.egg_good_pcs));
+  }
+  const fcr = totalEggKg > 0 && (record.feed_kg || 0) > 0 ? Number((record.feed_kg / totalEggKg).toFixed(2)) : 0;
+  const feedIntake = activePop > 0 && (record.feed_kg || 0) > 0 ? Number(((record.feed_kg * 1000) / activePop).toFixed(1)) : 0;
   const avgW = record.egg_good_pcs > 0 ? Number(((record.egg_good_kg * 1000) / record.egg_good_pcs).toFixed(2)) : 0;
 
   const fullRecord: DailyRecord = {
@@ -218,6 +246,7 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
     hdp_percent: hdp,
     hhp_percent: hhp,
     fcr: fcr,
+    feed_intake_g: feedIntake,
     avg_egg_weight_g: avgW
   };
 
@@ -257,6 +286,38 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
     addToSyncQueue({ type: 'DAILY_RECORD', payload: record });
     if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
   }
+}
+
+export interface SaveFeedParams {
+  flock_id: string;
+  record_date: string;
+  feed_morning_kg?: number;
+  feed_afternoon_kg?: number;
+  feed_kg: number;
+  notes?: string;
+}
+
+export async function saveFeedRecord(params: SaveFeedParams): Promise<DailyRecord> {
+  const records = getLocalDailyRecords(params.flock_id);
+  const existing = records.find((r) => r.record_date === params.record_date);
+
+  const mergedRecord: DailyRecord = {
+    flock_id: params.flock_id,
+    record_date: params.record_date,
+    egg_good_pcs: existing?.egg_good_pcs || 0,
+    egg_good_kg: existing?.egg_good_kg || 0,
+    egg_bad_pcs: existing?.egg_bad_pcs || 0,
+    egg_bad_kg: existing?.egg_bad_kg || 0,
+    mortality_pcs: existing?.mortality_pcs || 0,
+    culling_pcs: existing?.culling_pcs || 0,
+    feed_kg: params.feed_kg,
+    feed_morning_kg: params.feed_morning_kg,
+    feed_afternoon_kg: params.feed_afternoon_kg,
+    notes: params.notes || existing?.notes || '',
+  };
+
+  await saveDailyRecord(mergedRecord);
+  return mergedRecord;
 }
 
 export async function fetchHealthRecords(flockId: string): Promise<HealthRecord[]> {

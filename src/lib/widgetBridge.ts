@@ -74,9 +74,10 @@ export function syncDataToWidgets(params: WidgetSyncParams): void {
       }
     }
 
-    const statsAll = `Total: ${totalPcs} btr (${goodPcs} utuh + ${badPcs} retak) • HDP: ${hdp}%`;
-    const statsW = `Total: ${totalPcs} btr (${goodPcs} utuh + ${badPcs} retak) • HDP: ${hdp}%`;
-    const stats1 = `Total: ${totalPcs} btr (${goodPcs} utuh + ${badPcs} retak) • HDP: ${hdp}%`;
+    const fcrPart = summary?.today?.fcr ? ` • FCR: ${summary.today.fcr}` : '';
+    const statsAll = `Total: ${totalPcs} btr (${goodPcs} utuh + ${badPcs} retak) • HDP: ${hdp}%${fcrPart}`;
+    const statsW = `Total: ${totalPcs} btr (${goodPcs} utuh + ${badPcs} retak) • HDP: ${hdp}%${fcrPart}`;
+    const stats1 = `Total: ${totalPcs} btr (${goodPcs} utuh + ${badPcs} retak) • HDP: ${hdp}%${fcrPart}`;
 
     // Filter tasks for active profile
     const activeTasks = profile?.role === 'worker'

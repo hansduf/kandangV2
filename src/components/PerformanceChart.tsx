@@ -462,8 +462,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         )}
       </div>
 
-      {/* Metric Selector Pills (Butir Utuh, Telur Rusak, Kg Telur, HDP %, HHP %, Kematian) */}
-      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+      {/* Metric Selector Pills (Butir Utuh, Telur Rusak, Kg Telur, HDP %, HHP %, Kematian, FCR) */}
+      <div className="flex items-center gap-1.5 flex-wrap py-0.5">
         {(
           [
             { id: 'pcs' as const, label: '🥚 Butir Utuh' },

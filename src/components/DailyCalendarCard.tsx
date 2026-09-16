@@ -363,6 +363,28 @@ export const DailyCalendarCard: React.FC<DailyCalendarCardProps> = ({
                 </div>
               </div>
 
+              {/* Pakan & FCR Harian */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <Wheat className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Pakan &amp; FCR:</span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="bg-amber-50 text-amber-900 px-2 py-0.5 rounded-md border border-amber-200 text-[10.5px] font-bold">
+                    Pakan: <strong>{selectedDaily.feed_kg || 0} kg</strong>
+                    {(selectedDaily.feed_morning_kg || selectedDaily.feed_afternoon_kg) ? ` (${selectedDaily.feed_morning_kg || 0} pg + ${selectedDaily.feed_afternoon_kg || 0} sr)` : ''}
+                  </span>
+                  {selectedDaily.feed_intake_g ? (
+                    <span className="bg-emerald-50 text-[#00684a] px-2 py-0.5 rounded-md border border-emerald-200 text-[10.5px] font-bold">
+                      Intake: <strong>{selectedDaily.feed_intake_g} g/ekor</strong>
+                    </span>
+                  ) : null}
+                  <span className="bg-slate-900 text-white px-2 py-0.5 rounded-md text-[10.5px] font-black">
+                    FCR: {selectedDaily.fcr ? selectedDaily.fcr.toFixed(2) : '-'}
+                  </span>
+                </div>
+              </div>
+
               {/* Multi-Coop Breakdown (if available) */}
               {(selectedDaily as any).coops && (selectedDaily as any).coops.length > 0 && (
                 <div className="pt-2 border-t border-slate-100 space-y-1.5">

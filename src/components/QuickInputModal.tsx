@@ -38,6 +38,8 @@ interface QuickInputModalProps {
   initialHealthCategory?: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan';
 }
 
+const EMPTY_RECORDS: DailyRecord[] = [];
+
 export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   isOpen,
   onClose,
@@ -48,7 +50,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   onSaveHealth,
   onSaveFeed,
   previousEggPcs = 0,
-  existingRecords = [],
+  existingRecords = EMPTY_RECORDS,
   initialTab = 'daily',
   initialHealthCategory = 'Vaksin',
 }) => {
@@ -95,13 +97,28 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
     action: () => Promise<void>;
   } | null>(null);
 
-  // Auto pre-populate feed if record exists, or reset clean when switching flocks
+  // Track loaded keys to prevent re-populating while user is actively typing!
+  const lastFeedLoadedKeyRef = React.useRef<string>('');
+  const lastMortalityLoadedKeyRef = React.useRef<string>('');
+
   React.useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      lastFeedLoadedKeyRef.current = '';
+      lastMortalityLoadedKeyRef.current = '';
+    }
+  }, [isOpen]);
+
+  // Auto pre-populate feed ONLY when modal opens or target flock/date changes
+  React.useEffect(() => {
+    if (!isOpen || !activeFlock?.id) return;
+    const currentKey = `${activeFlock.id}_${feedDate}`;
+    if (lastFeedLoadedKeyRef.current === currentKey) return;
+    lastFeedLoadedKeyRef.current = currentKey;
+
     let existing = existingRecords.find(
-      (r) => r.record_date === feedDate && (r.flock_id === activeFlock?.id || !r.flock_id)
+      (r) => r.record_date === feedDate && (r.flock_id === activeFlock.id || !r.flock_id)
     );
-    if (!existing && typeof window !== 'undefined' && activeFlock?.id) {
+    if (!existing && typeof window !== 'undefined') {
       const local = getLocalDailyRecords(activeFlock.id);
       existing = local.find((r) => r.record_date === feedDate);
     }
@@ -128,14 +145,23 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       setFeedAfternoonKg('');
       setFeedNotes('');
     }
-  }, [feedDate, activeFlock?.id, existingRecords, isOpen]);
+  }, [isOpen, activeFlock?.id, feedDate]);
 
-  // Auto pre-populate mortality if record exists, or reset clean when switching flocks
+  // Auto pre-populate mortality ONLY when modal opens or target flock/date changes
   React.useEffect(() => {
-    if (!isOpen) return;
-    const existing = existingRecords.find(
-      (r) => r.record_date === recordDate && (r.flock_id === activeFlock?.id || !r.flock_id)
+    if (!isOpen || !activeFlock?.id) return;
+    const currentKey = `${activeFlock.id}_${recordDate}`;
+    if (lastMortalityLoadedKeyRef.current === currentKey) return;
+    lastMortalityLoadedKeyRef.current = currentKey;
+
+    let existing = existingRecords.find(
+      (r) => r.record_date === recordDate && (r.flock_id === activeFlock.id || !r.flock_id)
     );
+    if (!existing && typeof window !== 'undefined') {
+      const local = getLocalDailyRecords(activeFlock.id);
+      existing = local.find((r) => r.record_date === recordDate);
+    }
+
     if (existing && (existing.mortality_pcs > 0 || existing.culling_pcs > 0)) {
       setMortalityPcs(existing.mortality_pcs > 0 ? existing.mortality_pcs : '');
       setCullingPcs(existing.culling_pcs > 0 ? existing.culling_pcs : '');
@@ -143,7 +169,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       setMortalityPcs('');
       setCullingPcs('');
     }
-  }, [recordDate, activeFlock?.id, existingRecords, isOpen]);
+  }, [isOpen, activeFlock?.id, recordDate]);
 
   // Handle morning feed input change
   const handleMorningFeedChange = (val: number | '') => {

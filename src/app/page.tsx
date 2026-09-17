@@ -20,6 +20,7 @@ import {
   fetchTasksForDate,
   toggleTaskCompletion,
   checkAndSyncDailyEggTasks,
+  checkAndSyncFeedTasks,
 } from '@/lib/supabase';
 import { Flock, DashboardSummary, DailyRecord, HealthRecord } from '@/types/database';
 import { DailyCalendarCard } from '@/components/DailyCalendarCard';
@@ -191,6 +192,9 @@ export default function DashboardHomePage() {
     await saveDailyRecord(record);
     // Auto-mark daily_record task as complete ONLY if appropriate flock or all flocks have been recorded
     await checkAndSyncDailyEggTasks(record.record_date, record.flock_id, activeProfile?.id);
+    if (record.feed_kg || record.feed_morning_kg || record.feed_afternoon_kg) {
+      await checkAndSyncFeedTasks(record.record_date, record.flock_id, activeProfile?.id);
+    }
     setTaskRefreshTrigger((prev) => prev + 1);
     if (activeFlockId) {
       await loadDashboard(activeFlockId, timeMode);
@@ -206,6 +210,8 @@ export default function DashboardHomePage() {
 
   const handleSaveFeed = async (record: { flock_id: string; record_date: string; feed_morning_kg?: number; feed_afternoon_kg?: number; feed_kg: number; notes?: string }) => {
     await saveFeedRecord(record);
+    await checkAndSyncFeedTasks(record.record_date, record.flock_id, activeProfile?.id);
+    setTaskRefreshTrigger((prev) => prev + 1);
     if (activeFlockId) {
       await loadDashboard(activeFlockId, timeMode);
     }

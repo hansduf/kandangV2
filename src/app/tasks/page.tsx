@@ -21,8 +21,10 @@ import {
   updateOwnerPin,
   createFlock,
   saveDailyRecord,
+  saveFeedRecord,
   saveHealthRecord,
   checkAndSyncDailyEggTasks,
+  checkAndSyncFeedTasks,
   TASK_COLOR_PALETTE,
 } from '@/lib/supabase';
 import { pushLiveStateToWidgets } from '@/lib/widgetBridge';
@@ -93,12 +95,12 @@ export default function TasksPage() {
 
   // Quick Input State for specific tasks
   const [quickInputFlockId, setQuickInputFlockId] = useState<string>('');
-  const [quickInputTab, setQuickInputTab] = useState<'daily' | 'health' | 'mortality'>('daily');
+  const [quickInputTab, setQuickInputTab] = useState<'daily' | 'feed' | 'health' | 'mortality'>('daily');
   const [quickInputHealthCategory, setQuickInputHealthCategory] = useState<'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'>('Vaksin');
 
   const handleOpenQuickInputForTask = (
     flockId?: string,
-    tab: 'daily' | 'health' | 'mortality' = 'daily',
+    tab: 'daily' | 'feed' | 'health' | 'mortality' = 'daily',
     healthCategory: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan' = 'Vaksin'
   ) => {
     setQuickInputFlockId(flockId || (flocks[0]?.id || ''));
@@ -707,9 +709,10 @@ export default function TasksPage() {
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-1.5">
                   Kategori Tugas
                 </label>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
                   {[
                     { id: 'daily_record' as const, label: 'Produksi Telur', icon: '🥚', defaultColor: '#10b981' },
+                    { id: 'feed' as const, label: 'Pakan', icon: '🌾', defaultColor: '#d97706' },
                     { id: 'vaccine' as const, label: 'Vaksinasi', icon: '💉', defaultColor: '#8b5cf6' },
                     { id: 'medicine' as const, label: 'Obat', icon: '💊', defaultColor: '#3b82f6' },
                     { id: 'vitamin' as const, label: 'Vitamin', icon: '✨', defaultColor: '#f59e0b' },
@@ -723,8 +726,12 @@ export default function TasksPage() {
                         setTaskType(cat.id);
                         if (!editingTask) {
                           setTaskColor(cat.defaultColor);
-                          if (!taskTitle || ['Catat Produksi Telur & Pakan', 'Vaksinasi Ayam', 'Pemberian Obat', 'Pemberian Vitamin', 'Pembersihan & Semprot Kandang', 'Tugas Baru'].includes(taskTitle)) {
-                            if (cat.id === 'daily_record') setTaskTitle('Catat Produksi Telur & Pakan');
+                          if (!taskTitle || ['Catat Produksi Telur', 'Catat Produksi Telur & Pakan', 'Pemberian Pakan', 'Pemberian Pakan Pagi', 'Pemberian Pakan Sore', 'Vaksinasi Ayam', 'Pemberian Obat', 'Pemberian Vitamin', 'Pembersihan & Semprot Kandang', 'Tugas Baru'].includes(taskTitle)) {
+                            if (cat.id === 'daily_record') setTaskTitle('Catat Produksi Telur');
+                            else if (cat.id === 'feed') {
+                              setTaskTitle('Pemberian Pakan Pagi');
+                              setDueTime('07:00');
+                            }
                             else if (cat.id === 'vaccine') setTaskTitle('Vaksinasi Ayam');
                             else if (cat.id === 'medicine') setTaskTitle('Pemberian Obat');
                             else if (cat.id === 'vitamin') setTaskTitle('Pemberian Vitamin');
@@ -756,10 +763,36 @@ export default function TasksPage() {
                     type="text"
                     value={taskTitle}
                     onChange={(e) => setTaskTitle(e.target.value)}
-                    placeholder="e.g. Semprot Disinfektan & Vitamin"
+                    placeholder="e.g. Pemberian Pakan Pagi"
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-[#00684a] focus:bg-white"
                     required
                   />
+                  {taskType === 'feed' && (
+                    <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+                      <span className="text-[9.5px] text-slate-400 font-bold uppercase">Pilihan:</span>
+                      <button
+                        type="button"
+                        onClick={() => { setTaskTitle('Pemberian Pakan Pagi'); setDueTime('07:00'); }}
+                        className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold hover:bg-amber-100 transition-colors"
+                      >
+                        🌅 Pagi (07:00)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setTaskTitle('Pemberian Pakan Sore'); setDueTime('15:30'); }}
+                        className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold hover:bg-amber-100 transition-colors"
+                      >
+                        🌇 Sore (15:30)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setTaskTitle('Pemberian Pakan Harian'); setDueTime('16:00'); }}
+                        className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold hover:bg-slate-200 transition-colors"
+                      >
+                        🌾 Harian
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-1">
@@ -1211,6 +1244,14 @@ export default function TasksPage() {
         onSaveDaily={async (rec) => {
           await saveDailyRecord(rec);
           await checkAndSyncDailyEggTasks(rec.record_date, rec.flock_id, activeProfile?.id);
+          if ((rec.feed_kg || 0) > 0 || (rec.feed_morning_kg || 0) > 0 || (rec.feed_afternoon_kg || 0) > 0) {
+            await checkAndSyncFeedTasks(rec.record_date, rec.flock_id, activeProfile?.id);
+          }
+          await loadData();
+        }}
+        onSaveFeed={async (feedRec) => {
+          await saveFeedRecord(feedRec);
+          await checkAndSyncFeedTasks(feedRec.record_date, feedRec.flock_id, activeProfile?.id);
           await loadData();
         }}
         onSaveHealth={async (rec) => {

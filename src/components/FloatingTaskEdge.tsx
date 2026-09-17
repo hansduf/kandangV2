@@ -17,12 +17,13 @@ import {
   Syringe,
   Pill,
   Sparkles,
+  Wheat,
 } from 'lucide-react';
 
 interface FloatingTaskEdgeProps {
   onOpenQuickInput: (
     flockId?: string,
-    tab?: 'daily' | 'health' | 'mortality',
+    tab?: 'daily' | 'feed' | 'health' | 'mortality',
     healthCategory?: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'
   ) => void;
   refreshTrigger?: any;
@@ -69,6 +70,8 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
 
     if (task.task_type === 'daily_record') {
       onOpenQuickInput(targetFlockId, 'daily');
+    } else if (task.task_type === 'feed') {
+      onOpenQuickInput(targetFlockId, 'feed');
     } else if (task.task_type === 'vaccine') {
       onOpenQuickInput(targetFlockId, 'health', 'Vaksin');
     } else if (task.task_type === 'medicine' || (task.task_type as any) === 'obat') {
@@ -130,6 +133,7 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             {tasks.map((task) => {
               const isEgg = task.task_type === 'daily_record';
+              const isFeed = task.task_type === 'feed';
               const isVaccine = task.task_type === 'vaccine';
               const isMedicine = task.task_type === 'medicine' || (task.task_type as any) === 'obat';
               const isVitamin = task.task_type === 'vitamin';
@@ -212,6 +216,11 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
                       <>
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
                         <span>Selesai</span>
+                      </>
+                    ) : isFeed ? (
+                      <>
+                        <Wheat className="w-3.5 h-3.5" />
+                        <span>Catat Pakan{targetCoopLabel}</span>
                       </>
                     ) : isEgg ? (
                       <>

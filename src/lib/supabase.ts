@@ -291,6 +291,9 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
     localStorage.setItem(`kandang_daily_${record.flock_id}`, JSON.stringify(records));
   }
   await checkAndSyncDailyEggTasks(record.record_date, record.flock_id);
+  if ((record.feed_kg || 0) > 0 || (record.feed_morning_kg || 0) > 0 || (record.feed_afternoon_kg || 0) > 0) {
+    await checkAndSyncFeedTasks(record.record_date, record.flock_id);
+  }
 
   const isOffline = !isConfigured || (typeof navigator !== 'undefined' && !navigator.onLine);
   if (isOffline) {
@@ -349,6 +352,7 @@ export async function saveFeedRecord(params: SaveFeedParams): Promise<DailyRecor
   };
 
   await saveDailyRecord(mergedRecord);
+  await checkAndSyncFeedTasks(params.record_date, params.flock_id);
   return mergedRecord;
 }
 
@@ -828,18 +832,26 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
 
   const validWorkerId = toValidUuidOrNull(workerId);
 
-  // Check which flocks have daily records and health records on this date
+  // Check which flocks have daily records, feed records, and health records on this date
   const recordedEggFlockIds = new Set<string>();
+  const recordedFeedMap = new Map<string, { morning: number; afternoon: number; total: number }>();
   const recordedHealthMap = new Map<string, Set<string>>();
 
   if (isConfigured) {
     try {
       const [drRes, hrRes] = await Promise.all([
-        supabase.from('daily_records').select('flock_id').eq('record_date', date),
+        supabase.from('daily_records').select('flock_id, feed_kg, feed_morning_kg, feed_afternoon_kg').eq('record_date', date),
         supabase.from('health_records').select('flock_id, category').eq('record_date', date),
       ]);
       if (drRes.data) {
-        drRes.data.forEach((r: any) => recordedEggFlockIds.add(r.flock_id));
+        drRes.data.forEach((r: any) => {
+          recordedEggFlockIds.add(r.flock_id);
+          recordedFeedMap.set(r.flock_id, {
+            morning: Number(r.feed_morning_kg) || 0,
+            afternoon: Number(r.feed_afternoon_kg) || 0,
+            total: Number(r.feed_kg) || ((Number(r.feed_morning_kg) || 0) + (Number(r.feed_afternoon_kg) || 0)),
+          });
+        });
       }
       if (hrRes.data) {
         hrRes.data.forEach((r: any) => {
@@ -854,7 +866,15 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
   } else if (typeof window !== 'undefined') {
     allFlocks.forEach((f) => {
       const hist = getLocalDailyRecords(f.id);
-      if (hist.some((r) => r.record_date === date)) recordedEggFlockIds.add(f.id);
+      const rec = hist.find((r) => r.record_date === date);
+      if (rec) {
+        recordedEggFlockIds.add(f.id);
+        recordedFeedMap.set(f.id, {
+          morning: Number(rec.feed_morning_kg) || 0,
+          afternoon: Number(rec.feed_afternoon_kg) || 0,
+          total: Number(rec.feed_kg) || ((Number(rec.feed_morning_kg) || 0) + (Number(rec.feed_afternoon_kg) || 0)),
+        });
+      }
       const hHist = getLocalHealthRecords(f.id);
       const set = new Set<string>();
       hHist.filter((r) => r.record_date === date).forEach((r) => set.add((r.category || '').toLowerCase()));
@@ -978,6 +998,26 @@ export async function fetchTasksForDate(date: string, workerId?: string): Promis
         return { flock_id: f.id, coop_name: f.coop_name, is_done: isDone };
       });
       // CRITICAL FIX: ALL target flocks must be done for task to be complete!
+      isCompleted = flocksStatus.length > 0 ? flocksStatus.every((s) => s.is_done) : isCompleted;
+    } else if (item.task_type === 'feed') {
+      const titleLower = (item.title || '').toLowerCase();
+      const isMorning = titleLower.includes('pagi');
+      const isAfternoon = titleLower.includes('sore');
+
+      flocksStatus = targetFlocks.map((f) => {
+        const feedInfo = recordedFeedMap.get(f.id);
+        let isDone = false;
+        if (feedInfo) {
+          if (isMorning) {
+            isDone = feedInfo.morning > 0 || (feedInfo.total > 0 && feedInfo.afternoon === 0);
+          } else if (isAfternoon) {
+            isDone = feedInfo.afternoon > 0;
+          } else {
+            isDone = feedInfo.total > 0 || feedInfo.morning > 0 || feedInfo.afternoon > 0;
+          }
+        }
+        return { flock_id: f.id, coop_name: f.coop_name, is_done: isDone };
+      });
       isCompleted = flocksStatus.length > 0 ? flocksStatus.every((s) => s.is_done) : isCompleted;
     }
 
@@ -1224,6 +1264,71 @@ export async function checkAndSyncHealthTasks(
     }
   } catch (err) {
     console.warn('Failed to sync health tasks:', err);
+  }
+}
+
+export async function checkAndSyncFeedTasks(
+  recordDate: string,
+  flockId: string,
+  workerId?: string
+): Promise<void> {
+  try {
+    const tasksForDate = await fetchTasksForDate(recordDate, workerId);
+    const feedTasks = tasksForDate.filter((t) => t.task_type === 'feed');
+    if (feedTasks.length === 0) return;
+
+    const allFlocks = await fetchFlocks();
+    const activeFlocks = allFlocks.filter((f) => f.status === 'active' || !f.status);
+
+    for (const t of feedTasks) {
+      let targetFlockIds: string[] = [];
+      if (t.flock_ids && t.flock_ids.length > 0) {
+        targetFlockIds = t.flock_ids;
+      } else if (t.flock_id) {
+        targetFlockIds = [t.flock_id];
+      } else {
+        targetFlockIds = activeFlocks.map((f) => f.id);
+      }
+
+      // If the saved flock is not part of the target flocks, skip
+      if (!targetFlockIds.includes(flockId)) continue;
+
+      const titleLower = (t.title || '').toLowerCase();
+      const isMorning = titleLower.includes('pagi');
+      const isAfternoon = titleLower.includes('sore');
+
+      const allDone = await Promise.all(
+        targetFlockIds.map(async (fid) => {
+          let rec: any = null;
+          if (isConfigured) {
+            const { data } = await supabase
+              .from('daily_records')
+              .select('feed_kg, feed_morning_kg, feed_afternoon_kg')
+              .eq('flock_id', fid)
+              .eq('record_date', recordDate)
+              .maybeSingle();
+            rec = data;
+          } else if (typeof window !== 'undefined') {
+            const hist = getLocalDailyRecords(fid);
+            rec = hist.find((r) => r.record_date === recordDate);
+          }
+
+          if (!rec) return false;
+          const morning = Number(rec.feed_morning_kg) || 0;
+          const afternoon = Number(rec.feed_afternoon_kg) || 0;
+          const total = Number(rec.feed_kg) || (morning + afternoon);
+
+          if (isMorning) return morning > 0 || (total > 0 && afternoon === 0);
+          if (isAfternoon) return afternoon > 0;
+          return total > 0 || morning > 0 || afternoon > 0;
+        })
+      );
+
+      const isAllTargetDone = targetFlockIds.length > 0 && allDone.every(Boolean);
+      await setTaskCompletion(t.task_id, recordDate, isAllTargetDone, workerId);
+    }
+  } catch (err) {
+    console.warn('Failed to sync feed tasks:', err);
   }
 }
 

@@ -24,12 +24,13 @@ import {
   Syringe,
   Pill,
   Sparkles,
+  Wheat,
 } from 'lucide-react';
 
 interface TaskCalendarCardProps {
   onOpenQuickInput?: (
     flockId?: string,
-    tab?: 'daily' | 'health' | 'mortality',
+    tab?: 'daily' | 'feed' | 'health' | 'mortality',
     healthCategory?: 'Vaksin' | 'Obat' | 'Vitamin' | 'Desinfektan'
   ) => void;
   workerId?: string;
@@ -149,6 +150,10 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
 
     if (task.task_type === 'daily_record' && onOpenQuickInput) {
       onOpenQuickInput(targetFlockId, 'daily');
+      return;
+    }
+    if (task.task_type === 'feed' && onOpenQuickInput) {
+      onOpenQuickInput(targetFlockId, 'feed');
       return;
     }
     if (task.task_type === 'vaccine' && onOpenQuickInput) {
@@ -405,6 +410,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
         <div className="space-y-2">
           {tasksForDate.map((task) => {
             const isEgg = task.task_type === 'daily_record';
+            const isFeed = task.task_type === 'feed';
             const matchedTask = activeTasks.find((t) => t.id === task.task_id);
 
             return (
@@ -468,6 +474,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                             onClick={() => {
                               if (onOpenQuickInput) {
                                 if (isEgg) onOpenQuickInput(fs.flock_id, 'daily');
+                                else if (isFeed) onOpenQuickInput(fs.flock_id, 'feed');
                                 else if (task.task_type === 'vaccine') onOpenQuickInput(fs.flock_id, 'health', 'Vaksin');
                                 else if (task.task_type === 'medicine' || (task.task_type as any) === 'obat') onOpenQuickInput(fs.flock_id, 'health', 'Obat');
                                 else if (task.task_type === 'vitamin') onOpenQuickInput(fs.flock_id, 'health', 'Vitamin');
@@ -500,7 +507,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                   </div>
                 </div>
 
-                {/* Actions: Catat (Telur/Vaksin/Obat/Vitamin) / Edit / Delete */}
+                {/* Actions: Catat (Telur/Pakan/Vaksin/Obat/Vitamin) / Edit / Delete */}
                 <div className="flex items-center gap-1 shrink-0">
                   {!task.is_completed && onOpenQuickInput && (() => {
                     const pendingFlock = task.flocks_status?.find((f) => !f.is_done);
@@ -517,6 +524,16 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                           >
                             <Egg className="w-3 h-3 fill-white/30" />
                             <span>Catat Telur{coopLabel}</span>
+                          </button>
+                        )}
+                        {isFeed && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenQuickInput(targetFlockId, 'feed')}
+                            className="px-2.5 py-1 rounded-xl bg-amber-600 text-white text-[10px] font-black hover:bg-amber-700 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
+                          >
+                            <Wheat className="w-3 h-3" />
+                            <span>Catat Pakan{coopLabel}</span>
                           </button>
                         )}
                         {task.task_type === 'vaccine' && (
@@ -549,7 +566,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                             <span>Catat Vitamin{coopLabel}</span>
                           </button>
                         )}
-                        {!isEgg && task.task_type !== 'vaccine' && task.task_type !== 'medicine' && (task.task_type as any) !== 'obat' && task.task_type !== 'vitamin' && (
+                        {!isEgg && !isFeed && task.task_type !== 'vaccine' && task.task_type !== 'medicine' && (task.task_type as any) !== 'obat' && task.task_type !== 'vitamin' && (
                           <button
                             type="button"
                             disabled={readOnly}

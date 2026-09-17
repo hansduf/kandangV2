@@ -94,32 +94,96 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
     action: () => Promise<void>;
   } | null>(null);
 
-  // Auto pre-populate feed if record exists
+  // Auto pre-populate feed if record exists, or reset clean when switching flocks
   React.useEffect(() => {
+    if (!isOpen) return;
     const existing = existingRecords.find(
       (r) => r.record_date === feedDate && (r.flock_id === activeFlock?.id || !r.flock_id)
     );
-    if (existing && existing.feed_kg > 0 && feedTotalKg === '' && feedMorningKg === '' && feedAfternoonKg === '') {
+    if (existing && existing.feed_kg > 0) {
       setFeedTotalKg(existing.feed_kg);
-      if (existing.feed_morning_kg) setFeedMorningKg(existing.feed_morning_kg);
-      if (existing.feed_afternoon_kg) setFeedAfternoonKg(existing.feed_afternoon_kg);
+      setFeedMorningKg(existing.feed_morning_kg || '');
+      setFeedAfternoonKg(existing.feed_afternoon_kg || '');
+      setFeedNotes(existing.notes || '');
+    } else {
+      setFeedTotalKg('');
+      setFeedMorningKg('');
+      setFeedAfternoonKg('');
+      setFeedNotes('');
     }
-  }, [feedDate, activeFlock?.id, existingRecords, activeTab]);
+  }, [feedDate, activeFlock?.id, existingRecords, isOpen]);
 
-  // Auto pre-populate mortality if record exists
+  // Auto pre-populate mortality if record exists, or reset clean when switching flocks
   React.useEffect(() => {
+    if (!isOpen) return;
     const existing = existingRecords.find(
       (r) => r.record_date === recordDate && (r.flock_id === activeFlock?.id || !r.flock_id)
     );
-    if (existing) {
-      if (existing.mortality_pcs > 0 && mortalityPcs === '') {
-        setMortalityPcs(existing.mortality_pcs);
-      }
-      if (existing.culling_pcs > 0 && cullingPcs === '') {
-        setCullingPcs(existing.culling_pcs);
-      }
+    if (existing && (existing.mortality_pcs > 0 || existing.culling_pcs > 0)) {
+      setMortalityPcs(existing.mortality_pcs > 0 ? existing.mortality_pcs : '');
+      setCullingPcs(existing.culling_pcs > 0 ? existing.culling_pcs : '');
+    } else {
+      setMortalityPcs('');
+      setCullingPcs('');
     }
-  }, [recordDate, activeFlock?.id, existingRecords, activeTab]);
+  }, [recordDate, activeFlock?.id, existingRecords, isOpen]);
+
+  // Handle morning feed input change
+  const handleMorningFeedChange = (val: number | '') => {
+    setFeedMorningKg(val);
+    const mor = Number(val) || 0;
+    const aft = Number(feedAfternoonKg) || 0;
+    if (mor + aft > 0) {
+      setFeedTotalKg(Number((mor + aft).toFixed(2)));
+    } else {
+      setFeedTotalKg('');
+    }
+  };
+
+  // Handle afternoon feed input change
+  const handleAfternoonFeedChange = (val: number | '') => {
+    setFeedAfternoonKg(val);
+    const mor = Number(feedMorningKg) || 0;
+    const aft = Number(val) || 0;
+    if (mor + aft > 0) {
+      setFeedTotalKg(Number((mor + aft).toFixed(2)));
+    } else {
+      setFeedTotalKg('');
+    }
+  };
+
+  // Handle total feed input change with Smart Auto-Split (Option A)
+  const handleTotalFeedChange = (valStr: string) => {
+    if (valStr === '') {
+      setFeedTotalKg('');
+      return;
+    }
+    const totalVal = Number(valStr);
+    if (isNaN(totalVal) || totalVal < 0) return;
+
+    setFeedTotalKg(totalVal);
+
+    const morNum = Number(feedMorningKg) || 0;
+    const aftNum = Number(feedAfternoonKg) || 0;
+
+    // Skenario 1: Jika Pagi dan Sore masih sama-sama kosong (atau 0) -> otomatis bagi 2 (50 : 50)
+    if (morNum === 0 && aftNum === 0) {
+      const half = Number((totalVal / 2).toFixed(2));
+      const secondHalf = Number((totalVal - half).toFixed(2));
+      setFeedMorningKg(half > 0 ? half : '');
+      setFeedAfternoonKg(secondHalf > 0 ? secondHalf : '');
+    } 
+    // Skenario 2: Jika Pagi sudah ada isinya tapi Sore masih kosong -> Sore diisi sisa kekurangannya
+    else if (morNum > 0 && aftNum === 0) {
+      const remaining = Math.max(0, Number((totalVal - morNum).toFixed(2)));
+      setFeedAfternoonKg(remaining > 0 ? remaining : '');
+    }
+    // Skenario 3: Jika Sore sudah ada isinya tapi Pagi masih kosong -> Pagi diisi sisa kekurangannya
+    else if (aftNum > 0 && morNum === 0) {
+      const remaining = Math.max(0, Number((totalVal - aftNum).toFixed(2)));
+      setFeedMorningKg(remaining > 0 ? remaining : '');
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -467,13 +531,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                     step="0.05"
                     min="0"
                     value={feedMorningKg}
-                    onChange={(e) => {
-                      const v = e.target.value === '' ? '' : Number(e.target.value);
-                      setFeedMorningKg(v);
-                      const aft = Number(feedAfternoonKg) || 0;
-                      const mor = Number(v) || 0;
-                      if (mor + aft > 0) setFeedTotalKg(Number((mor + aft).toFixed(2)));
-                    }}
+                    onChange={(e) => handleMorningFeedChange(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="0.0"
                     className="w-full text-base font-black text-amber-900 bg-transparent outline-none placeholder:text-slate-300"
                   />
@@ -484,10 +542,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                         type="button"
                         onClick={() => {
                           const curr = Number(feedMorningKg) || 0;
-                          const next = Number((curr + amt).toFixed(2));
-                          setFeedMorningKg(next);
-                          const aft = Number(feedAfternoonKg) || 0;
-                          setFeedTotalKg(Number((next + aft).toFixed(2)));
+                          handleMorningFeedChange(Number((curr + amt).toFixed(2)));
                         }}
                         className="text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded hover:bg-amber-200 active:scale-95"
                       >
@@ -505,13 +560,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                     step="0.05"
                     min="0"
                     value={feedAfternoonKg}
-                    onChange={(e) => {
-                      const v = e.target.value === '' ? '' : Number(e.target.value);
-                      setFeedAfternoonKg(v);
-                      const mor = Number(feedMorningKg) || 0;
-                      const aft = Number(v) || 0;
-                      if (mor + aft > 0) setFeedTotalKg(Number((mor + aft).toFixed(2)));
-                    }}
+                    onChange={(e) => handleAfternoonFeedChange(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="0.0"
                     className="w-full text-base font-black text-amber-900 bg-transparent outline-none placeholder:text-slate-300"
                   />
@@ -522,10 +571,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
                         type="button"
                         onClick={() => {
                           const curr = Number(feedAfternoonKg) || 0;
-                          const next = Number((curr + amt).toFixed(2));
-                          setFeedAfternoonKg(next);
-                          const mor = Number(feedMorningKg) || 0;
-                          setFeedTotalKg(Number((mor + next).toFixed(2)));
+                          handleAfternoonFeedChange(Number((curr + amt).toFixed(2)));
                         }}
                         className="text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded hover:bg-amber-200 active:scale-95"
                       >
@@ -537,26 +583,40 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
               </div>
 
               {/* Total Pakan Hari Ini */}
-              <div className="bg-white p-2.5 rounded-xl border border-amber-300 flex items-center justify-between">
-                <div>
-                  <span className="block text-[10px] font-extrabold text-slate-600 uppercase">Total Pakan Hari Ini</span>
-                  <span className="text-[9.5px] font-semibold text-slate-400">
-                    ~{(effectiveFeedTotal / 50).toFixed(2)} Sak (@50kg)
-                  </span>
+              <div className="bg-white p-2.5 rounded-xl border border-amber-300 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="block text-[10px] font-extrabold text-slate-600 uppercase">Total Pakan Hari Ini</span>
+                    <span className="text-[9.5px] font-semibold text-slate-400">
+                      ~{(effectiveFeedTotal / 50).toFixed(2)} Sak (@50kg)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="0"
+                      value={feedTotalKg}
+                      onChange={(e) => handleTotalFeedChange(e.target.value)}
+                      placeholder="0.0"
+                      className="w-24 text-right text-lg font-black text-amber-900 bg-transparent outline-none border-b-2 border-amber-400 focus:border-amber-600"
+                      required
+                    />
+                    <span className="text-xs font-black text-amber-800">kg</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    step="0.05"
-                    min="0"
-                    value={feedTotalKg}
-                    onChange={(e) => setFeedTotalKg(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="0.0"
-                    className="w-24 text-right text-lg font-black text-amber-900 bg-transparent outline-none border-b-2 border-amber-400 focus:border-amber-600"
-                    required
-                  />
-                  <span className="text-xs font-black text-amber-800">kg</span>
-                </div>
+
+                {/* Helper hint regarding auto-split */}
+                {morningNum > 0 && afternoonNum > 0 ? (
+                  <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg px-2 py-1 text-[9.5px] font-bold flex items-center justify-between">
+                    <span>✨ Terbagi: Pagi {morningNum} kg + Sore {afternoonNum} kg</span>
+                    <span className="text-emerald-700">Kedua tugas pakan selesai ✅</span>
+                  </div>
+                ) : (
+                  <p className="text-[9.5px] text-amber-700 font-semibold px-0.5">
+                    💡 Ketik total di sini untuk otomatis membagi 50:50 (Pagi &amp; Sore), atau isi per sesi di atas.
+                  </p>
+                )}
               </div>
             </div>
 

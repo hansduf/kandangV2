@@ -50,23 +50,28 @@ export const SleekProductionInput: React.FC<SleekProductionInputProps> = ({
   const [successToast, setSuccessToast] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // Auto pre-populate if today already has a record
+  // Auto pre-populate if today already has a record, or reset clean when switching flocks
   useEffect(() => {
     const existing = existingRecords.find(
       (r) => r.record_date === recordDate && (r.flock_id === activeFlockId || !r.flock_id)
     );
-    if (existing && existing.egg_good_pcs > 0 && eggGoodPcs === '') {
+    if (existing && existing.egg_good_pcs > 0) {
       setEggGoodPcs(existing.egg_good_pcs);
       if (existing.egg_good_kg > 0) {
         setManualKg(existing.egg_good_kg);
         setLastEdited('kg');
+      } else {
+        setManualKg('');
+        setLastEdited('ratio');
       }
-      if (existing.egg_bad_pcs > 0) {
-        setEggBadPcs(existing.egg_bad_pcs);
-      }
-      if (existing.notes) {
-        setNotes(existing.notes);
-      }
+      setEggBadPcs(existing.egg_bad_pcs > 0 ? existing.egg_bad_pcs : '');
+      setNotes(existing.notes || '');
+    } else {
+      setEggGoodPcs('');
+      setManualKg('');
+      setEggBadPcs('');
+      setNotes('');
+      setLastEdited('ratio');
     }
   }, [recordDate, activeFlockId, existingRecords]);
 

@@ -37,7 +37,7 @@ function getLocalFlocks(): Flock[] {
   return cleanFlocks;
 }
 
-function getLocalDailyRecords(flockId: string): DailyRecord[] {
+export function getLocalDailyRecords(flockId: string): DailyRecord[] {
   if (typeof window === 'undefined') return [];
   const data = localStorage.getItem(`kandang_daily_${flockId}`);
   if (!data) {
@@ -237,9 +237,43 @@ export async function fetchDailyHistory(flockId: string, limit: number = 30): Pr
     return enrichRecords(getLocalDailyRecords(flockId).slice(0, limit));
   }
   try {
-    const { data, error } = await supabase.rpc('get_flock_daily_history', { p_flock_id: flockId, p_limit: limit });
-    if (error) throw error;
-    const enriched = enrichRecords(data || []);
+    const [rpcRes, tableRes] = await Promise.all([
+      supabase.rpc('get_flock_daily_history', { p_flock_id: flockId, p_limit: limit }),
+      supabase.from('daily_records').select('record_date, feed_morning_kg, feed_afternoon_kg').eq('flock_id', flockId),
+    ]);
+    if (rpcRes.error) throw rpcRes.error;
+
+    const feedMap = new Map<string, { morning?: number; afternoon?: number }>();
+    if (tableRes.data) {
+      tableRes.data.forEach((r: any) => {
+        feedMap.set(r.record_date, {
+          morning: r.feed_morning_kg !== null && r.feed_morning_kg !== undefined ? Number(r.feed_morning_kg) : undefined,
+          afternoon: r.feed_afternoon_kg !== null && r.feed_afternoon_kg !== undefined ? Number(r.feed_afternoon_kg) : undefined,
+        });
+      });
+    }
+
+    const localRecords = getLocalDailyRecords(flockId);
+    const merged = (rpcRes.data || []).map((r: any) => {
+      const dbFeed = feedMap.get(r.record_date);
+      const localRec = localRecords.find((l) => l.record_date === r.record_date);
+
+      const morningVal = dbFeed?.morning !== undefined 
+        ? dbFeed.morning 
+        : (localRec?.feed_morning_kg !== undefined ? localRec.feed_morning_kg : undefined);
+
+      const afternoonVal = dbFeed?.afternoon !== undefined 
+        ? dbFeed.afternoon 
+        : (localRec?.feed_afternoon_kg !== undefined ? localRec.feed_afternoon_kg : undefined);
+
+      return {
+        ...r,
+        feed_morning_kg: morningVal,
+        feed_afternoon_kg: afternoonVal,
+      };
+    });
+
+    const enriched = enrichRecords(merged);
     if (typeof window !== 'undefined' && enriched.length > 0) {
       localStorage.setItem(`kandang_daily_${flockId}`, JSON.stringify(enriched));
     }
@@ -316,6 +350,22 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
       p_notes: record.notes || ''
     });
     if (error) throw error;
+
+    // Explicitly update feed_morning_kg and feed_afternoon_kg in Supabase table
+    if (record.feed_morning_kg !== undefined || record.feed_afternoon_kg !== undefined) {
+      try {
+        await supabase
+          .from('daily_records')
+          .update({
+            feed_morning_kg: record.feed_morning_kg || 0,
+            feed_afternoon_kg: record.feed_afternoon_kg || 0,
+          })
+          .eq('flock_id', record.flock_id)
+          .eq('record_date', record.record_date);
+      } catch (feedUpdateErr) {
+        console.warn('Could not update feed split in daily_records:', feedUpdateErr);
+      }
+    }
   } catch (err) {
     console.warn('Network error saving daily record, queued for sync:', err);
     addToSyncQueue({ type: 'DAILY_RECORD', payload: record });
@@ -336,6 +386,13 @@ export async function saveFeedRecord(params: SaveFeedParams): Promise<DailyRecor
   const records = getLocalDailyRecords(params.flock_id);
   const existing = records.find((r) => r.record_date === params.record_date);
 
+  const finalMorning = params.feed_morning_kg !== undefined 
+    ? params.feed_morning_kg 
+    : existing?.feed_morning_kg;
+  const finalAfternoon = params.feed_afternoon_kg !== undefined 
+    ? params.feed_afternoon_kg 
+    : existing?.feed_afternoon_kg;
+
   const mergedRecord: DailyRecord = {
     flock_id: params.flock_id,
     record_date: params.record_date,
@@ -346,8 +403,8 @@ export async function saveFeedRecord(params: SaveFeedParams): Promise<DailyRecor
     mortality_pcs: existing?.mortality_pcs || 0,
     culling_pcs: existing?.culling_pcs || 0,
     feed_kg: params.feed_kg,
-    feed_morning_kg: params.feed_morning_kg,
-    feed_afternoon_kg: params.feed_afternoon_kg,
+    feed_morning_kg: finalMorning,
+    feed_afternoon_kg: finalAfternoon,
     notes: params.notes || existing?.notes || '',
   };
 

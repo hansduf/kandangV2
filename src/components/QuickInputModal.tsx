@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { DailyRecord, HealthRecord, Flock } from '@/types/database';
+import { getLocalDailyRecords } from '@/lib/supabase';
 import { SleekProductionInput } from '@/components/SleekProductionInput';
 import { GiantStepperInput } from '@/components/GiantStepperInput';
 import { SaveConfirmationModal, ConfirmationSummaryItem } from '@/components/SaveConfirmationModal';
@@ -97,13 +98,29 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
   // Auto pre-populate feed if record exists, or reset clean when switching flocks
   React.useEffect(() => {
     if (!isOpen) return;
-    const existing = existingRecords.find(
+    let existing = existingRecords.find(
       (r) => r.record_date === feedDate && (r.flock_id === activeFlock?.id || !r.flock_id)
     );
-    if (existing && existing.feed_kg > 0) {
-      setFeedTotalKg(existing.feed_kg);
-      setFeedMorningKg(existing.feed_morning_kg || '');
-      setFeedAfternoonKg(existing.feed_afternoon_kg || '');
+    if (!existing && typeof window !== 'undefined' && activeFlock?.id) {
+      const local = getLocalDailyRecords(activeFlock.id);
+      existing = local.find((r) => r.record_date === feedDate);
+    }
+
+    if (existing && (existing.feed_kg > 0 || (existing.feed_morning_kg || 0) > 0 || (existing.feed_afternoon_kg || 0) > 0)) {
+      const mor = (existing.feed_morning_kg !== undefined && existing.feed_morning_kg !== null && existing.feed_morning_kg > 0)
+        ? existing.feed_morning_kg
+        : '';
+      const aft = (existing.feed_afternoon_kg !== undefined && existing.feed_afternoon_kg !== null && existing.feed_afternoon_kg > 0)
+        ? existing.feed_afternoon_kg
+        : '';
+      const tot = existing.feed_kg || (Number(mor || 0) + Number(aft || 0));
+
+      // SMART RECOVERY: If morning is empty in DB but total > 0 and afternoon is empty, morning was recorded earlier as total!
+      const resolvedMor = mor !== '' ? mor : (tot > 0 && aft === '' ? tot : '');
+
+      setFeedTotalKg(tot > 0 ? tot : '');
+      setFeedMorningKg(resolvedMor);
+      setFeedAfternoonKg(aft);
       setFeedNotes(existing.notes || '');
     } else {
       setFeedTotalKg('');

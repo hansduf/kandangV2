@@ -59,15 +59,15 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   mortalityRate = 0,
   activePopulation,
 }) => {
-  // Main tabs: egg (Utuh, Rusak, Kg), hdp, hhp, mortality, fcr
+  // Main tabs: egg (Total, Utuh, Rusak, Kg), hdp, hhp, mortality, fcr
   const [mainTab, setMainTab] = useState<'egg' | 'hdp' | 'hhp' | 'mortality' | 'fcr'>('egg');
-  const [eggView, setEggView] = useState<'pcs' | 'bad' | 'kg'>('pcs');
+  const [eggView, setEggView] = useState<'total' | 'pcs' | 'bad' | 'kg'>('total');
   const [chartMode, setChartMode] = useState<'aggregate' | 'race'>('aggregate');
   const [mortView, setMortView] = useState<'chart' | '7d' | '30d' | 'total'>('chart');
   const [fcrView, setFcrView] = useState<'both' | 'fcr' | 'intake'>('both');
 
   // Resolved active metric for chart rendering, tooltip, race calculations
-  const metric: 'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality' | 'fcr' =
+  const metric: 'total' | 'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality' | 'fcr' =
     mainTab === 'egg' ? eggView : mainTab;
 
   // Sort single/aggregate records chronologically ascending
@@ -121,9 +121,18 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       ? r.feed_intake_g
       : (pop > 0 && (r.feed_kg || 0) > 0 ? Number(((r.feed_kg * 1000) / pop).toFixed(1)) : 0);
 
+    // Calculate eggs per kg ratio based on actual daily inputs
+    const pcsPerKg = (r.egg_good_kg || 0) > 0 && (r.egg_good_pcs || 0) > 0
+      ? Number(((r.egg_good_pcs || 0) / (r.egg_good_kg || 0)).toFixed(1))
+      : (totalEggKg > 0 && totalEggs > 0 ? Number((totalEggs / totalEggKg).toFixed(1)) : 0);
+    const avgWeightG = pcsPerKg > 0 ? Number((1000 / pcsPerKg).toFixed(1)) : 0;
+
     return {
       date: displayDate,
       fullDate: r.record_date,
+      total_egg_pcs: totalEggs,
+      pcs_per_kg: pcsPerKg,
+      avg_weight_g: avgWeightG,
       egg_pcs: r.egg_good_pcs || 0,
       egg_bad_pcs: r.egg_bad_pcs || 0,
       egg_kg: r.egg_good_kg || 0,
@@ -155,14 +164,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     return { avgFcr, avgIntake, totalFeed, totalEggs };
   }, [chartData]);
 
-  // Summary statistics for Egg (Utuh, Rusak, Kg, Reject Rate) over current period
+  // Summary statistics for Egg (Total, Utuh, Rusak, Kg, Reject Rate, Avg Butir/Kg) over current period
   const eggSummary = React.useMemo(() => {
     const totalGoodPcs = chartData.reduce((acc, d) => acc + (d.egg_pcs || 0), 0);
     const totalBadPcs = chartData.reduce((acc, d) => acc + (d.egg_bad_pcs || 0), 0);
-    const totalKg = Number(chartData.reduce((acc, d) => acc + (d.egg_kg || 0), 0).toFixed(2));
     const totalAllPcs = totalGoodPcs + totalBadPcs;
+    const totalKg = Number(chartData.reduce((acc, d) => acc + (d.total_egg_kg || d.egg_kg || 0), 0).toFixed(2));
     const rejectRate = totalAllPcs > 0 ? Number(((totalBadPcs / totalAllPcs) * 100).toFixed(2)) : 0;
-    return { totalGoodPcs, totalBadPcs, totalKg, rejectRate };
+    const avgPcsPerKg = totalKg > 0 && totalAllPcs > 0 ? Number((totalAllPcs / totalKg).toFixed(1)) : 0;
+    const avgWeightG = avgPcsPerKg > 0 ? Number((1000 / avgPcsPerKg).toFixed(1)) : 0;
+    return { totalGoodPcs, totalBadPcs, totalAllPcs, totalKg, rejectRate, avgPcsPerKg, avgWeightG };
   }, [chartData]);
 
   // Prepare Multi-Line Race Data if allHistories is available
@@ -201,7 +212,8 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
       const key = flock.coop_name || flock.name;
       let val = 0;
       if (rec) {
-        if (metric === 'pcs') val = rec.egg_good_pcs || 0;
+        if (metric === 'total') val = (rec.egg_good_pcs || 0) + (rec.egg_bad_pcs || 0);
+        else if (metric === 'pcs') val = rec.egg_good_pcs || 0;
         else if (metric === 'bad') val = rec.egg_bad_pcs || 0;
         else if (metric === 'kg') val = rec.egg_good_kg || 0;
         else if (metric === 'hdp')
@@ -229,7 +241,9 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     });
 
     let totalVal = 0;
-    if (metric === 'pcs') {
+    if (metric === 'total') {
+      totalVal = fFiltered.reduce((acc, r) => acc + (r.egg_good_pcs || 0) + (r.egg_bad_pcs || 0), 0);
+    } else if (metric === 'pcs') {
       totalVal = fFiltered.reduce((acc, r) => acc + (r.egg_good_pcs || 0), 0);
     } else if (metric === 'bad') {
       totalVal = fFiltered.reduce((acc, r) => acc + (r.egg_bad_pcs || 0), 0);
@@ -279,12 +293,20 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   });
 
   const metricConfig = {
+    total: {
+      label: 'Total Produksi Telur (Butir)',
+      shortLabel: 'Total Telur',
+      dataKey: 'total_egg_pcs',
+      color: '#00684a',
+      gradientId: 'emeraldGrad',
+      unit: 'btr',
+    },
     pcs: {
       label: 'Telur Utuh (Jumlah Butir)',
       shortLabel: 'Butir Utuh',
       dataKey: 'egg_pcs',
-      color: '#00684a',
-      gradientId: 'emeraldGrad',
+      color: '#059669',
+      gradientId: 'tealGrad',
       unit: 'btr',
     },
     bad: {
@@ -447,9 +469,55 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         );
       }
 
+      if (metric === 'total') {
+        const totalPcs = data?.total_egg_pcs || payload[0]?.value || 0;
+        const goodPcs = data?.egg_pcs || 0;
+        const badPcs = data?.egg_bad_pcs || 0;
+        const totalKg = data?.total_egg_kg || 0;
+        const pcsPerKg = data?.pcs_per_kg || (totalKg > 0 && totalPcs > 0 ? Number((totalPcs / totalKg).toFixed(1)) : 0);
+        const avgWeightG = pcsPerKg > 0 ? Number((1000 / pcsPerKg).toFixed(1)) : 0;
+
+        return (
+          <div className="bg-white border border-emerald-200/90 rounded-2xl p-3 shadow-xl text-xs space-y-2 min-w-[220px]">
+            <div className="text-[11px] font-black text-slate-800 border-b border-emerald-100 pb-1.5 flex items-center justify-between">
+              <span>📅 {data?.fullDate || label}</span>
+              <span className="text-[9.5px] font-black text-[#00684a] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Total Produksi
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-slate-600 font-bold">Total Produksi:</span>
+                <span className="text-sm font-black text-[#00684a]">
+                  {totalPcs.toLocaleString('id-ID')} butir
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3 text-slate-700">
+                <span className="font-semibold text-slate-500">Total Bobot:</span>
+                <span className="font-black text-blue-600">{totalKg} kg</span>
+              </div>
+              {pcsPerKg > 0 && (
+                <div className="flex items-center justify-between gap-3 text-emerald-800 bg-emerald-50/80 p-1.5 rounded-lg border border-emerald-100">
+                  <span className="font-bold text-[10px]">Estimasi Ukuran:</span>
+                  <span className="font-black text-[11px]">
+                    {pcsPerKg} btr/kg <span className="text-[9.5px] font-normal text-emerald-600">({avgWeightG} g/btr)</span>
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3 text-slate-500 text-[10.5px] pt-0.5 border-t border-slate-100">
+                <span>Rincian Butir:</span>
+                <span className="font-bold text-slate-700">
+                  {goodPcs} utuh + {badPcs} retak
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       // Default metric tooltip
       return (
-        <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xl text-xs space-y-1 min-w-[150px]">
+        <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-xl text-xs space-y-1 min-w-[160px]">
           <div className="text-[11px] font-black text-slate-700 border-b border-slate-100 pb-1">
             📅 {data?.fullDate || label}
           </div>
@@ -459,6 +527,12 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
               {payload[0]?.value} {metricConfig.unit}
             </span>
           </div>
+          {(metric === 'pcs' || metric === 'kg') && data?.pcs_per_kg > 0 && (
+            <div className="text-[10px] text-slate-500 pt-0.5 border-t border-slate-100 flex items-center justify-between">
+              <span>Estimasi Ukuran:</span>
+              <span className="font-bold text-emerald-700">{data.pcs_per_kg} btr/kg</span>
+            </div>
+          )}
         </div>
       );
     }
@@ -548,6 +622,7 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         <div className="space-y-2">
           <div className="flex gap-1 bg-emerald-50/80 p-1 rounded-xl border border-emerald-200/80">
             {[
+              { key: 'total' as const, label: '📦 Total Keseluruhan' },
               { key: 'pcs' as const, label: '🥚 Butir Utuh' },
               { key: 'bad' as const, label: '💔 Telur Rusak' },
               { key: 'kg' as const, label: '⚖️ Kilogram (Kg)' },
@@ -569,28 +644,70 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
           {/* Quick Summary Pill for Egg */}
           <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-center">
-            <div>
-              <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Utuh</span>
-              <span className="text-xs font-black text-emerald-700">
-                {eggSummary.totalGoodPcs.toLocaleString('id-ID')} btr
-              </span>
-            </div>
-            <div>
-              <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Rusak</span>
-              <span className="text-xs font-black text-amber-600">
-                {eggSummary.totalBadPcs.toLocaleString('id-ID')} btr
-              </span>
-            </div>
-            <div>
-              <span className="block text-[8px] font-bold text-slate-500 uppercase">
-                {eggView === 'kg' ? 'Total Bobot' : '% Retak / Rusak'}
-              </span>
-              <span className="text-xs font-black text-slate-800">
-                {eggView === 'kg'
-                  ? `${eggSummary.totalKg.toLocaleString('id-ID')} kg`
-                  : `${eggSummary.rejectRate}%`}
-              </span>
-            </div>
+            {eggView === 'total' ? (
+              <>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Produksi</span>
+                  <span className="text-xs font-black text-[#00684a]">
+                    {eggSummary.totalAllPcs.toLocaleString('id-ID')} btr
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Bobot</span>
+                  <span className="text-xs font-black text-blue-600">
+                    {eggSummary.totalKg.toLocaleString('id-ID')} kg
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">Estimasi Ukuran</span>
+                  <span className="text-xs font-black text-emerald-700">
+                    {eggSummary.avgPcsPerKg > 0 ? `${eggSummary.avgPcsPerKg} btr/kg` : '-'}
+                  </span>
+                </div>
+              </>
+            ) : eggView === 'kg' ? (
+              <>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Bobot</span>
+                  <span className="text-xs font-black text-blue-600">
+                    {eggSummary.totalKg.toLocaleString('id-ID')} kg
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Utuh</span>
+                  <span className="text-xs font-black text-emerald-700">
+                    {eggSummary.totalGoodPcs.toLocaleString('id-ID')} btr
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">Estimasi Butir/Kg</span>
+                  <span className="text-xs font-black text-slate-800">
+                    {eggSummary.avgPcsPerKg > 0 ? `${eggSummary.avgPcsPerKg} btr/kg` : '-'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Utuh</span>
+                  <span className="text-xs font-black text-emerald-700">
+                    {eggSummary.totalGoodPcs.toLocaleString('id-ID')} btr
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Rusak</span>
+                  <span className="text-xs font-black text-amber-600">
+                    {eggSummary.totalBadPcs.toLocaleString('id-ID')} btr
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-bold text-slate-500 uppercase">% Retak / Rusak</span>
+                  <span className="text-xs font-black text-slate-800">
+                    {eggSummary.rejectRate}%
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -59,11 +59,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
   mortalityRate = 0,
   activePopulation,
 }) => {
-  // Metrics: pcs (Telur Utuh Butir), bad (Telur Rusak Butir), kg, hdp, hhp, mortality, fcr
-  const [metric, setMetric] = useState<'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality' | 'fcr'>('pcs');
+  // Main tabs: egg (Utuh, Rusak, Kg), hdp, hhp, mortality, fcr
+  const [mainTab, setMainTab] = useState<'egg' | 'hdp' | 'hhp' | 'mortality' | 'fcr'>('egg');
+  const [eggView, setEggView] = useState<'pcs' | 'bad' | 'kg'>('pcs');
   const [chartMode, setChartMode] = useState<'aggregate' | 'race'>('aggregate');
   const [mortView, setMortView] = useState<'chart' | '7d' | '30d' | 'total'>('chart');
   const [fcrView, setFcrView] = useState<'both' | 'fcr' | 'intake'>('both');
+
+  // Resolved active metric for chart rendering, tooltip, race calculations
+  const metric: 'pcs' | 'bad' | 'kg' | 'hdp' | 'hhp' | 'mortality' | 'fcr' =
+    mainTab === 'egg' ? eggView : mainTab;
 
   // Sort single/aggregate records chronologically ascending
   const sortedRecords = [...records].sort((a, b) => a.record_date.localeCompare(b.record_date));
@@ -148,6 +153,16 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
     const totalEggs = Number(chartData.reduce((acc, d) => acc + (d.total_egg_kg || 0), 0).toFixed(2));
 
     return { avgFcr, avgIntake, totalFeed, totalEggs };
+  }, [chartData]);
+
+  // Summary statistics for Egg (Utuh, Rusak, Kg, Reject Rate) over current period
+  const eggSummary = React.useMemo(() => {
+    const totalGoodPcs = chartData.reduce((acc, d) => acc + (d.egg_pcs || 0), 0);
+    const totalBadPcs = chartData.reduce((acc, d) => acc + (d.egg_bad_pcs || 0), 0);
+    const totalKg = Number(chartData.reduce((acc, d) => acc + (d.egg_kg || 0), 0).toFixed(2));
+    const totalAllPcs = totalGoodPcs + totalBadPcs;
+    const rejectRate = totalAllPcs > 0 ? Number(((totalBadPcs / totalAllPcs) * 100).toFixed(2)) : 0;
+    return { totalGoodPcs, totalBadPcs, totalKg, rejectRate };
   }, [chartData]);
 
   // Prepare Multi-Line Race Data if allHistories is available
@@ -499,28 +514,26 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
         )}
       </div>
 
-      {/* Metric Selector Pills (Butir Utuh, Telur Rusak, Kg Telur, HDP %, HHP %, Kematian, FCR) */}
+      {/* Metric Selector Pills (Telur, HDP %, HHP %, Kematian, FCR & Pakan) */}
       <div className="flex items-center gap-1.5 flex-wrap py-0.5">
         {(
           [
-            { id: 'pcs' as const, label: '🥚 Butir Utuh' },
-            { id: 'bad' as const, label: '💔 Telur Rusak' },
-            { id: 'kg' as const, label: '⚖️ Kg Telur' },
+            { id: 'egg' as const, label: '🥚 Telur' },
             { id: 'hdp' as const, label: '📈 HDP %' },
             { id: 'hhp' as const, label: '📊 HHP %' },
             { id: 'mortality' as const, label: '💀 Kematian' },
-            { id: 'fcr' as const, label: '🌾 FCR & Porsi Makan' },
+            { id: 'fcr' as const, label: '🌾 FCR & Pakan' },
           ] as const
         ).map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => {
-              setMetric(m.id);
+              setMainTab(m.id);
               if (m.id === 'mortality') setMortView('chart');
             }}
             className={`px-3 py-1.5 text-[10px] sm:text-[11px] font-black rounded-xl transition-all whitespace-nowrap border ${
-              metric === m.id
+              mainTab === m.id
                 ? 'bg-[#00684a] text-white border-[#00684a] shadow-xs scale-[1.02]'
                 : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
             }`}
@@ -529,6 +542,58 @@ export const PerformanceChart: React.FC<PerformanceChartProps> = ({
           </button>
         ))}
       </div>
+
+      {/* Egg Sub-View Selector (only when mainTab === 'egg') */}
+      {mainTab === 'egg' && (
+        <div className="space-y-2">
+          <div className="flex gap-1 bg-emerald-50/80 p-1 rounded-xl border border-emerald-200/80">
+            {[
+              { key: 'pcs' as const, label: '🥚 Butir Utuh' },
+              { key: 'bad' as const, label: '💔 Telur Rusak' },
+              { key: 'kg' as const, label: '⚖️ Kilogram (Kg)' },
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setEggView(item.key)}
+                className={`flex-1 px-2.5 py-1 text-[10px] sm:text-[11px] font-black rounded-lg transition-all ${
+                  eggView === item.key
+                    ? 'bg-[#00684a] text-white shadow-xs'
+                    : 'text-emerald-900 hover:bg-emerald-100/70'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Quick Summary Pill for Egg */}
+          <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 text-center">
+            <div>
+              <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Utuh</span>
+              <span className="text-xs font-black text-emerald-700">
+                {eggSummary.totalGoodPcs.toLocaleString('id-ID')} btr
+              </span>
+            </div>
+            <div>
+              <span className="block text-[8px] font-bold text-slate-500 uppercase">Total Rusak</span>
+              <span className="text-xs font-black text-amber-600">
+                {eggSummary.totalBadPcs.toLocaleString('id-ID')} btr
+              </span>
+            </div>
+            <div>
+              <span className="block text-[8px] font-bold text-slate-500 uppercase">
+                {eggView === 'kg' ? 'Total Bobot' : '% Retak / Rusak'}
+              </span>
+              <span className="text-xs font-black text-slate-800">
+                {eggView === 'kg'
+                  ? `${eggSummary.totalKg.toLocaleString('id-ID')} kg`
+                  : `${eggSummary.rejectRate}%`}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FCR & Feed Intake Sub-View Selector (only when fcr selected and not in race mode) */}
       {metric === 'fcr' && chartMode === 'aggregate' && (

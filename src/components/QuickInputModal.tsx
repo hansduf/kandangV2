@@ -278,7 +278,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       setTimeout(() => {
         setToastMessage('');
         onClose();
-      }, 1200);
+      }, 250);
     } catch (err) {
       alert('Gagal menyimpan data kesehatan.');
     } finally {
@@ -334,7 +334,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       setTimeout(() => {
         setToastMessage('');
         onClose();
-      }, 1200);
+      }, 250);
     } catch (err) {
       alert('Gagal menyimpan data kematian.');
     } finally {
@@ -403,7 +403,7 @@ export const QuickInputModal: React.FC<QuickInputModalProps> = ({
       setTimeout(() => {
         setToastMessage('');
         onClose();
-      }, 1200);
+      }, 250);
     } catch (err) {
       alert('Gagal menyimpan data pakan.');
     } finally {

@@ -1243,20 +1243,15 @@ export default function TasksPage() {
         initialHealthCategory={quickInputHealthCategory}
         onSaveDaily={async (rec) => {
           await saveDailyRecord(rec);
-          await checkAndSyncDailyEggTasks(rec.record_date, rec.flock_id, activeProfile?.id);
-          if ((rec.feed_kg || 0) > 0 || (rec.feed_morning_kg || 0) > 0 || (rec.feed_afternoon_kg || 0) > 0) {
-            await checkAndSyncFeedTasks(rec.record_date, rec.flock_id, activeProfile?.id);
-          }
-          await loadData();
+          loadData();
         }}
         onSaveFeed={async (feedRec) => {
           await saveFeedRecord(feedRec);
-          await checkAndSyncFeedTasks(feedRec.record_date, feedRec.flock_id, activeProfile?.id);
-          await loadData();
+          loadData();
         }}
         onSaveHealth={async (rec) => {
           await saveHealthRecord(rec);
-          await loadData();
+          loadData();
         }}
       />
 

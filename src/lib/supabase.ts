@@ -324,10 +324,6 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
   if (typeof window !== 'undefined') {
     localStorage.setItem(`kandang_daily_${record.flock_id}`, JSON.stringify(records));
   }
-  await checkAndSyncDailyEggTasks(record.record_date, record.flock_id);
-  if ((record.feed_kg || 0) > 0 || (record.feed_morning_kg || 0) > 0 || (record.feed_afternoon_kg || 0) > 0) {
-    await checkAndSyncFeedTasks(record.record_date, record.flock_id);
-  }
 
   const isOffline = !isConfigured || (typeof navigator !== 'undefined' && !navigator.onLine);
   if (isOffline) {
@@ -336,41 +332,57 @@ export async function saveDailyRecord(record: DailyRecord): Promise<void> {
     return;
   }
 
-  try {
-    const { error } = await supabase.rpc('upsert_daily_record', {
-      p_flock_id: record.flock_id,
-      p_record_date: record.record_date,
-      p_egg_good_pcs: record.egg_good_pcs,
-      p_egg_good_kg: record.egg_good_kg,
-      p_egg_bad_pcs: record.egg_bad_pcs,
-      p_egg_bad_kg: record.egg_bad_kg,
-      p_mortality_pcs: record.mortality_pcs,
-      p_culling_pcs: record.culling_pcs,
-      p_feed_kg: record.feed_kg,
-      p_notes: record.notes || ''
-    });
-    if (error) throw error;
+  // Run DB upsert and task completion sync in parallel to eliminate sequential network bottlenecks
+  const dbPromise = (async () => {
+    try {
+      const { error } = await supabase.rpc('upsert_daily_record', {
+        p_flock_id: record.flock_id,
+        p_record_date: record.record_date,
+        p_egg_good_pcs: record.egg_good_pcs,
+        p_egg_good_kg: record.egg_good_kg,
+        p_egg_bad_pcs: record.egg_bad_pcs,
+        p_egg_bad_kg: record.egg_bad_kg,
+        p_mortality_pcs: record.mortality_pcs,
+        p_culling_pcs: record.culling_pcs,
+        p_feed_kg: record.feed_kg,
+        p_notes: record.notes || ''
+      });
+      if (error) throw error;
 
-    // Explicitly update feed_morning_kg and feed_afternoon_kg in Supabase table
-    if (record.feed_morning_kg !== undefined || record.feed_afternoon_kg !== undefined) {
-      try {
-        await supabase
-          .from('daily_records')
-          .update({
-            feed_morning_kg: record.feed_morning_kg || 0,
-            feed_afternoon_kg: record.feed_afternoon_kg || 0,
-          })
-          .eq('flock_id', record.flock_id)
-          .eq('record_date', record.record_date);
-      } catch (feedUpdateErr) {
-        console.warn('Could not update feed split in daily_records:', feedUpdateErr);
+      // Explicitly update feed_morning_kg and feed_afternoon_kg in Supabase table
+      if (record.feed_morning_kg !== undefined || record.feed_afternoon_kg !== undefined) {
+        try {
+          await supabase
+            .from('daily_records')
+            .update({
+              feed_morning_kg: record.feed_morning_kg || 0,
+              feed_afternoon_kg: record.feed_afternoon_kg || 0,
+            })
+            .eq('flock_id', record.flock_id)
+            .eq('record_date', record.record_date);
+        } catch (feedUpdateErr) {
+          console.warn('Could not update feed split in daily_records:', feedUpdateErr);
+        }
       }
+    } catch (err) {
+      console.warn('Network error saving daily record, queued for sync:', err);
+      addToSyncQueue({ type: 'DAILY_RECORD', payload: record });
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
     }
-  } catch (err) {
-    console.warn('Network error saving daily record, queued for sync:', err);
-    addToSyncQueue({ type: 'DAILY_RECORD', payload: record });
-    if (typeof window !== 'undefined') window.dispatchEvent(new Event('sync-queue-updated'));
-  }
+  })();
+
+  const taskSyncPromise = (async () => {
+    try {
+      await checkAndSyncDailyEggTasks(record.record_date, record.flock_id);
+      if ((record.feed_kg || 0) > 0 || (record.feed_morning_kg || 0) > 0 || (record.feed_afternoon_kg || 0) > 0) {
+        await checkAndSyncFeedTasks(record.record_date, record.flock_id);
+      }
+    } catch (taskErr) {
+      console.warn('Task sync non-critical error:', taskErr);
+    }
+  })();
+
+  await Promise.all([dbPromise, taskSyncPromise]);
 }
 
 export interface SaveFeedParams {
@@ -409,7 +421,6 @@ export async function saveFeedRecord(params: SaveFeedParams): Promise<DailyRecor
   };
 
   await saveDailyRecord(mergedRecord);
-  await checkAndSyncFeedTasks(params.record_date, params.flock_id);
   return mergedRecord;
 }
 

@@ -130,125 +130,146 @@ export const FloatingTaskEdge: React.FC<FloatingTaskEdgeProps> = ({
             </button>
           </div>
 
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-[60vh] sm:max-h-80 overflow-y-auto pr-1">
             {tasks.map((task) => {
               const isEgg = task.task_type === 'daily_record';
               const isFeed = task.task_type === 'feed';
               const isVaccine = task.task_type === 'vaccine';
               const isMedicine = task.task_type === 'medicine' || (task.task_type as any) === 'obat';
               const isVitamin = task.task_type === 'vitamin';
-              const pendingFlock = task.flocks_status?.find((f) => !f.is_done);
-              const targetCoopLabel = pendingFlock ? ` (${pendingFlock.coop_name})` : '';
 
               return (
                 <div
                   key={task.task_id}
-                  className={`p-3 rounded-2xl border transition-all flex items-start justify-between gap-2.5 ${
+                  className={`p-3.5 rounded-2xl border transition-all space-y-2.5 ${
                     task.is_completed
-                      ? 'bg-slate-50 border-slate-200 opacity-80'
-                      : 'bg-emerald-50/60 border-emerald-200 shadow-xs'
+                      ? 'bg-slate-50/90 border-slate-200 opacity-80'
+                      : 'bg-emerald-50/40 border-emerald-200/80 shadow-xs'
                   }`}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                  {/* Header Row: Indicator + Title + Time */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0 flex-1">
                       <span
-                        className="w-2 h-2 rounded-full shrink-0"
+                        className="w-2.5 h-2.5 rounded-full shrink-0 mt-1"
                         style={{ backgroundColor: task.color || '#10b981' }}
                       />
-                      <span className={`text-xs font-black truncate ${task.is_completed ? 'line-through text-slate-400' : 'text-slate-900'}`}>
-                        {task.title}
-                      </span>
-                      {task.coop_name ? (
-                        <span className="text-[9px] font-black bg-emerald-100 text-[#00684a] px-1.5 py-0.5 rounded-md border border-emerald-200">
-                          🏠 {task.coop_name}
-                        </span>
-                      ) : (
-                        <span className="text-[9px] font-black bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200">
-                          🏠 Semua Kandang
-                        </span>
-                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h5
+                            className={`text-xs sm:text-sm font-black leading-snug break-words ${
+                              task.is_completed ? 'line-through text-slate-400' : 'text-slate-900'
+                            }`}
+                          >
+                            {task.title}
+                          </h5>
+                          {task.coop_name ? (
+                            <span className="text-[9px] font-black bg-emerald-100 text-[#00684a] px-1.5 py-0.5 rounded-md border border-emerald-200 shrink-0">
+                              🏠 {task.coop_name}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-black bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200 shrink-0">
+                              🏠 Semua Kandang
+                            </span>
+                          )}
+                        </div>
+
+                        {task.description && (
+                          <p className="text-[10px] text-slate-500 font-semibold line-clamp-2 mt-0.5">
+                            {task.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Per-kandang completion status breakdown (Clickable badges) */}
-                    {task.flocks_status && task.flocks_status.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {task.flocks_status.map((fs, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handleTaskClick(task, fs.flock_id)}
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-1 transition-all active:scale-95 ${
-                              fs.is_done
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 ring-1 ring-amber-400 cursor-pointer'
-                            }`}
-                            title={`Klik untuk catat ${fs.coop_name}`}
-                          >
-                            <span>{fs.coop_name}</span>
-                            <span>{fs.is_done ? '✅ Selesai' : '⏳ Belum'}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {task.description && (
-                      <p className="text-[10px] text-slate-500 font-semibold truncate mt-1">
-                        {task.description}
-                      </p>
-                    )}
                     {task.due_time && (
-                      <span className="text-[9px] font-bold text-slate-400 block mt-0.5">
-                        ⏰ Target: {task.due_time.substring(0, 5)} WIB
+                      <span className="text-[9px] font-bold text-slate-500 bg-white/90 px-2 py-0.5 rounded-md border border-slate-200 shrink-0 whitespace-nowrap">
+                        ⏰ {task.due_time.substring(0, 5)} WIB
                       </span>
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleTaskClick(task)}
-                    className={`px-2.5 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 shrink-0 active:scale-95 transition-all shadow-xs mt-0.5 ${
-                      task.is_completed
-                        ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                        : 'bg-[#00684a] text-white hover:bg-emerald-800'
-                    }`}
-                  >
-                    {task.is_completed ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>Selesai</span>
-                      </>
-                    ) : isFeed ? (
-                      <>
-                        <Wheat className="w-3.5 h-3.5" />
-                        <span>Catat Pakan{targetCoopLabel}</span>
-                      </>
-                    ) : isEgg ? (
-                      <>
-                        <Egg className="w-3.5 h-3.5 fill-white/20" />
-                        <span>Catat Telur{targetCoopLabel}</span>
-                      </>
-                    ) : isVaccine ? (
-                      <>
-                        <Syringe className="w-3.5 h-3.5" />
-                        <span>Catat Vaksin{targetCoopLabel}</span>
-                      </>
-                    ) : isMedicine ? (
-                      <>
-                        <Pill className="w-3.5 h-3.5" />
-                        <span>Catat Obat{targetCoopLabel}</span>
-                      </>
-                    ) : isVitamin ? (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Catat Vitamin{targetCoopLabel}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>Tandai Selesai</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Per-kandang completion status breakdown (Clickable badges) */}
+                  {task.flocks_status && task.flocks_status.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {task.flocks_status.map((fs, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleTaskClick(task, fs.flock_id)}
+                          className={`text-[9px] sm:text-[10px] font-black px-2 py-1 rounded-lg border flex items-center gap-1.5 transition-all active:scale-95 ${
+                            fs.is_done
+                              ? 'bg-emerald-100/90 text-emerald-800 border-emerald-300'
+                              : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 ring-1 ring-amber-400/80 cursor-pointer shadow-2xs'
+                          }`}
+                          title={`Klik untuk catat ${fs.coop_name}`}
+                        >
+                          <span className="max-w-[140px] truncate">{fs.coop_name}</span>
+                          <span className="shrink-0">{fs.is_done ? '✅ Selesai' : '⏳ Belum'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Action Button Row */}
+                  <div className="flex items-center justify-end pt-1 border-t border-slate-200/60">
+                    <button
+                      type="button"
+                      onClick={() => handleTaskClick(task)}
+                      className={`w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 active:scale-98 transition-all shadow-xs ${
+                        task.is_completed
+                          ? 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                          : isFeed
+                          ? 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-600/20'
+                          : isEgg
+                          ? 'bg-[#00684a] text-white hover:bg-emerald-800 shadow-emerald-700/20'
+                          : isVaccine
+                          ? 'bg-purple-700 text-white hover:bg-purple-800'
+                          : isMedicine
+                          ? 'bg-blue-700 text-white hover:bg-blue-800'
+                          : isVitamin
+                          ? 'bg-sky-600 text-white hover:bg-sky-700'
+                          : 'bg-[#00684a] text-white hover:bg-emerald-800'
+                      }`}
+                    >
+                      {task.is_completed ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Tugas Selesai</span>
+                        </>
+                      ) : isFeed ? (
+                        <>
+                          <Wheat className="w-3.5 h-3.5" />
+                          <span>Catat Pakan</span>
+                        </>
+                      ) : isEgg ? (
+                        <>
+                          <Egg className="w-3.5 h-3.5 fill-white/20" />
+                          <span>Catat Telur</span>
+                        </>
+                      ) : isVaccine ? (
+                        <>
+                          <Syringe className="w-3.5 h-3.5" />
+                          <span>Catat Vaksin</span>
+                        </>
+                      ) : isMedicine ? (
+                        <>
+                          <Pill className="w-3.5 h-3.5" />
+                          <span>Catat Obat</span>
+                        </>
+                      ) : isVitamin ? (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Catat Vitamin</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>Tandai Selesai</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               );
             })}

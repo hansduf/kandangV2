@@ -512,7 +512,6 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                   {!task.is_completed && onOpenQuickInput && (() => {
                     const pendingFlock = task.flocks_status?.find((f) => !f.is_done);
                     const targetFlockId = pendingFlock?.flock_id || task.flock_id || undefined;
-                    const coopLabel = pendingFlock ? ` (${pendingFlock.coop_name})` : '';
 
                     return (
                       <>
@@ -523,7 +522,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                             className="px-2.5 py-1 rounded-xl bg-[#00684a] text-white text-[10px] font-black hover:bg-emerald-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
                           >
                             <Egg className="w-3 h-3 fill-white/30" />
-                            <span>Catat Telur{coopLabel}</span>
+                            <span>Catat Telur</span>
                           </button>
                         )}
                         {isFeed && (
@@ -533,7 +532,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                             className="px-2.5 py-1 rounded-xl bg-amber-600 text-white text-[10px] font-black hover:bg-amber-700 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
                           >
                             <Wheat className="w-3 h-3" />
-                            <span>Catat Pakan{coopLabel}</span>
+                            <span>Catat Pakan</span>
                           </button>
                         )}
                         {task.task_type === 'vaccine' && (
@@ -543,7 +542,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                             className="px-2.5 py-1 rounded-xl bg-purple-700 text-white text-[10px] font-black hover:bg-purple-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
                           >
                             <Syringe className="w-3 h-3" />
-                            <span>Catat Vaksin{coopLabel}</span>
+                            <span>Catat Vaksin</span>
                           </button>
                         )}
                         {(task.task_type === 'medicine' || (task.task_type as any) === 'obat') && (
@@ -553,7 +552,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                             className="px-2.5 py-1 rounded-xl bg-blue-700 text-white text-[10px] font-black hover:bg-blue-800 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
                           >
                             <Pill className="w-3 h-3" />
-                            <span>Catat Obat{coopLabel}</span>
+                            <span>Catat Obat</span>
                           </button>
                         )}
                         {task.task_type === 'vitamin' && (
@@ -563,7 +562,7 @@ export const TaskCalendarCard: React.FC<TaskCalendarCardProps> = ({
                             className="px-2.5 py-1 rounded-xl bg-amber-600 text-white text-[10px] font-black hover:bg-amber-700 active:scale-95 shadow-xs flex items-center gap-1 mr-1"
                           >
                             <Sparkles className="w-3 h-3" />
-                            <span>Catat Vitamin{coopLabel}</span>
+                            <span>Catat Vitamin</span>
                           </button>
                         )}
                         {!isEgg && !isFeed && task.task_type !== 'vaccine' && task.task_type !== 'medicine' && (task.task_type as any) !== 'obat' && task.task_type !== 'vitamin' && (
